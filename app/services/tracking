@@ -1,33 +1,11 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
 from datetime import datetime
+from app.models.truck import Truck, Location
+from app.database.database import truck_db, current_location, history
 
 app = FastAPI()
 
-@app.get("/")
-async def root():
-        return "Itertrack in the house 😎💯🚚"
-
-#camion con id y coordenadas
-class Truck(BaseModel):
-        id: int
-        
-class Location(BaseModel):
-        lat: float
-        long: float
-        
-#historial con Truck e historial de ubicaciones
-class History(BaseModel):
-        order: int
-        truck: Truck
-
-#
-truck_db = {} 
-
-current_location = {}
-
-history = []
-
+#agrega un camión a la base de datos
 @app.post("/trucks")
 def add_truck(truck: Truck, location: Location):
     truck_db[truck.id] = {
@@ -57,9 +35,10 @@ def update_location(truck: Truck, location: Location):
         "mensaje": "Ubicación actualizada"
         }
 
-@app.put("/trucks/{truck_id}/iter")
+#@app.put("/trucks/{truck_id}/iter")
 
-@app.get("/trucks/{truck_id}")
+#devuelve la ubicación actual del camion
+@app.get("/trucks/{truck_id}/location")
 def get_truck(truck_id: int):
     if truck_id not in truck_db:
         return {
@@ -70,4 +49,3 @@ def get_truck(truck_id: int):
 @app.get("/trucks")
 def get_truck_db():
     return truck_db
-
