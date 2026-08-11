@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from app.models.truck import Truck, Location, TrackingPoint
-from app.database.database import truck_db, current_location_db, history_db
+from source.models.truck import Truck, Location, TrackingPoint
+from source.database.database import truck_db, current_location_db, history_db
 
 router = APIRouter(prefix="/trucks", tags=["trucks"])
 
