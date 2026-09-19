@@ -4,6 +4,7 @@ from datetime import datetime
 #camion con id
 class Truck(BaseModel):
         id: int
+        plate: str
 
 #ubicacion
 class Location(BaseModel):

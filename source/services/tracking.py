@@ -11,6 +11,10 @@ def add_truck(truck: Truck, location: Location):
         return {
             "error": "El camión ya existe"
         }
+    if any(t.plate == truck.plate for t in truck_db.values()):
+        return {
+            "error": "La patente ya existe"
+        }
     truck_db[truck.id] = truck
     current_location_db[truck.id] = location
     return {
@@ -66,3 +70,13 @@ def get_trucks():
 @router.get("/ids")
 def get_truck_ids():
     return list(truck_db)
+
+#busca un camión por patente
+@router.get("/plate/{plate}")
+def get_truck_by_plate(plate: str):
+    for truck in truck_db.values():
+        if truck.plate == plate:
+            return truck
+    return {
+        "error": "Camión no encontrado"
+    }
