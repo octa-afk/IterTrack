@@ -8,4 +8,15 @@ env/
 .vscode/
 .idea/
 
+# Variables de entorno y credenciales
 .env
+.env.*
+!.env.example
+
+# Alembic con credenciales o conexiones locales
+alembic.ini
+!alembic.ini.example
+
+# Configuración local de herramientas
+.claude/
+*.local.json

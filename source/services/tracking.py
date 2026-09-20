@@ -1,22 +1,29 @@
-from fastapi import APIRouter
-from source.models.truck import Truck, Location, TrackingPoint
-from source.database.database import truck_db, current_location_db, history_db
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from source import models, schemas
+from source.database.database import get_db
 
 router = APIRouter(prefix="/trucks", tags=["trucks"])
 
 #agrega un camión a la base de datos
 @router.post("")
-def add_truck(truck: Truck, location: Location):
-    if truck.id in truck_db:
+def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = Depends(get_db)):
+    if db.query(models.Truck).filter(models.Truck.id == truck.id).first():
         return {
             "error": "El camión ya existe"
         }
-    if any(t.plate == truck.plate for t in truck_db.values()):
+    if db.query(models.Truck).filter(models.Truck.plate == truck.plate).first():
         return {
             "error": "La patente ya existe"
         }
-    truck_db[truck.id] = truck
-    current_location_db[truck.id] = location
+    db_truck = models.Truck(id=truck.id, plate=truck.plate)
+    db.add(db_truck)
+
+    db_tracking_point = models.TrackingPoint(truck_id=truck.id, lat=location.lat, long=location.long)
+    db.add(db_tracking_point)
+
+    db.commit()
     return {
         "mensaje": "Camión agregado",
         "truck": truck
