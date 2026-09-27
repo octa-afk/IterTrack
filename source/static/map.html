@@ -1,0 +1,450 @@
+<!DOCTYPE HTML>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IterTrack - Monitoreo en Vivo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+      html, body {
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      #map {
+        width: 100%;
+        height: 100%;
+      }
+      .panel-info {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.96);
+        padding: 14px 18px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        min-width: 240px;
+        backdrop-filter: blur(6px);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+      }
+      .panel-info h3 {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .panel-info p {
+        margin: 6px 0;
+        font-size: 13px;
+        color: #475569;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        background-color: #10b981;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 8px #10b981;
+      }
+      .coord-badge {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #334155;
+        font-weight: 500;
+      }
+      .cardinal-badge {
+        background: #eff6ff;
+        color: #2563eb;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        border: 1px solid #bfdbfe;
+      }
+
+      /* Contenedor del marcador e icono rotativo del camión */
+      .truck-marker-wrapper {
+        background: transparent !important;
+        border: none !important;
+      }
+      .truck-marker-rotator {
+        width: 46px;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform-origin: 50% 50%;
+        transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1);
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+      }
+
+      /* Flechas direccionales sobre los segmentos de la línea */
+      .segment-arrow-wrapper {
+        background: transparent !important;
+        border: none !important;
+        pointer-events: none !important;
+      }
+      .segment-arrow-icon {
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform-origin: 50% 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <div class="panel-info">
+      <h3><span class="status-dot"></span> Camión #<span id="truck-id">1</span></h3>
+      <p><span>Patente:</span> <strong id="truck-plate">Cargando...</strong></p>
+      <p><span>Latitud:</span> <span id="truck-lat" class="coord-badge">-</span></p>
+      <p><span>Longitud:</span> <span id="truck-long" class="coord-badge">-</span></p>
+      <p><span>Rumbo:</span> <span><span id="truck-heading" class="coord-badge">-</span> <span id="truck-cardinal" class="cardinal-badge">-</span></span></p>
+      <p><span>Último ping:</span> <span id="truck-time">-</span></p>
+      <p style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
+        <span>Seguir en mapa:</span>
+        <label style="display: flex; align-items: center; cursor: pointer; gap: 4px;">
+          <input type="checkbox" id="chk-follow" checked style="cursor: pointer; width: 15px; height: 15px; accent-color: #2563eb;">
+          <span style="font-size: 11px; color: #64748b;">Auto</span>
+        </label>
+      </p>
+    </div>
+
+    <script>
+      const TRUCK_ID = 1;
+
+      // Distancia mínima en píxeles de pantalla entre flechas para evitar saturación visual
+      const MIN_ESPACIADO_PIXELES = 85;
+
+      // Variables de seguimiento de posición y rumbo
+      let ultimaPosicion = null;
+      let rumboActual = 0;
+      let rotacionAcumulada = 0;
+      let patenteActual = "Cargando...";
+
+      // 1. Inicializamos el mapa centrado en Córdoba
+      const map = L.map('map').setView([-31.4166867, -64.1834193], 14);
+
+      // 2. Mosaicos de OpenStreetMap
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+      }).addTo(map);
+
+      L.control.scale({imperial: false, metric: true}).addTo(map);
+
+      // 3. Icono SVG personalizado del vehículo orientado hacia el frente (0° / Norte)
+      const truckIcon = L.divIcon({
+        className: 'truck-marker-wrapper',
+        html: `
+          <div id="truck-marker-rotator" class="truck-marker-rotator">
+            <svg width="46" height="46" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Haz de luces delantero que resalta hacia dónde apunta -->
+              <polygon points="16,9 5,0 20,0" fill="#facc15" opacity="0.45"/>
+              <polygon points="32,9 28,0 43,0" fill="#facc15" opacity="0.45"/>
+              
+              <!-- Ruedas -->
+              <rect x="10" y="11" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
+              <rect x="34.5" y="11" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
+              <rect x="10" y="25" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
+              <rect x="34.5" y="25" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
+              <rect x="10" y="33" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
+              <rect x="34.5" y="33" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
+              
+              <!-- Chasis / Remolque (parte trasera) -->
+              <rect x="14" y="20" width="20" height="21" rx="3" fill="#1e293b" stroke="#ffffff" stroke-width="1.5"/>
+              
+              <!-- Cabina (parte delantera) -->
+              <path d="M15 9C15 7.34315 16.3431 6 18 6H30C31.6569 6 33 7.34315 33 9V20H15V9Z" fill="#2563eb" stroke="#ffffff" stroke-width="1.5"/>
+              
+              <!-- Parabrisas delantero -->
+              <path d="M17 9.5C17 8.67157 17.6716 8 18.5 8H29.5C30.3284 8 31 8.67157 31 9.5V12.5H17V9.5Z" fill="#93c5fd"/>
+              
+              <!-- Flecha blanca indicadora de marcha en el techo -->
+              <polygon points="24,13 28,18 20,18" fill="#ffffff"/>
+            </svg>
+          </div>
+        `,
+        iconSize: [46, 46],
+        iconAnchor: [23, 23],
+        popupAnchor: [0, -23]
+      });
+
+      // Marcador y recorrido principal
+      const marker = L.marker([-31.4166867, -64.1834193], { icon: truckIcon }).bindPopup(`<b>Camión #${TRUCK_ID}</b>`).addTo(map);
+      const recorrido = L.polyline([], {color: '#2563eb', weight: 4, opacity: 0.85}).addTo(map);
+
+      // Capa para las flechas direccionales sobre el recorrido
+      const capaFlechas = L.layerGroup().addTo(map);
+
+      // Elementos del panel UI
+      const elLat = document.getElementById('truck-lat');
+      const elLong = document.getElementById('truck-long');
+      const elHeading = document.getElementById('truck-heading');
+      const elCardinal = document.getElementById('truck-cardinal');
+      const elTime = document.getElementById('truck-time');
+      const elPlate = document.getElementById('truck-plate');
+
+      // 4. Cálculo matemático del rumbo (bearing) entre dos coordenadas geográficas
+      function calcularRumbo(lat1, lon1, lat2, lon2) {
+        const toRad = deg => (deg * Math.PI) / 180;
+        const toDeg = rad => (rad * 180) / Math.PI;
+
+        const phi1 = toRad(lat1);
+        const phi2 = toRad(lat2);
+        const deltaLambda = toRad(lon2 - lon1);
+
+        const y = Math.sin(deltaLambda) * Math.cos(phi2);
+        const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+        
+        const rumbo = toDeg(Math.atan2(y, x));
+        return (rumbo + 360) % 360;
+      }
+
+      // Distancia euclidiana aproximada / Haversine para filtrar pequeños ruidos de GPS
+      function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Radio terrestre en metros
+        const toRad = deg => (deg * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      }
+
+      // Conversión de grados a dirección cardinal en español
+      function obtenerPuntoCardinal(grados) {
+        const direcciones = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+        const indice = Math.round(grados / 45) % 8;
+        return direcciones[indice];
+      }
+
+      // Crear flecha sobre el segmento que une el punto previo (lat1, lon1) con el actual (lat2, lon2)
+      function crearFlechaSegmento(lat1, lon1, lat2, lon2, esUltimo = false) {
+        const midLat = (lat1 + lat2) / 2;
+        const midLon = (lon1 + lon2) / 2;
+        const angulo = calcularRumbo(lat1, lon1, lat2, lon2);
+        const color = esUltimo ? '#1d4ed8' : '#2563eb';
+
+        const arrowIcon = L.divIcon({
+          className: 'segment-arrow-wrapper',
+          html: `
+            <div class="segment-arrow-icon" style="transform: rotate(${angulo}deg);">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));">
+                <path d="M10 2L16 16L10 12.5L4 16L10 2Z" fill="${color}" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          `,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
+        });
+
+        return L.marker([midLat, midLon], { icon: arrowIcon, interactive: false });
+      }
+
+      // Recalcular y mostrar flechas dinámicamente según el nivel de zoom y distancia en pantalla
+      function refrescarFlechas() {
+        capaFlechas.clearLayers();
+
+        const latlngs = recorrido.getLatLngs();
+        if (latlngs.length < 2) return;
+
+        let pixelesAcumulados = 0;
+
+        for (let i = 1; i < latlngs.length; i++) {
+          const pPrev = latlngs[i - 1];
+          const pCurr = latlngs[i];
+
+          // Filtrar ruido de puntos estacionarios
+          const distMetros = calcularDistanciaMetros(pPrev.lat, pPrev.lng, pCurr.lat, pCurr.lng);
+          if (distMetros < 2) continue;
+
+          // Convertir coordenadas geográficas a píxeles de pantalla según el zoom actual
+          const pt1 = map.latLngToLayerPoint(pPrev);
+          const pt2 = map.latLngToLayerPoint(pCurr);
+          const distPx = pt1.distanceTo(pt2);
+
+          pixelesAcumulados += distPx;
+          const esUltimo = (i === latlngs.length - 1);
+
+          // Si acumuló suficiente separación visual en pantalla o es el último tramo visible
+          if (pixelesAcumulados >= MIN_ESPACIADO_PIXELES || (esUltimo && pixelesAcumulados >= 30)) {
+            const flecha = crearFlechaSegmento(pPrev.lat, pPrev.lng, pCurr.lat, pCurr.lng, esUltimo);
+            capaFlechas.addLayer(flecha);
+            pixelesAcumulados = 0;
+          }
+        }
+      }
+
+      // Actualizar visualmente la rotación del vehículo y los textos de rumbo
+      function actualizarDireccion(nuevoRumbo) {
+        rumboActual = nuevoRumbo;
+
+        // Evitar giros de 350° al cruzar 0°/360° calculando el camino angular más corto
+        const diff = ((nuevoRumbo - rotacionAcumulada) % 360 + 540) % 360 - 180;
+        rotacionAcumulada += diff;
+
+        // Aplicar rotación CSS al elemento interno del icono
+        const rotator = document.getElementById('truck-marker-rotator');
+        if (rotator) {
+          rotator.style.transform = `rotate(${rotacionAcumulada}deg)`;
+        }
+
+        // Actualizar datos en el panel flotante
+        const cardinal = obtenerPuntoCardinal(nuevoRumbo);
+        elHeading.textContent = `${Math.round(nuevoRumbo)}°`;
+        elCardinal.textContent = cardinal;
+
+        // Actualizar contenido del Popup
+        marker.setPopupContent(`
+          <div style="font-size: 13px; line-height: 1.4;">
+            <b>Camión #${TRUCK_ID}</b><br>
+            <strong>Patente:</strong> ${patenteActual}<br>
+            <strong>Rumbo:</strong> ${Math.round(nuevoRumbo)}° (${cardinal})
+          </div>
+        `);
+      }
+
+      // Al cambiar el zoom: preservar rotación del camión y reajustar densidad de flechas
+      map.on('zoomend', () => {
+        const rotator = document.getElementById('truck-marker-rotator');
+        if (rotator) {
+          rotator.style.transform = `rotate(${rotacionAcumulada}deg)`;
+        }
+        refrescarFlechas();
+      });
+
+      // Si el usuario arrastra manualmente el mapa, pausamos el centrado automático
+      map.on('dragstart', () => {
+        const chkFollow = document.getElementById('chk-follow');
+        if (chkFollow) chkFollow.checked = false;
+      });
+
+      // 5. Cargar datos del camión (patente)
+      async function cargarInfoCamion() {
+        try {
+          const res = await fetch('/trucks');
+          if (res.ok) {
+            const trucks = await res.json();
+            const truck = trucks.find(t => t.id === TRUCK_ID);
+            if (truck) {
+              patenteActual = truck.plate;
+              elPlate.textContent = truck.plate;
+              actualizarDireccion(rumboActual);
+            }
+          }
+        } catch (e) {
+          console.error("Error al cargar info camión:", e);
+        }
+      }
+
+      // 6. Cargar el historial previo (/iter)
+      async function cargarHistorial() {
+        try {
+          const res = await fetch(`/trucks/${TRUCK_ID}/iter`);
+          if (res.ok) {
+            const puntos = await res.json();
+            if (puntos.length > 0) {
+              // Invertir para ordenar cronológicamente
+              const coordenadas = puntos.reverse().map(p => [p.lat, p.long]);
+              recorrido.setLatLngs(coordenadas);
+
+              // Dibujar flechas adaptadas al nivel de zoom inicial
+              refrescarFlechas();
+
+              const ultimoPunto = coordenadas[coordenadas.length - 1];
+              marker.setLatLng(ultimoPunto);
+              map.panTo(ultimoPunto);
+              ultimaPosicion = ultimoPunto;
+
+              // Si hay al menos 2 puntos en el historial, calculamos la dirección inicial
+              if (coordenadas.length >= 2) {
+                const penultimoPunto = coordenadas[coordenadas.length - 2];
+                const dist = calcularDistanciaMetros(penultimoPunto[0], penultimoPunto[1], ultimoPunto[0], ultimoPunto[1]);
+                if (dist > 1) {
+                  const rumboInicial = calcularRumbo(penultimoPunto[0], penultimoPunto[1], ultimoPunto[0], ultimoPunto[1]);
+                  actualizarDireccion(rumboInicial);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error al cargar historial:", error);
+        }
+      }
+
+      // 7. Consultar la ubicación en vivo cada 2 segundos (/location)
+      async function actualizarUbicacionEnVivo() {
+        try {
+          const res = await fetch(`/trucks/${TRUCK_ID}/location`);
+          if (res.ok) {
+            const data = await res.json();
+            const nuevaPos = [data.lat, data.long];
+
+            // Si ya teníamos una posición previa, calcular el rumbo hacia el nuevo punto
+            if (ultimaPosicion) {
+              const dist = calcularDistanciaMetros(ultimaPosicion[0], ultimaPosicion[1], nuevaPos[0], nuevaPos[1]);
+              
+              // Filtro de ruido GPS: solo actualizamos rumbo si se desplazó al menos 1 metro
+              if (dist > 1) {
+                const nuevoRumbo = calcularRumbo(ultimaPosicion[0], ultimaPosicion[1], nuevaPos[0], nuevaPos[1]);
+                actualizarDireccion(nuevoRumbo);
+              }
+            } else if (data.heading !== undefined && data.heading !== null) {
+              // Si la telemetría proporciona heading directamente
+              actualizarDireccion(data.heading);
+            }
+
+            ultimaPosicion = nuevaPos;
+
+            // Mover marcador y actualizar recorrido
+            marker.setLatLng(nuevaPos);
+            recorrido.addLatLng(nuevaPos);
+
+            // Centrar automáticamente en el camión si la casilla está activa
+            const chkFollow = document.getElementById('chk-follow');
+            if (chkFollow && chkFollow.checked) {
+              map.panTo(nuevaPos);
+            }
+
+            // Reajustar flechas de forma adaptativa
+            refrescarFlechas();
+
+            // Actualizar datos en el panel flotante
+            elLat.textContent = data.lat.toFixed(6);
+            elLong.textContent = data.long.toFixed(6);
+            if (data.timestamp) {
+              const date = new Date(data.timestamp);
+              elTime.textContent = date.toLocaleTimeString();
+            } else {
+              elTime.textContent = new Date().toLocaleTimeString();
+            }
+          }
+        } catch (error) {
+          console.error("Error al actualizar ubicación:", error);
+        }
+      }
+
+      // Arrancar llamadas
+      cargarInfoCamion();
+      cargarHistorial();
+      setInterval(actualizarUbicacionEnVivo, 2000);
+    </script>
+  </body>
+</html>
