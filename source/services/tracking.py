@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from source import models, schemas
@@ -31,41 +31,56 @@ def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = De
 
 #actualiza la ubicación actual del camión
 @router.put("/{truck_id}/location")
-def update_location(truck_id: int, location: Location):
-    if truck_id not in truck_db:
-        return {
-            "error": "Camión no encontrado"
-        }
-    current_location_db[truck_id] = location
+def update_location(truck_id: int, location: schemas.Location, db: Session = Depends(get_db)):
+    truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first
+    if not truck:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="camión no encontrado"
+            )
+    db_point = models.TrackingPoint(truck_id=truck_id,lat=location.lat,long=location.long)
     #actualiza el recorrido del camión
-    history_db.append(TrackingPoint (truck_id = truck_id, location = location))
-    return {
-        "mensaje": "Ubicación actualizada"
-    }
+    db.add(db_point)
+    db.commit()
+    return{"mensaje": "Ubicación actualizada correctamente"}
 
 #devuelve la ubicación actual del camion
 @router.get("/{truck_id}/location")
-def get_truck_location(truck_id: int):
-    if truck_id not in truck_db:
-        return {
-            "error": "Camión no encontrado"
-        }
-    return current_location_db[truck_id]
+def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db)):
+    truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
+    if not truck:
+            raise HTTPException(
+                 status_code=status.HTTP_404_NOT_FOUND,
+                 detail="camión no encontrado"
+            )
+    latest_point = (db.query(models.TrackingPoint).filter(models.TrackingPoint.truck_id==truck_id).order_by(models.TrackingPoint.timestamp.desc()).first
+    )
+    
+    if not latest_point:
+         raise HTTPException(
+              status_code=status.HTTP_404_NOT_FOUND
+              detail="El camión no tiene ubicaciones registradas"
+         )
+
+    return latest_point
 
 #devuelve todas las ubicaciones de un camión
 @router.get("/{truck_id}/iter")
-def get_history_truck(truck_id: int, ):
-    if truck_id not in truck_db:
-        return {
-            "error": "Camión no encontrado"
-        }
-    #history hace referencia a las ultimas 10 ubicaciones
-    history = [
-        tp for tp in history_db
-        if tp.truck_id == truck_id
-    ]
+def get_history_truck(truck_id: int, db: Session = Depends(get_db)):
+    truck=db.query/(models.Truck).filter(models.Truck.id==truck_id).first()
+    if not truck:
+         raise HTTPException(
+              status_code=status.HTTP_404_NOT_FOUND,
+              detail="camión no encontrado"
+         )
+    locations = (
+         db.query(models.TrackingPoint)
+         .filter(models.TrackingPoint.truck_id==truck_id)
+         .order_by(models.TrackingPoint.timestamp.desc())
+         .limit(100)
+    )
 
-    return history[-10:]
+    return locations
     
 
 #devuelve el listado de todos los camiones
