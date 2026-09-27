@@ -11,8 +11,9 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
 * **Componentes Principales:**
   1. **Backend:** API REST construida con **FastAPI** (`source/`).
   2. **Persistencia:** Base de datos relacional **PostgreSQL** administrada mediante **SQLAlchemy 2.0** y **Alembic** (`source/models/`, `alembic/`).
-  3. **Simulador:** Script Python para generar desplazamientos y enviar coordenadas continuas (`scripts/simulate_trucks.py`).
-  4. **Hardware Embebido:** Firmware C++ para microcontroladores **ESP32** con **PlatformIO** (ubicado en la rama `origin/IterTrack-Hardware`).
+  3. **Visualización / Frontend:** Mapa interactivo en tiempo real con **OpenStreetMap** y **Leaflet** (`source/static/map.html`, servido en `/map`) con orientación cenital del vehículo, cálculo de rumbo y flechas adaptativas.
+  4. **Simulador:** Script Python con ruta urbana realista de 13 km por Córdoba Capital (`scripts/simulate_trucks.py`, `scripts/cordoba_route.json`).
+  5. **Hardware Embebido:** Firmware C++ para microcontroladores **ESP32** con **PlatformIO** (ubicado en la rama `origin/IterTrack-Hardware`).
 
 ---
 
@@ -95,16 +96,14 @@ Cuando modifiques o crees modelos en `source/models/`:
 
 Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en cuenta los siguientes puntos pendientes:
 
-* **Inconsistencia BD vs Memoria en `tracking.py`:**
-  * El endpoint `POST /trucks` guarda en PostgreSQL mediante `db.commit()`.
-  * Sin embargo, `PUT /{truck_id}/location`, `GET /{truck_id}/location`, `GET /trucks`, etc., aún utilizan los diccionarios en memoria `truck_db` y `current_location_db`.
-  * **Objetivo:** Migrar todos los endpoints de `source/services/tracking.py` para consultar y persistir exclusivamente en la base de datos PostgreSQL utilizando la sesión `db: Session`.
-* **Imports pendientes en `source/services/tracking.py`:**
-  * La función `update_location` hace referencia a `Location` y `TrackingPoint` sin importarlos en el namespace (deben importarse desde `source.schemas` y `source.models`).
-* **Manejo de Errores:**
-  * Reemplazar las respuestas de error en formato `return {"error": "..."}` por excepciones nativas de FastAPI: `raise HTTPException(status_code=404, detail="...")`.
+* **Migración BD en `tracking.py` (Completada):**
+  * Todos los endpoints de `source/services/tracking.py` (`POST /trucks`, `PUT /{truck_id}/location`, `GET /{truck_id}/location`, `GET /{truck_id}/iter`, `GET /trucks`, `GET /trucks/ids`) ya consultan y persisten exclusivamente en PostgreSQL mediante la sesión inyectada `db: Session = Depends(get_db)`.
+* **Manejo de Errores Semántico:**
+  * Reemplazar las respuestas de error en formato `return {"error": "..."}` en `add_truck` por excepciones nativas de FastAPI: `raise HTTPException(status_code=400, detail="...")`.
 * **Validación de Coordenadas:**
-  * Actualizar `source/schemas/truck.py` para que `lat` valide entre `-90.0` y `90.0` y `long` entre `-180.0` y `180.0`.
+  * Actualizar `source/schemas/truck.py` para que `lat` valide entre `-90.0` y `90.0` y `long` entre `-180.0` y `180.0` mediante `Field(..., ge=..., le=...)`.
+* **Extensión de Telemetría (Opcional):**
+  * Posibilidad de admitir un campo opcional `heading` (rumbo) o `speed` (velocidad) en `Location` si el hardware ESP32 con módulo GPS NMEA envía las sentencias `$GPRMC`.
 
 ---
 
