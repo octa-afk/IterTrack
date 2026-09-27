@@ -26,9 +26,10 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 
 * **Registro y gestión de camiones:** Identificación única por ID y patente vehicular única.
 * **Telemetría GPS en tiempo real:** Recepción continua de coordenadas (latitud, longitud, timestamp).
+* **Monitoreo en vivo en mapa interactivo:** Visualización en tiempo real sobre OpenStreetMap y Leaflet (`/map`) con rotación de vehículo según rumbo (*bearing*), flechas direccionales adaptativas al zoom y seguimiento automático.
 * **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
 * **Persistencia Robusta:** Modelos relacionales con SQLAlchemy 2.0 y control de versiones de esquema con Alembic sobre PostgreSQL.
-* **Simulador integrado:** Script en Python para emular camiones en movimiento transmitiendo coordenadas continuas al backend.
+* **Simulador integrado con ruta realista:** Script Python con un circuito cerrado de 13 km por Córdoba Capital (425 puntos) para pruebas de avance y orientación en tiempo real.
 * **Documentación interactiva automática:** Swagger UI y ReDoc nativos de FastAPI.
 * **Compatibilidad IoT:** Integración diseñada para dispositivos ESP32 sobre PlatformIO.
 
@@ -56,6 +57,11 @@ flowchart TD
         AL["Alembic Migrations"]
     end
 
+    subgraph Clientes["Visualización / Clientes"]
+        MAP["Mapa en Vivo Leaflet (static/map.html)"]
+        DOCS["Swagger / ReDoc (/docs)"]
+    end
+
     HW -->|HTTP POST / PUT JSON| API
     SIM -->|HTTP POST / PUT JSON| API
     API --> Router
@@ -64,6 +70,9 @@ flowchart TD
     ORM --> DBCfg
     DBCfg --> PG
     AL -.->|Control de Esquemas| PG
+    API -->|GET /map| MAP
+    MAP -->|Polling GET /trucks/...| Router
+    API --> DOCS
 ```
 
 ---
@@ -79,14 +88,17 @@ IterTrack/
 ├── .env.example                   # Plantilla de variables de entorno (sin credenciales reales)
 ├── alembic.ini.example            # Plantilla de configuración para migraciones de Alembic
 ├── scripts/
-│   └── simulate_trucks.py         # Script para simular recorrido y envío de datos GPS
+│   ├── simulate_trucks.py         # Script para simular recorrido y envío de datos GPS
+│   └── cordoba_route.json         # Coordenadas georreferenciadas de la ruta urbana de prueba
 ├── alembic/
 │   ├── env.py                     # Configuración del entorno de migración de Alembic
 │   ├── script.py.mako             # Template para generación de revisiones
 │   └── versions/                  # Historial de migraciones de la base de datos
 │       └── abfa27c3f9e8_crear_tablas_trucks_y_tracking_points.py
 └── source/
-    ├── main.py                    # Punto de entrada de la aplicación FastAPI
+    ├── main.py                    # Punto de entrada de la aplicación FastAPI (API y /map)
+    ├── static/
+    │   └── map.html               # Frontend interactivo con Leaflet, rumbo y telemetría
     ├── database/
     │   ├── config.py              # Carga de variables de entorno con Pydantic Settings
     │   ├── database.py            # Motor de conexión, SessionLocal y Base declarativa
@@ -191,8 +203,9 @@ El servidor quedará disponible en `http://127.0.0.1:8000`.
 
 ### 📖 Documentación Interactiva
 
-Una vez iniciado el servidor, puedes interactuar directamente con los endpoints desde el navegador:
+Una vez iniciado el servidor, puedes interactuar directamente con los endpoints y el mapa desde el navegador:
 
+* **Mapa en Vivo (Leaflet):** [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map) (visualización de flotas en tiempo real)
 * **Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 * **ReDoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
@@ -200,16 +213,23 @@ Una vez iniciado el servidor, puedes interactuar directamente con los endpoints 
 
 ## 🛰 Simulación de Telemetría
 
-El repositorio incluye un simulador para verificar la recepción continua de coordenadas en tiempo real:
+El repositorio incluye un simulador avanzado para verificar la recepción y visualización continua de coordenadas en tiempo real:
 
 ```bash
+# Ejecución estándar (2 segundos por ping):
 python scripts/simulate_trucks.py
+
+# Simulación a mayor velocidad (ej. 1 segundo entre pings):
+python scripts/simulate_trucks.py -i 1.0
+
+# Asignar ID o patente personalizada:
+python scripts/simulate_trucks.py --id 1 --plate "ABC123" -i 1.5
 ```
 
-Este script:
-1. Registra un camión inicial (ID `1`, Patente `ABC123`) con coordenadas base.
-2. Genera desplazamientos aleatorios cada 2 segundos.
-3. Envía solicitudes HTTP `PUT` al backend actualizando la posición actual.
+### Características de la simulación:
+1. **Ruta Urbana Realista:** Recorre un circuito cerrado de 13 km por avenidas de Córdoba Capital (Av. Colón, Costanera, Plaza España, Patio Olmos, etc.) cargado desde [`scripts/cordoba_route.json`](./scripts/cordoba_route.json) (425 puntos georreferenciados).
+2. **Telemetría Completa:** Muestra en tiempo real el rumbo en grados (°), punto cardinal (N, SE, etc.), velocidad calculada en km/h y estado HTTP (`200 OK`).
+3. **Bucle Continuo:** Al completar los 425 puntos, reinicia automáticamente la siguiente vuelta sin interrupciones.
 
 ---
 
@@ -234,13 +254,13 @@ git checkout IterTrack-Hardware
 | Método | Endpoint | Descripción | Cuerpo de la Petición (Ejemplo) |
 |---|---|---|---|
 | `GET` | `/` | Comprobación de estado de la API (*Health check*) | — |
+| `GET` | `/map` | Interfaz web de monitoreo satelital en vivo (OpenStreetMap / Leaflet) | — |
 | `POST` | `/trucks` | Registra un nuevo camión y su punto inicial | Ver JSON abajo |
 | `PUT` | `/trucks/{truck_id}/location` | Actualiza la ubicación actual del camión | `{"lat": -31.416, "long": -64.183}` |
 | `GET` | `/trucks/{truck_id}/location` | Obtiene la última ubicación conocida | — |
-| `GET` | `/trucks/{truck_id}/iter` | Obtiene el historial reciente (últimos 10 puntos) | — |
+| `GET` | `/trucks/{truck_id}/iter` | Obtiene el historial reciente (hasta 100 puntos) | — |
 | `GET` | `/trucks` | Lista todos los camiones registrados | — |
-| `GET` | `/trucks/ids` | Lista únicamente los IDs de los camiones | — |
-| `GET` | `/trucks/plate/{plate}` | Busca un camión por su patente | — |
+| `GET` | `/trucks/ids` | Lista únicamente los IDs y patentes | — |
 
 ### Ejemplo de Payload para `POST /trucks`:
 
