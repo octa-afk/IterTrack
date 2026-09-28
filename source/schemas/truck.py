@@ -8,9 +8,8 @@ class Truck(BaseModel):
 
 #ubicacion
 class Location(BaseModel):
-        lat: float
-        long: float
-
+        lat: float = Field(ge=-90, le=90)
+        long: float = Field(ge=-180, le=180)
 #historial con Truck e historial de ubicaciones
 class TrackingPoint(BaseModel):
         truck_id: int
