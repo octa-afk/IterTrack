@@ -70,6 +70,17 @@ def registrar_camion(truck_id: int, lat: float, long: float, plate: str):
     except requests.RequestException as e:
         print(f"⚠️ Error conectando al servidor en {BASE_URL}: {e}")
 
+def limpiar_recorrido(truck_id: int):
+    """Borra todo el recorrido registrado del camión llamando a DELETE /trucks/{id}/iter."""
+    try:
+        response = requests.delete(f"{BASE_URL}/{truck_id}/iter", timeout=5)
+        if response.status_code == 204:
+            print(f"🗑️ Recorrido del camión #{truck_id} borrado correctamente.")
+        else:
+            print(f"⚠️ No se pudo borrar el recorrido: {response.status_code}")
+    except requests.RequestException as e:
+        print(f"⚠️ Error al borrar recorrido: {e}")
+
 def actualizar_ubicacion(truck_id: int, lat: float, long: float) -> bool:
     """Envía la nueva coordenada del camión al endpoint PUT /trucks/{id}/location."""
     try:
@@ -96,6 +107,7 @@ def simular_ruta(truck_id: int, plate: str, intervalo: float):
     vuelta = 1
     while True:
         print(f"\n--- 🔄 Iniciando Vuelta #{vuelta} del circuito ---")
+        limpiar_recorrido(truck_id)
         for i, (lat, lon) in enumerate(ruta):
             # Calcular rumbo respecto al punto anterior
             if i > 0:

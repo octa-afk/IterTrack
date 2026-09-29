@@ -134,6 +134,14 @@
       let rumboActual = 0;
       let rotacionAcumulada = 0;
       let patenteActual = "Cargando...";
+      let iterCountAnterior = 0;
+
+      // Estado de animación para movimiento fluido del marcador
+      let animacionId = null;
+      let animPosInicio = null;
+      let animPosFin = null;
+      let animTiempoInicio = 0;
+      const DURACION_ANIMACION = 1800; // ms, ligeramente menor al intervalo de polling
 
       // 1. Inicializamos el mapa centrado en Córdoba
       const map = L.map('map').setView([-31.4166867, -64.1834193], 14);
@@ -321,6 +329,49 @@
         `);
       }
 
+      // Animación fluida del marcador entre dos puntos usando requestAnimationFrame
+      function animarMovimiento() {
+        const ahora = performance.now();
+        const progreso = Math.min((ahora - animTiempoInicio) / DURACION_ANIMACION, 1);
+
+        // Curva ease-out para desaceleración natural
+        const t = 1 - Math.pow(1 - progreso, 3);
+
+        const lat = animPosInicio[0] + (animPosFin[0] - animPosInicio[0]) * t;
+        const lng = animPosInicio[1] + (animPosFin[1] - animPosInicio[1]) * t;
+        const posActual = [lat, lng];
+
+        marker.setLatLng(posActual);
+
+        // Actualizar el último punto de la polyline para que el trazo siga al marcador
+        const latlngs = recorrido.getLatLngs();
+        if (latlngs.length > 0) {
+          latlngs[latlngs.length - 1] = L.latLng(lat, lng);
+          recorrido.setLatLngs(latlngs);
+        }
+
+        // Seguir al camión si está activo
+        const chkFollow = document.getElementById('chk-follow');
+        if (chkFollow && chkFollow.checked) {
+          map.panTo(posActual, { animate: false });
+        }
+
+        if (progreso < 1) {
+          animacionId = requestAnimationFrame(animarMovimiento);
+        } else {
+          animacionId = null;
+          refrescarFlechas();
+        }
+      }
+
+      function iniciarAnimacion(desde, hacia) {
+        if (animacionId) cancelAnimationFrame(animacionId);
+        animPosInicio = desde;
+        animPosFin = hacia;
+        animTiempoInicio = performance.now();
+        animacionId = requestAnimationFrame(animarMovimiento);
+      }
+
       // Al cambiar el zoom: preservar rotación del camión y reajustar densidad de flechas
       map.on('zoomend', () => {
         const rotator = document.getElementById('truck-marker-rotator');
@@ -364,6 +415,7 @@
               // Invertir para ordenar cronológicamente
               const coordenadas = puntos.reverse().map(p => [p.lat, p.long]);
               recorrido.setLatLngs(coordenadas);
+              iterCountAnterior = coordenadas.length;
 
               // Dibujar flechas adaptadas al nivel de zoom inicial
               refrescarFlechas();
@@ -392,6 +444,26 @@
       // 7. Consultar la ubicación en vivo cada 2 segundos (/location)
       async function actualizarUbicacionEnVivo() {
         try {
+          // Detectar si el recorrido fue borrado (reset de vuelta)
+          const iterRes = await fetch(`/trucks/${TRUCK_ID}/iter`);
+          if (iterRes.ok) {
+            const puntos = await iterRes.json();
+            if (puntos.length < iterCountAnterior) {
+              // El recorrido fue limpiado: resetear polyline y flechas
+              recorrido.setLatLngs([]);
+              capaFlechas.clearLayers();
+              ultimaPosicion = null;
+
+              // Si ya hay puntos nuevos post-reset, reconstruir
+              if (puntos.length > 0) {
+                const coordenadas = puntos.reverse().map(p => [p.lat, p.long]);
+                recorrido.setLatLngs(coordenadas);
+                ultimaPosicion = coordenadas[coordenadas.length - 1];
+              }
+            }
+            iterCountAnterior = puntos.length;
+          }
+
           const res = await fetch(`/trucks/${TRUCK_ID}/location`);
           if (res.ok) {
             const data = await res.json();
@@ -411,20 +483,13 @@
               actualizarDireccion(data.heading);
             }
 
+            // Posición de inicio para la animación (donde está el marcador ahora)
+            const posAnterior = ultimaPosicion ? [...ultimaPosicion] : nuevaPos;
             ultimaPosicion = nuevaPos;
 
-            // Mover marcador y actualizar recorrido
-            marker.setLatLng(nuevaPos);
+            // Agregar destino a la polyline e iniciar animación fluida
             recorrido.addLatLng(nuevaPos);
-
-            // Centrar automáticamente en el camión si la casilla está activa
-            const chkFollow = document.getElementById('chk-follow');
-            if (chkFollow && chkFollow.checked) {
-              map.panTo(nuevaPos);
-            }
-
-            // Reajustar flechas de forma adaptativa
-            refrescarFlechas();
+            iniciarAnimacion(posAnterior, nuevaPos);
 
             // Actualizar datos en el panel flotante
             elLat.textContent = data.lat.toFixed(6);
