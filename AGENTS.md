@@ -11,9 +11,10 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
 * **Componentes Principales:**
   1. **Backend:** API REST construida con **FastAPI** (`source/`).
   2. **Persistencia:** Base de datos relacional **PostgreSQL** administrada mediante **SQLAlchemy 2.0** y **Alembic** (`source/models/`, `alembic/`).
-  3. **Visualización / Frontend:** Mapa interactivo en tiempo real con **OpenStreetMap** y **Leaflet** (`source/static/map.html`, servido en `/map`) con orientación cenital del vehículo, cálculo de rumbo y flechas adaptativas.
-  4. **Simulador:** Script Python con ruta urbana realista de 13 km por Córdoba Capital (`scripts/simulate_trucks.py`, `scripts/cordoba_route.json`).
-  5. **Hardware Embebido:** Firmware C++ para microcontroladores **ESP32** con **PlatformIO** (ubicado en la rama `origin/IterTrack-Hardware`).
+  3. **Autenticación:** Sistema **OAuth2 + JWT** con hashing bcrypt (`source/services/auth.py`, `source/models/user.py`, `source/schemas/auth.py`). Dependencias: `python-jose[cryptography]`, `passlib[bcrypt]`.
+  4. **Visualización / Frontend:** Mapa interactivo en tiempo real con **OpenStreetMap** y **Leaflet** (`source/static/map.html`, servido en `/map`) con orientación cenital del vehículo, cálculo de rumbo y flechas adaptativas.
+  5. **Simulador:** Script Python con ruta urbana realista de 13 km por Córdoba Capital (`scripts/simulate_trucks.py`, `scripts/cordoba_route.json`).
+  6. **Hardware Embebido:** Firmware C++ para microcontroladores **ESP32** con **PlatformIO** (ubicado en la rama `origin/IterTrack-Hardware`).
 
 ---
 
@@ -58,8 +59,16 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Inyección de dependencia obligatoria en endpoints: `db: Session = Depends(get_db)`.
 
 4. **Controladores / Servicios (`source/services/`):**
-   * Agrupados en `APIRouter` con prefijos y etiquetas claras (`tags=["trucks"]`).
-   * Los endpoints deben responder con los códigos de estado HTTP semánticos correspondientes (`200`, `201`, `400`, `404`, etc.) usando `raise HTTPException(...)` en lugar de devolver diccionarios con `"error": ...` y estado `200 OK`.
+   * Agrupados en `APIRouter` con prefijos y etiquetas claras (`tags=["trucks"]`, `tags=["auth"]`).
+   * Los endpoints deben responder con los códigos de estado HTTP semánticos correspondientes (`200`, `201`, `400`, `401`, `404`, etc.) usando `raise HTTPException(...)` en lugar de devolver diccionarios con `"error": ...` y estado `200 OK`.
+
+5. **Autenticación (`source/services/auth.py`):**
+   * Implementada con **OAuth2 Password Flow + JWT**.
+   * Las utilidades (hashing bcrypt, creación/verificación de tokens, `get_current_user`) y los endpoints (`/auth/register`, `/auth/login`, `/auth/me`) conviven en el mismo archivo para mantener la simplicidad.
+   * La configuración JWT se centraliza en `source/database/config.py` mediante variables de entorno: `SECRET_KEY`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`.
+   * Para proteger un endpoint de otro servicio, importar la dependencia: `from source.services.auth import get_current_user`.
+   * Las contraseñas nunca se almacenan en texto plano — se hashean con bcrypt antes de persistir en la tabla `users`.
+   * El `response_model=UserResponse` en endpoints garantiza que `hashed_password` nunca se expone en respuestas JSON.
 
 ---
 
@@ -98,6 +107,16 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
 
 * **Migración BD en `tracking.py` (Completada):**
   * Todos los endpoints de `source/services/tracking.py` (`POST /trucks`, `PUT /{truck_id}/location`, `GET /{truck_id}/location`, `GET /{truck_id}/iter`, `GET /trucks`, `GET /trucks/ids`) ya consultan y persisten exclusivamente en PostgreSQL mediante la sesión inyectada `db: Session = Depends(get_db)`.
+* **Autenticación OAuth2 + JWT (En progreso):**
+  * Modelo ORM `User` creado en `source/models/user.py`.
+  * Archivos `source/schemas/auth.py` y `source/services/auth.py` creados pero pendientes de implementar contenido (endpoints, schemas, utilidades JWT).
+  * Pendiente: agregar `secret_key`, `jwt_algorithm` y `access_token_expire_minutes` a `source/database/config.py`.
+  * Pendiente: actualizar `source/models/__init__.py` para exportar `User`.
+  * Pendiente: actualizar `source/schemas/__init__.py` para exportar schemas de auth.
+  * Pendiente: importar `source.models.user` en `alembic/env.py` y generar migración.
+  * Pendiente: incluir `auth_router` en `source/main.py`.
+  * Pendiente: proteger endpoints de `tracking.py` con `Depends(get_current_user)`.
+  * Archivo obsoleto `source/database/basic_auth_users.py` eliminado.
 * **Manejo de Errores Semántico:**
   * Reemplazar las respuestas de error en formato `return {"error": "..."}` en `add_truck` por excepciones nativas de FastAPI: `raise HTTPException(status_code=400, detail="...")`.
 * **Validación de Coordenadas:**
@@ -113,6 +132,8 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   ```bash
   env/bin/python -m py_compile source/main.py
   env/bin/python -m py_compile source/services/tracking.py
+  env/bin/python -m py_compile source/services/auth.py
+  env/bin/python -m py_compile source/models/user.py
   ```
 * **Comprobar carga de configuración:**
   ```bash

@@ -82,7 +82,22 @@ def get_history_truck(truck_id: int, db: Session = Depends(get_db)):
     )
 
     return locations
-    
+
+#borra todo el recorrido registrado de un camión
+@router.delete("/{truck_id}/iter", status_code=status.HTTP_204_NO_CONTENT)
+def delete_truck_iter(truck_id: int, db: Session = Depends(get_db)):
+    truck = db.query(models.Truck).filter(models.Truck.id == truck_id).all()
+    if not truck:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="camión no encontrado"
+        )
+    db.query(models.TrackingPoint).filter(
+        models.TrackingPoint.truck_id == truck_id
+    ).delete()
+    db.commit()
+    return None
+
 
 #devuelve el listado de todos los camiones
 @router.get("")
