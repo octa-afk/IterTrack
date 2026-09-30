@@ -14,7 +14,7 @@ class Truck(Base):
 
 class TrackingPoint(Base):
     __tablename__ = "tracking_points"
-
+    
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     truck_id: Mapped[int] = mapped_column(ForeignKey("trucks.id"))
     lat: Mapped[float]
