@@ -28,6 +28,7 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 * **Telemetría GPS en tiempo real:** Recepción continua de coordenadas (latitud, longitud, timestamp).
 * **Monitoreo en vivo en mapa interactivo:** Visualización en tiempo real sobre OpenStreetMap y Leaflet (`/map`) con rotación de vehículo según rumbo (*bearing*), flechas direccionales adaptativas al zoom y seguimiento automático.
 * **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
+* **Autenticación OAuth2 + JWT:** Registro de usuarios, login con token Bearer y endpoints protegidos para operaciones de escritura. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
 * **Persistencia Robusta:** Modelos relacionales con SQLAlchemy 2.0 y control de versiones de esquema con Alembic sobre PostgreSQL.
 * **Simulador integrado con ruta realista:** Script Python con un circuito cerrado de 13 km por Córdoba Capital (425 puntos) para pruebas de avance y orientación en tiempo real.
 * **Documentación interactiva automática:** Swagger UI y ReDoc nativos de FastAPI.
@@ -47,8 +48,9 @@ flowchart TD
     subgraph Backend["FastAPI Backend (source)"]
         API["FastAPI App (main.py)"]
         Router["Tracking Router (services/tracking.py)"]
-        Schemas["Pydantic Schemas (schemas/truck.py)"]
-        ORM["SQLAlchemy Models (models/truck.py)"]
+        Auth["Auth Router (services/auth.py)"]
+        Schemas["Pydantic Schemas (schemas/)"]
+        ORM["SQLAlchemy Models (models/)"]
         DBCfg["Database Config & Engine (database/)"]
     end
 
@@ -62,9 +64,12 @@ flowchart TD
         DOCS["Swagger / ReDoc (/docs)"]
     end
 
-    HW -->|HTTP POST / PUT JSON| API
-    SIM -->|HTTP POST / PUT JSON| API
+    HW -->|HTTP POST / PUT JSON + Bearer JWT| API
+    SIM -->|HTTP POST / PUT JSON + Bearer JWT| API
     API --> Router
+    API --> Auth
+    Auth --> Schemas
+    Auth --> ORM
     Router --> Schemas
     Router --> ORM
     ORM --> DBCfg
@@ -94,23 +99,26 @@ IterTrack/
 │   ├── env.py                     # Configuración del entorno de migración de Alembic
 │   ├── script.py.mako             # Template para generación de revisiones
 │   └── versions/                  # Historial de migraciones de la base de datos
-│       └── abfa27c3f9e8_crear_tablas_trucks_y_tracking_points.py
+│       ├── abfa27c3f9e8_crear_tablas_trucks_y_tracking_points.py
+│       └── 391c6b7b75c0_create_users_table.py
 └── source/
     ├── main.py                    # Punto de entrada de la aplicación FastAPI (API y /map)
     ├── static/
     │   └── map.html               # Frontend interactivo con Leaflet, rumbo y telemetría
     ├── database/
-    │   ├── config.py              # Carga de variables de entorno con Pydantic Settings
-    │   ├── database.py            # Motor de conexión, SessionLocal y Base declarativa
-    │   └── basic_auth_users.py    # Definición inicial para esquemas de autenticación
+    │   ├── config.py              # Carga de variables de entorno (DB, JWT)
+    │   └── database.py            # Motor de conexión, SessionLocal y Base declarativa
     ├── models/
     │   ├── __init__.py
-    │   └── truck.py               # Modelos ORM: Truck y TrackingPoint
+    │   ├── truck.py               # Modelos ORM: Truck y TrackingPoint
+    │   └── user.py                # Modelo ORM: User
     ├── schemas/
     │   ├── __init__.py
-    │   └── truck.py               # Esquemas Pydantic: Truck, Location, TrackingPoint
+    │   ├── truck.py               # Esquemas Pydantic: Truck, Location, TrackingPoint
+    │   └── auth.py                # Esquemas Pydantic: UserCreate, UserResponse, Token
     └── services/
-        └── tracking.py            # Controladores y endpoints de la API (/trucks)
+        ├── tracking.py            # Endpoints de la API (/trucks)
+        └── auth.py                # Utilidades JWT + endpoints (/auth)
 ```
 
 > **Nota:** El código fuente del hardware embebido se gestiona en la rama `origin/IterTrack-Hardware` dentro del directorio `Iter-Hard/`.
@@ -127,6 +135,7 @@ IterTrack/
 * **Migraciones:** [Alembic](https://alembic.sqlalchemy.org/).
 * **Validación de Datos:** [Pydantic v2](https://docs.pydantic.dev/) & [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
 * **Cliente HTTP de pruebas:** [Requests](https://requests.readthedocs.io/).
+* **Autenticación:** [python-jose](https://python-jose.readthedocs.io/) (JWT), [passlib](https://passlib.readthedocs.io/) + bcrypt.
 * **Hardware:** [PlatformIO](https://platformio.org/) / C++ / ESP32 (Arduino framework).
 
 ---
@@ -173,7 +182,12 @@ Edita el archivo `.env`:
 
 ```env
 DATABASE_URL=postgresql+psycopg2://usuario:tu_password@localhost:5432/itertrack
+SECRET_KEY=una_clave_secreta_aleatoria_y_segura
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
+
+> **Importante:** Genera una `SECRET_KEY` aleatoria segura (ej. `python -c "import secrets; print(secrets.token_urlsafe(32))"`) y no la compartas ni la subas a Git.
 
 ### 5. Configurar Alembic y Aplicar Migraciones
 
@@ -251,16 +265,26 @@ git checkout IterTrack-Hardware
 
 ## 📡 Referencia de la API
 
-| Método | Endpoint | Descripción | Cuerpo de la Petición (Ejemplo) |
-|---|---|---|---|
-| `GET` | `/` | Comprobación de estado de la API (*Health check*) | — |
-| `GET` | `/map` | Interfaz web de monitoreo satelital en vivo (OpenStreetMap / Leaflet) | — |
-| `POST` | `/trucks` | Registra un nuevo camión y su punto inicial | Ver JSON abajo |
-| `PUT` | `/trucks/{truck_id}/location` | Actualiza la ubicación actual del camión | `{"lat": -31.416, "long": -64.183}` |
-| `GET` | `/trucks/{truck_id}/location` | Obtiene la última ubicación conocida | — |
-| `GET` | `/trucks/{truck_id}/iter` | Obtiene el historial reciente (hasta 100 puntos) | — |
-| `GET` | `/trucks` | Lista todos los camiones registrados | — |
-| `GET` | `/trucks/ids` | Lista únicamente los IDs y patentes | — |
+| Método | Endpoint | Descripción | Cuerpo de la Petición (Ejemplo) | Auth |
+|---|---|---|---|---|
+| `GET` | `/` | Comprobación de estado de la API (*Health check*) | — | — |
+| `GET` | `/map` | Interfaz web de monitoreo satelital en vivo (OpenStreetMap / Leaflet) | — | — |
+| `POST` | `/auth/register` | Registra un nuevo usuario | `{"username": "...", "email": "...", "full_name": "...", "password": "..."}` | — |
+| `POST` | `/auth/login` | Login OAuth2 (form-data) y devuelve JWT | `username` / `password` (form) | — |
+| `GET` | `/auth/me` | Datos del usuario autenticado | — | 🔒 Bearer |
+| `POST` | `/trucks` | Registra un nuevo camión y su punto inicial | Ver JSON abajo | 🔒 Bearer |
+| `PUT` | `/trucks/{truck_id}/location` | Actualiza la ubicación actual del camión | `{"lat": -31.416, "long": -64.183}` | 🔒 Bearer |
+| `GET` | `/trucks/{truck_id}/location` | Obtiene la última ubicación conocida | — | — |
+| `GET` | `/trucks/{truck_id}/iter` | Obtiene el historial reciente (hasta 100 puntos) | — | — |
+| `DELETE` | `/trucks/{truck_id}/iter` | Borra el historial de recorrido | — | 🔒 Bearer |
+| `GET` | `/trucks` | Lista todos los camiones registrados | — | — |
+| `GET` | `/trucks/ids` | Lista únicamente los IDs y patentes | — | — |
+
+### Flujo de autenticación:
+
+1. **Registro:** `POST /auth/register` con usuario, email y contraseña (se persiste hasheada con bcrypt).
+2. **Login:** `POST /auth/login` con `username` y `password` como *form-data*; devuelve `{"access_token": "...", "token_type": "bearer"}`.
+3. **Uso del token:** incluir el header `Authorization: Bearer <access_token>` en las peticiones a los endpoints protegidos (🔒). El token expira según `ACCESS_TOKEN_EXPIRE_MINUTES` (60 min por defecto).
 
 ### Ejemplo de Payload para `POST /trucks`:
 
@@ -287,7 +311,9 @@ git checkout IterTrack-Hardware
 2. **Validación de Datos:**
    * Las coordenadas GPS deben restringirse en los esquemas Pydantic (`-90 <= lat <= 90` y `-180 <= long <= 180`).
 3. **Autenticación:**
-   * La API no debe exponerse a producción sin implementar mecanismos de autenticación (API Keys para dispositivos de telemetría y Bearer JWT para administradores/usuarios).
+   * Implementada con OAuth2 Password Flow + JWT (HS256). Los endpoints de escritura (`POST /trucks`, `PUT .../location`, `DELETE .../iter`) requieren Bearer Token; `GET /auth/me` devuelve el usuario autenticado.
+   * Las contraseñas nunca se almacenan en texto plano: se hashean con bcrypt antes de persistir en la tabla `users`.
+   * `UserResponse` garantiza que `hashed_password` nunca se expone en las respuestas.
 
 ---
 

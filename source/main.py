@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from source.services.tracking import router as tracking_router
+from source.services.auth import router as auth_router
  
 app = FastAPI()
 app.include_router(tracking_router)
+app.include_router(auth_router)
  
  
 @app.get("/")
