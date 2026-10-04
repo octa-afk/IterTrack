@@ -107,20 +107,17 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
 
 * **Migración BD en `tracking.py` (Completada):**
   * Todos los endpoints de `source/services/tracking.py` (`POST /trucks`, `PUT /{truck_id}/location`, `GET /{truck_id}/location`, `GET /{truck_id}/iter`, `GET /trucks`, `GET /trucks/ids`) ya consultan y persisten exclusivamente en PostgreSQL mediante la sesión inyectada `db: Session = Depends(get_db)`.
-* **Autenticación OAuth2 + JWT (En progreso):**
-  * Modelo ORM `User` creado en `source/models/user.py`.
-  * Archivos `source/schemas/auth.py` y `source/services/auth.py` creados pero pendientes de implementar contenido (endpoints, schemas, utilidades JWT).
-  * Pendiente: agregar `secret_key`, `jwt_algorithm` y `access_token_expire_minutes` a `source/database/config.py`.
-  * Pendiente: actualizar `source/models/__init__.py` para exportar `User`.
-  * Pendiente: actualizar `source/schemas/__init__.py` para exportar schemas de auth.
-  * Pendiente: importar `source.models.user` en `alembic/env.py` y generar migración.
-  * Pendiente: incluir `auth_router` en `source/main.py`.
-  * Pendiente: proteger endpoints de `tracking.py` con `Depends(get_current_user)`.
-  * Archivo obsoleto `source/database/basic_auth_users.py` eliminado.
-* **Manejo de Errores Semántico:**
-  * Reemplazar las respuestas de error en formato `return {"error": "..."}` en `add_truck` por excepciones nativas de FastAPI: `raise HTTPException(status_code=400, detail="...")`.
-* **Validación de Coordenadas:**
-  * Actualizar `source/schemas/truck.py` para que `lat` valide entre `-90.0` y `90.0` y `long` entre `-180.0` y `180.0` mediante `Field(..., ge=..., le=...)`.
+* **Autenticación OAuth2 + JWT (Completada):**
+  * Modelo ORM `User` en `source/models/user.py` (tabla `users` creada vía migración `391c6b7b75c0`).
+  * `source/schemas/auth.py` y `source/services/auth.py` implementados: registro, login (OAuth2PasswordRequestForm), `/auth/me`, hashing bcrypt y tokens JWT HS256.
+  * Configuración JWT centralizada en `source/database/config.py`: `SECRET_KEY`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES` (60).
+  * `auth_router` incluido en `source/main.py`.
+  * Endpoints de escritura de `tracking.py` (`POST /trucks`, `PUT /{truck_id}/location`, `DELETE /{truck_id}/iter`) protegidos con `Depends(get_current_user)`. Los `GET` permanecen públicos para el mapa.
+  * `bcrypt` fijado en `4.0.1` en `requirements.txt` por incompatibilidad de passlib 1.7.4 con bcrypt 5.x.
+* **Manejo de Errores Semántico (Completado):**
+  * `add_truck` ahora lanza `HTTPException(status_code=400, ...)` en duplicados.
+* **Validación de Coordenadas (Completada):**
+  * `source/schemas/truck.py` valida `lat` entre `-90` y `90` y `long` entre `-180` y `180` con `Field(ge=..., le=...)`.
 * **Extensión de Telemetría (Opcional):**
   * Posibilidad de admitir un campo opcional `heading` (rumbo) o `speed` (velocidad) en `Location` si el hardware ESP32 con módulo GPS NMEA envía las sentencias `$GPRMC`.
 

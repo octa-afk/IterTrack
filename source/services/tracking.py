@@ -3,20 +3,17 @@ from sqlalchemy.orm import Session
 
 from source import models, schemas
 from source.database.database import get_db
+from source.services.auth import get_current_user
 
 router = APIRouter(prefix="/trucks", tags=["trucks"])
 
 #agrega un camión a la base de datos
 @router.post("")
-def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = Depends(get_db)):
+def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if db.query(models.Truck).filter(models.Truck.id == truck.id).first():
-        return {
-            "error": "El camión ya existe"
-        }
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El camión ya existe")
     if db.query(models.Truck).filter(models.Truck.plate == truck.plate).first():
-        return {
-            "error": "La patente ya existe"
-        }
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La patente ya existe")
     db_truck = models.Truck(id=truck.id, plate=truck.plate)
     db.add(db_truck)
 
@@ -31,7 +28,7 @@ def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = De
 
 #actualiza la ubicación actual del camión
 @router.put("/{truck_id}/location")
-def update_location(truck_id: int, location: schemas.Location, db: Session = Depends(get_db)):
+def update_location(truck_id: int, location: schemas.Location, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
     if not truck:
             raise HTTPException(
@@ -85,7 +82,7 @@ def get_history_truck(truck_id: int, db: Session = Depends(get_db)):
 
 #borra todo el recorrido registrado de un camión
 @router.delete("/{truck_id}/iter", status_code=status.HTTP_204_NO_CONTENT)
-def delete_truck_iter(truck_id: int, db: Session = Depends(get_db)):
+def delete_truck_iter(truck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck = db.query(models.Truck).filter(models.Truck.id == truck_id).all()
     if not truck:
         raise HTTPException(

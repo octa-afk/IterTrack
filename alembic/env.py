@@ -8,6 +8,7 @@ from alembic import context
 from source.database.config import settings
 from source.database.database import Base
 import source.models.truck 
+import source.models.user
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
