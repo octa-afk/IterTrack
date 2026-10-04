@@ -8,7 +8,29 @@ import requests
 from pathlib import Path
 
 BASE_URL = os.getenv("API_URL", "http://127.0.0.1:8000/trucks")
+AUTH_URL = os.getenv("AUTH_URL", "http://127.0.0.1:8000/auth/login")
 ROUTE_FILE = Path(__file__).parent / "cordoba_route.json"
+
+HEADERS = {}
+
+def autenticar() -> dict:
+    """Hace login y devuelve los headers con el Bearer token JWT."""
+    username = os.getenv("API_USER", "octa")
+    password = os.getenv("API_PASSWORD", "secreto123")
+    try:
+        response = requests.post(
+            AUTH_URL,
+            data={"username": username, "password": password},
+            timeout=5,
+        )
+        if response.status_code == 200:
+            token = response.json()["access_token"]
+            print(f"🔑 Login OK como '{username}'.")
+            return {"Authorization": f"Bearer {token}"}
+        print(f"⚠️ Login falló ({response.status_code}): {response.text}")
+    except requests.RequestException as e:
+        print(f"⚠️ Error de conexión en login: {e}")
+    return {}
 
 def calcular_rumbo(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calcula el rumbo (bearing) en grados (0-360) entre dos puntos geográficos."""
@@ -59,6 +81,7 @@ def registrar_camion(truck_id: int, lat: float, long: float, plate: str):
                 "truck": {"id": truck_id, "plate": plate},
                 "location": {"lat": lat, "long": long}
             },
+            headers=HEADERS,
             timeout=5
         )
         if response.status_code in (200, 201):
@@ -73,7 +96,7 @@ def registrar_camion(truck_id: int, lat: float, long: float, plate: str):
 def limpiar_recorrido(truck_id: int):
     """Borra todo el recorrido registrado del camión llamando a DELETE /trucks/{id}/iter."""
     try:
-        response = requests.delete(f"{BASE_URL}/{truck_id}/iter", timeout=5)
+        response = requests.delete(f"{BASE_URL}/{truck_id}/iter", headers=HEADERS, timeout=5)
         if response.status_code == 204:
             print(f"🗑️ Recorrido del camión #{truck_id} borrado correctamente.")
         else:
@@ -87,6 +110,7 @@ def actualizar_ubicacion(truck_id: int, lat: float, long: float) -> bool:
         response = requests.put(
             f"{BASE_URL}/{truck_id}/location",
             json={"lat": lat, "long": long},
+            headers=HEADERS,
             timeout=5
         )
         return response.status_code == 200
@@ -99,6 +123,8 @@ def simular_ruta(truck_id: int, plate: str, intervalo: float):
     total_puntos = len(ruta)
     print(f"\n🚚 Iniciando simulación de ruta urbana en Córdoba ({total_puntos} puntos)")
     print(f"⏱️ Intervalo: {intervalo}s entre pings | API: {BASE_URL}\n")
+
+    HEADERS.update(autenticar())
 
     # Registrar el camión en su punto inicial
     lat_inicial, lon_inicial = ruta[0]
