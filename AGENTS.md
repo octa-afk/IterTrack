@@ -1,10 +1,10 @@
-# 🤖 AGENTS.md - Guía e Instrucciones para Agentes de Inteligencia Artificial
+# AGENTS.md - Guía e Instrucciones para Agentes de Inteligencia Artificial
 
 Este documento define el contexto, las reglas arquitectónicas, los estándares de código y las restricciones de seguridad que **todo agente de IA** (Antigravity, Claude Code, Cursor, Copilot, etc.) debe seguir estrictamente al interactuar con el repositorio **IterTrack**.
 
 ---
 
-## 📌 1. Visión General del Proyecto
+## 1. Visión General del Proyecto
 
 * **Nombre:** IterTrack
 * **Propósito:** Plataforma de rastreo y telemetría satelital GPS para camiones y flotas en tiempo real.
@@ -18,7 +18,7 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
 
 ---
 
-## 💻 2. Entorno de Ejecución y Dependencias
+## 2. Entorno de Ejecución y Dependencias
 
 * **Ruta del Entorno Virtual:** `/home/octa/IterTrack/env`
 * **Binarios que DEBES usar para ejecutar comandos:**
@@ -31,7 +31,7 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
 
 ---
 
-## 🌿 3. Ramas y Flujo de Trabajo Git
+## 3. Ramas y Flujo de Trabajo Git
 
 * `main`: Rama de producción / código estable.
 * `experiment/http`: Rama activa de desarrollo para el backend HTTP, base de datos y esquemas.
@@ -39,7 +39,7 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
 
 ---
 
-## 🏛️ 4. Estándares de Arquitectura y Separación de Capas
+## 4. Estándares de Arquitectura y Separación de Capas
 
 El backend en `source/` sigue una separación estricta de responsabilidades:
 
@@ -72,7 +72,7 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
 
 ---
 
-## 🛡️ 5. Reglas Críticas de Seguridad y Secretos
+## 5. Reglas Críticas de Seguridad y Secretos
 
 1. **Nunca exponer secretos:**
    * **JAMÁS** escribas contraseñas reales, tokens o claves de base de datos en archivos rastreados por Git (`source/`, `alembic.ini.example`, etc.).
@@ -85,7 +85,7 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
 
 ---
 
-## 🗄️ 6. Guía para Cambios en Base de Datos (Alembic)
+## 6. Guía para Cambios en Base de Datos (Alembic)
 
 Cuando modifiques o crees modelos en `source/models/`:
 1. Asegúrate de que el nuevo modelo esté importado en `alembic/env.py` para que `target_metadata = Base.metadata` lo detecte.
@@ -101,7 +101,7 @@ Cuando modifiques o crees modelos en `source/models/`:
 
 ---
 
-## ⚠️ 7. Deuda Técnica Conocida y Tareas Prioritarias
+## 7. Deuda Técnica Conocida y Tareas Prioritarias
 
 Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en cuenta los siguientes puntos pendientes:
 
@@ -123,7 +123,7 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
 
 ---
 
-## 🧪 8. Comandos Útiles para Agentes
+## 8. Comandos Útiles para Agentes
 
 * **Verificar sintaxis e importaciones:**
   ```bash
@@ -144,3 +144,25 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   ```bash
   env/bin/python scripts/simulate_trucks.py
   ```
+
+---
+
+## 9. Política de Testing (obligatoria)
+
+* Todo endpoint nuevo o modificado debe incluir tests en `tests/` (pytest).
+* Los tests usan SQLite en memoria con `dependency_overrides` de `get_db` y `get_current_user` (ver `tests/conftest.py`).
+* Correr antes de terminar cualquier tarea: `make test` y `make check`.
+* Se agradece cubrir: caso feliz + validación inválida (422) + duplicados/no encontrado (400/404).
+
+## 10. Checklist para Endpoints Nuevos
+
+1. Validación con Pydantic en `source/schemas/` (rangos con `Field(ge=..., le=...)`).
+2. `db: Session = Depends(get_db)` en la firma.
+3. Endpoints de escritura protegidos con `Depends(get_current_user)`.
+4. `HTTPException` con códigos semánticos (400/401/404/422).
+5. Tag del router correcto.
+6. Test asociado en `tests/`.
+
+## 11. Roadmap del Producto
+
+Ver [ROADMAP.md](./ROADMAP.md) para la visión completa: dashboard web de flota, estadísticas logísticas y alertas de seguridad (desvíos, caída de combustible, geocercas). Todo desarrollo nuevo debe alinearse con esa hoja de ruta.
