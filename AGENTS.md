@@ -126,8 +126,8 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * La rama `IterTrack-Hardware` queda fuera de los triggers a propósito: no contiene tests Python.
 * **Dependencias duplicadas en `requirements.txt` (Resuelto):**
   * Se eliminó `psycopg` (v3); el proyecto usa un único driver: `psycopg2-binary` (`postgresql+psycopg2://`).
-* **Paquetes sin uso en `requirements.txt` (Pendiente):**
-  * `fastar`, `rignore`, `detect-installer` y `fastapi-cloud-cli` no tienen ninguna referencia en `source/`, `scripts/` ni `tests/`. Son ruido en la instalación.
+* **Paquetes sin uso en `requirements.txt` (Resuelto):**
+  * Eliminados `fastar`, `rignore`, `detect-installer` y `fastapi-cloud-cli` (sin referencias en `source/`, `scripts/` ni `tests/`).
 * **Sentry instalado pero sin integrar (Pendiente):**
   * `sentry-sdk==2.63.0` está en `requirements.txt` y no existe ninguna llamada en `source/`. Integrarlo en `source/main.py` o removerlo: tener el SDK instalado genera una falsa sensación de monitoreo.
 * **Sin lint ni typechecking (Pendiente):**
