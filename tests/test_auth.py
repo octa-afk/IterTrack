@@ -1,0 +1,101 @@
+import pytest
+from fastapi.testclient import TestClient
+
+from source.main import app
+from source.database.database import Base, get_db
+
+REGISTER_PAYLOAD = {
+    "username": "chofer1",
+    "email": "chofer1@example.com",
+    "full_name": "Chofer Uno",
+    "password": "secreto123",
+}
+
+
+@pytest.fixture()
+def auth_client(db_session):
+    """Client with real auth dependencies; only get_db is overridden."""
+
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+def register(client, payload=REGISTER_PAYLOAD):
+    return client.post("/auth/register", json=payload)
+
+
+def login(client, username="chofer1", password="secreto123"):
+    return client.post("/auth/login", data={"username": username, "password": password})
+
+
+def test_register_returns_201_without_password(auth_client):
+    response = register(auth_client)
+    assert response.status_code == 201
+    body = response.json()
+    assert body["username"] == "chofer1"
+    assert "password" not in body
+    assert "hashed_password" not in body
+
+
+def test_register_duplicate_username_returns_400(auth_client):
+    register(auth_client)
+    response = register(auth_client, {**REGISTER_PAYLOAD, "email": "otro@example.com"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "El usuario ya existe"
+
+
+def test_register_duplicate_email_returns_400(auth_client):
+    register(auth_client)
+    response = register(auth_client, {**REGISTER_PAYLOAD, "username": "otro"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "El email ya está registrado"
+
+
+def test_register_invalid_email_returns_422(auth_client):
+    response = register(auth_client, {**REGISTER_PAYLOAD, "email": "no-es-email"})
+    assert response.status_code == 422
+
+
+def test_login_returns_token(auth_client):
+    register(auth_client)
+    response = login(auth_client)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_type"] == "bearer"
+    assert body["access_token"]
+
+
+def test_login_wrong_password_returns_401(auth_client):
+    register(auth_client)
+    response = login(auth_client, password="incorrecta")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Usuario o contraseña incorrectos"
+
+
+def test_me_with_valid_token_returns_user(auth_client):
+    register(auth_client)
+    token = login(auth_client).json()["access_token"]
+    response = auth_client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert response.json()["username"] == "chofer1"
+
+
+def test_me_without_token_returns_401(auth_client):
+    response = auth_client.get("/auth/me")
+    assert response.status_code == 401
+
+
+def test_protected_endpoint_without_token_returns_401(auth_client):
+    response = auth_client.post(
+        "/trucks",
+        json={"truck": {"id": 1, "plate": "ABC123"}, "location": {"lat": -31.42, "long": -64.18}},
+    )
+    assert response.status_code == 401

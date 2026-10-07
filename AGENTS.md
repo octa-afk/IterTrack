@@ -132,8 +132,8 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * Se eliminó `sentry-sdk` de `requirements.txt` y del venv: estaba instalado pero nunca se integraba. Si en el futuro se necesita monitoreo, se agrega la integración completa, no solo el paquete.
 * **Sin lint ni typechecking (Pendiente):**
   * No hay `ruff`, `mypy`, `black` ni `pyproject.toml`. `make check` sólo ejecuta `py_compile` sobre 4 archivos, lo que valida sintaxis pero ni tipos ni estilo.
-* **Cobertura de tests de autenticación ausente (Pendiente):**
-  * `tests/` sólo contiene `conftest.py` y `test_trucks.py`. La cobertura de `auth` quedó fuera tras el reset de `experiment/http`; el commit `f7326e9` sigue recuperable desde el reflog.
+* **Cobertura de tests de autenticación (Resuelto):**
+  * `tests/test_auth.py` cubre registro, login, `/auth/me` y protección de endpoints (caso feliz + 400/401/422). La suite completa corre 13 tests.
 * **Extensión de Telemetría (Opcional):**
   * Posibilidad de admitir un campo opcional `heading` (rumbo) o `speed` (velocidad) en `Location` si el hardware ESP32 con módulo GPS NMEA envía las sentencias `$GPRMC`.
 
