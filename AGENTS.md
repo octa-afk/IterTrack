@@ -124,8 +124,8 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * **Los targets del `Makefile` invocan `env/bin/python`**, por eso el workflow crea el venv antes de ejecutarlos; sin ese paso falla en el primer step.
   * No requiere servicio de PostgreSQL: `tests/conftest.py` usa SQLite en memoria con `dependency_overrides`.
   * La rama `IterTrack-Hardware` queda fuera de los triggers a propósito: no contiene tests Python.
-* **Dependencias duplicadas en `requirements.txt` (Pendiente):**
-  * Conviven `psycopg==3.3.4` y `psycopg2-binary==2.9.12`. `.env.example` usa `postgresql+psycopg2://`, así que **psycopg3 está instalado y no se usa**. Definir un único driver y eliminar el otro.
+* **Dependencias duplicadas en `requirements.txt` (Resuelto):**
+  * Se eliminó `psycopg` (v3); el proyecto usa un único driver: `psycopg2-binary` (`postgresql+psycopg2://`).
 * **Paquetes sin uso en `requirements.txt` (Pendiente):**
   * `fastar`, `rignore`, `detect-installer` y `fastapi-cloud-cli` no tienen ninguna referencia en `source/`, `scripts/` ni `tests/`. Son ruido en la instalación.
 * **Sentry instalado pero sin integrar (Pendiente):**
