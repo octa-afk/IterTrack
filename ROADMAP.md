@@ -4,6 +4,13 @@
 
 IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones y flotas en tiempo real. El objetivo final es entregar al cliente una **web de seguimiento de flota** con estadísticas logísticas y alertas de seguridad (anti-robo: desvíos de ruta, caída de combustible, etc.).
 
+## Alcance del MVP
+
+- **Escala objetivo:** flotas de **menos de 10 camiones**.
+- **Datos a registrar (por ahora):** únicamente **ubicación** (latitud/longitud), **velocidad** y **dirección** (rumbo).
+- **Qué queremos probar (QI):** poder **ubicar al camión en el mapa**, con un **sistema de autenticación simple**.
+- Todo lo demás (dashboard avanzado, estadísticas, alertas, multitenancy, roles) queda **fuera del MVP** y se agregará después, de forma incremental, una vez validado este núcleo con el cliente.
+
 ## Fases
 
 ### Fase 1 — Tracking (actual) ✅
