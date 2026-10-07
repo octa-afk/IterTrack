@@ -128,8 +128,8 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * Se eliminó `psycopg` (v3); el proyecto usa un único driver: `psycopg2-binary` (`postgresql+psycopg2://`).
 * **Paquetes sin uso en `requirements.txt` (Resuelto):**
   * Eliminados `fastar`, `rignore`, `detect-installer` y `fastapi-cloud-cli` (sin referencias en `source/`, `scripts/` ni `tests/`).
-* **Sentry instalado pero sin integrar (Pendiente):**
-  * `sentry-sdk==2.63.0` está en `requirements.txt` y no existe ninguna llamada en `source/`. Integrarlo en `source/main.py` o removerlo: tener el SDK instalado genera una falsa sensación de monitoreo.
+* **Sentry removido (Resuelto):**
+  * Se eliminó `sentry-sdk` de `requirements.txt` y del venv: estaba instalado pero nunca se integraba. Si en el futuro se necesita monitoreo, se agrega la integración completa, no solo el paquete.
 * **Sin lint ni typechecking (Pendiente):**
   * No hay `ruff`, `mypy`, `black` ni `pyproject.toml`. `make check` sólo ejecuta `py_compile` sobre 4 archivos, lo que valida sintaxis pero ni tipos ni estilo.
 * **Cobertura de tests de autenticación ausente (Pendiente):**
