@@ -41,6 +41,7 @@ python-dotenv==1.2.2
 python-jose[cryptography]==3.5.0
 python-multipart==0.0.32
 PyYAML==6.0.3
+pytest==9.1.1
 requests==2.34.2
 rich==15.0.0
 rich-toolkit==0.20.1
