@@ -2,6 +2,8 @@
 
 Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones en tiempo real. Cuenta con un backend desarrollado en **FastAPI**, persistencia relacional en **PostgreSQL** mediante **SQLAlchemy 2.0** y **Alembic**, simulación de trayectorias y soporte para clientes de hardware embebido (**ESP32 / PlatformIO**).
 
+[![CI](https://github.com/octa-afk/IterTrack/actions/workflows/ci.yml/badge.svg)](https://github.com/octa-afk/IterTrack/actions/workflows/ci.yml)
+
 ---
 
 ## 📑 Tabla de Contenidos
@@ -314,6 +316,10 @@ git checkout IterTrack-Hardware
    * Implementada con OAuth2 Password Flow + JWT (HS256). Los endpoints de escritura (`POST /trucks`, `PUT .../location`, `DELETE .../iter`) requieren Bearer Token; `GET /auth/me` devuelve el usuario autenticado.
    * Las contraseñas nunca se almacenan en texto plano: se hashean con bcrypt antes de persistir en la tabla `users`.
    * `UserResponse` garantiza que `hashed_password` nunca se expone en las respuestas.
+4. **Integración Continua:**
+   * Cada `push` y cada pull request sobre `main` y `experiment/http` corre automáticamente `make check` y `make test` en GitHub Actions (`.github/workflows/ci.yml`).
+   * El workflow crea el virtualenv `env/` que el `Makefile` espera; no requiere PostgreSQL porque los tests usan SQLite en memoria.
+   * El badge de la cabecera refleja el estado del último commit.
 
 ---
 

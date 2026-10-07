@@ -118,6 +118,22 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * `add_truck` ahora lanza `HTTPException(status_code=400, ...)` en duplicados.
 * **Validación de Coordenadas (Completada):**
   * `source/schemas/truck.py` valida `lat` entre `-90` y `90` y `long` entre `-180` y `180` con `Field(ge=..., le=...)`.
+* **CI/CD con GitHub Actions (Completada):**
+  * Workflow en `.github/workflows/ci.yml`. Se ejecuta en `push` y `pull_request` sobre `main` y `experiment/http`, y también manualmente (`workflow_dispatch`).
+  * Steps: creación del virtualenv `env/`, `pip install -r requirements.txt`, `make check` y `make test`.
+  * **Los targets del `Makefile` invocan `env/bin/python`**, por eso el workflow crea el venv antes de ejecutarlos; sin ese paso falla en el primer step.
+  * No requiere servicio de PostgreSQL: `tests/conftest.py` usa SQLite en memoria con `dependency_overrides`.
+  * La rama `IterTrack-Hardware` queda fuera de los triggers a propósito: no contiene tests Python.
+* **Dependencias duplicadas en `requirements.txt` (Pendiente):**
+  * Conviven `psycopg==3.3.4` y `psycopg2-binary==2.9.12`. `.env.example` usa `postgresql+psycopg2://`, así que **psycopg3 está instalado y no se usa**. Definir un único driver y eliminar el otro.
+* **Paquetes sin uso en `requirements.txt` (Pendiente):**
+  * `fastar`, `rignore`, `detect-installer` y `fastapi-cloud-cli` no tienen ninguna referencia en `source/`, `scripts/` ni `tests/`. Son ruido en la instalación.
+* **Sentry instalado pero sin integrar (Pendiente):**
+  * `sentry-sdk==2.63.0` está en `requirements.txt` y no existe ninguna llamada en `source/`. Integrarlo en `source/main.py` o removerlo: tener el SDK instalado genera una falsa sensación de monitoreo.
+* **Sin lint ni typechecking (Pendiente):**
+  * No hay `ruff`, `mypy`, `black` ni `pyproject.toml`. `make check` sólo ejecuta `py_compile` sobre 4 archivos, lo que valida sintaxis pero ni tipos ni estilo.
+* **Cobertura de tests de autenticación ausente (Pendiente):**
+  * `tests/` sólo contiene `conftest.py` y `test_trucks.py`. La cobertura de `auth` quedó fuera tras el reset de `experiment/http`; el commit `f7326e9` sigue recuperable desde el reflog.
 * **Extensión de Telemetría (Opcional):**
   * Posibilidad de admitir un campo opcional `heading` (rumbo) o `speed` (velocidad) en `Location` si el hardware ESP32 con módulo GPS NMEA envía las sentencias `$GPRMC`.
 
@@ -132,6 +148,11 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   env/bin/python -m py_compile source/services/auth.py
   env/bin/python -m py_compile source/models/user.py
   ```
+* **Correr exactamente lo que corre el CI (local):**
+  ```bash
+  make check && make test
+  ```
+  Si esto pasa en local, el workflow de GitHub Actions pasa en el runner.
 * **Comprobar carga de configuración:**
   ```bash
   env/bin/python -c "from source.database.config import settings; print('Config OK')"
