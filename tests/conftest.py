@@ -1,3 +1,9 @@
+import os
+
+# Provide required settings before importing the app so tests run without a .env
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("SECRET_KEY", "test-secret-key")
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
