@@ -70,6 +70,11 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Las contraseñas nunca se almacenan en texto plano — se hashean con bcrypt antes de persistir en la tabla `users`.
    * El `response_model=UserResponse` en endpoints garantiza que `hashed_password` nunca se expone en respuestas JSON.
 
+6. **Assets estáticos (`source/static/`):**
+   * Se sirven con `FileResponse` desde `source/main.py`: `GET /map` → `map.html` y `GET /favicon.ico` → `imagen-removebg-preview.png`.
+   * `GET /favicon.ico` lleva `include_in_schema=False` para que no aparezca en `/docs`.
+   * Si se reemplaza el ícono, mantener el nombre del archivo o actualizar el endpoint (no se usa `StaticFiles`).
+
 ---
 
 ## 5. Reglas Críticas de Seguridad y Secretos
