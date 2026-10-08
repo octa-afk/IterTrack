@@ -271,6 +271,7 @@ git checkout IterTrack-Hardware
 |---|---|---|---|---|
 | `GET` | `/` | Comprobación de estado de la API (*Health check*) | — | — |
 | `GET` | `/map` | Interfaz web de monitoreo satelital en vivo (OpenStreetMap / Leaflet) | — | — |
+| `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`static/imagen-removebg-preview.png`) | — | — |
 | `POST` | `/auth/register` | Registra un nuevo usuario | `{"username": "...", "email": "...", "full_name": "...", "password": "..."}` | — |
 | `POST` | `/auth/login` | Login OAuth2 (form-data) y devuelve JWT | `username` / `password` (form) | — |
 | `GET` | `/auth/me` | Datos del usuario autenticado | — | 🔒 Bearer |
