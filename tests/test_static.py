@@ -16,6 +16,12 @@ def test_logo_serves_image(client):
     assert response.headers["content-type"] == "image/png"
 
 
+def test_favicon_serves_image(client):
+    response = client.get("/favicon.ico")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+
+
 def test_login_page_references_logo(client):
     response = client.get("/")
     assert response.status_code == 200
