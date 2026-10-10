@@ -6,6 +6,8 @@ class UserCreate(BaseModel):
     email: EmailStr
     full_name: str
     password: str
+    invitation_code: str | None = None
+    org_name: str | None = None
 
 
 class UserResponse(BaseModel):

@@ -9,6 +9,8 @@ class Truck(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     plate: Mapped[str] = mapped_column(unique=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"))
+    organization: Mapped["Organization"] = relationship(back_populates="trucks")
 
     tracking_points: Mapped[list["TrackingPoint"]] = relationship(back_populates="truck")
 
