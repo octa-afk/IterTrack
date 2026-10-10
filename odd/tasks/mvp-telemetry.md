@@ -71,8 +71,8 @@ The MVP scope explicitly requires location, speed, and direction so the tracking
 - Tareas completadas: 4/4
 - Tests: `make check && make test` — 60 passed, 1 warning
 - Migration: `env/bin/alembic check` — no new upgrade operations detected
-- Commit: pendiente
+- Commit: `e80179e` — `feat(tracking): persist speed and heading telemetry`
 
 ## Next Step
 
-Create the work-unit commit and leave the static frontend unchanged.
+Feature slice is complete; leave the static frontend unchanged.
