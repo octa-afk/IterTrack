@@ -188,6 +188,18 @@ def test_map_page_opens_centered_on_first_truck(client):
     assert "centrarEnPrimerCamion();" in response.text
 
 
+def test_map_page_discovers_trucks_during_polling(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # Each live poll must reconcile the org-scoped list without resetting
+    # telemetry state for trucks that are still present.
+    assert "function crearEstadoCamion" in response.text
+    assert "await cargarCamiones();" in response.text
+    assert "const existentes = new Map(trucks.map" in response.text
+    assert "markers.delete(id)" in response.text
+    assert "moves.delete(id)" in response.text
+
+
 # --- login-map-ui (C2e): v10 chrome — collapsible sidebar + solid top bar ---
 
 def test_map_page_has_collapsible_sidebar_and_solid_topbar(client):
