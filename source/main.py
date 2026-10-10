@@ -16,6 +16,10 @@ async def root():
 def view_map():
     return FileResponse("source/static/map.html")
 
+@app.get("/register")
+def view_register():
+    return FileResponse("source/static/register.html")
+
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
     return FileResponse("source/static/imagen-removebg-preview.png")
