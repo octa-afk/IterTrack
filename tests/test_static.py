@@ -148,6 +148,7 @@ def test_map_page_renders_truck_marker_design(client):
     # The supplied truck is rendered directly, without a circular badge or halo.
     assert "const truckSvg" in response.text
     assert 'replaceAll(\'#F26B1D\', color)' in response.text
+    assert "replaceAll('#F9955A', '#FFFFFF')" in response.text
     assert 'class="truck-svg"' in response.text
     assert 'class="halo"' not in response.text
     assert 'class="badge"' not in response.text
