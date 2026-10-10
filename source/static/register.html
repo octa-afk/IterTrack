@@ -1,0 +1,197 @@
+<!DOCTYPE HTML>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IterTrack - Registrate</title>
+    <style>
+      html, body {
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .login-card {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 360px;
+        margin: 16px;
+        padding: 24px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+      .login-card .logo {
+        display: block;
+        width: 150px;
+        height: auto;
+        margin: 0 auto 10px auto;
+      }
+      .login-card h1 {
+        margin: 0 0 4px 0;
+        font-size: 18px;
+        color: #1a1a1a;
+        text-align: center;
+      }
+      .login-card .subtitle {
+        margin: 0 0 18px 0;
+        font-size: 13px;
+        color: #64748b;
+        text-align: center;
+      }
+      .login-card label {
+        display: block;
+        margin: 0 0 4px 0;
+        font-size: 13px;
+        color: #475569;
+      }
+      .login-card input {
+        box-sizing: border-box;
+        width: 100%;
+        margin-bottom: 14px;
+        padding: 10px;
+        font-size: 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+      }
+      .login-card input:focus {
+        outline: 2px solid #bfdbfe;
+        border-color: #2563eb;
+      }
+      .login-card button {
+        width: 100%;
+        padding: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #ffffff;
+        background: #2563eb;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .login-card button:hover {
+        background: #1d4ed8;
+      }
+      .login-card .alt-link {
+        display: block;
+        margin: 14px 0 0 0;
+        font-size: 13px;
+        color: #2563eb;
+        text-align: center;
+        text-decoration: none;
+      }
+      .login-card .alt-link:hover {
+        text-decoration: underline;
+      }
+      #register-error {
+        margin: 0 0 14px 0;
+        padding: 8px 10px;
+        font-size: 13px;
+        color: #b91c1c;
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+      }
+      #register-error[hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-card">
+      <img class="logo" src="/logo" alt="IterTrack" width="225" height="126">
+      <p class="subtitle">Creá tu cuenta de flota</p>
+      <form id="register-form" method="post" action="/auth/register">
+        <label for="username">Usuario</label>
+        <input type="text" id="username" name="username" autocomplete="username" required>
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required>
+
+        <label for="full_name">Nombre completo</label>
+        <input type="text" id="full_name" name="full_name" autocomplete="name" required>
+
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" name="password" autocomplete="new-password" required>
+
+        <p id="register-error" role="alert" hidden></p>
+
+        <button type="submit">Registrarme</button>
+      </form>
+      <a class="alt-link" href="/">¿Ya tenés cuenta? Iniciá sesión</a>
+    </div>
+
+    <script>
+      // Misma clave de localStorage que usa map.html para el guard de sesión
+      const TOKEN_KEY = "itertrack_token";
+
+      const form = document.getElementById("register-form");
+      const errorMsg = document.getElementById("register-error");
+
+      function mostrarError(mensaje) {
+        // Nunca innerHTML: el mensaje vive en textContent (XSS)
+        errorMsg.textContent = mensaje;
+        errorMsg.hidden = false;
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        errorMsg.hidden = true;
+        errorMsg.textContent = "";
+
+        const username = document.getElementById("username").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const full_name = document.getElementById("full_name").value.trim();
+        const password = document.getElementById("password").value;
+
+        try {
+          // /auth/register espera un body JSON
+          const res = await fetch("/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, email, full_name, password }),
+          });
+
+          if (res.ok) {
+            // Registro creado: ingreso automático con las mismas credenciales
+            const loginRes = await fetch("/auth/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({ username, password }),
+            });
+
+            if (loginRes.ok) {
+              const data = await loginRes.json();
+              localStorage.setItem(TOKEN_KEY, data.access_token);
+              window.location.href = "/map";
+              return;
+            }
+
+            mostrarError("Cuenta creada, pero no se pudo iniciar sesión. Iniciá sesión manualmente.");
+            return;
+          }
+
+          let mensaje = "No se pudo crear la cuenta. Intenta de nuevo más tarde.";
+          if (res.status === 400 || res.status === 422) {
+            try {
+              const data = await res.json();
+              if (typeof data.detail === "string" && data.detail) {
+                mensaje = data.detail;
+              }
+            } catch (parseError) {
+              // Respuesta sin JSON válido: mantenemos el mensaje genérico
+            }
+          }
+          mostrarError(mensaje);
+        } catch (error) {
+          mostrarError("No se pudo conectar con el servidor.");
+        }
+      });
+    </script>
+  </body>
+</html>

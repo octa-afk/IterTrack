@@ -20,3 +20,15 @@ def test_login_page_references_logo(client):
     response = client.get("/")
     assert response.status_code == 200
     assert 'src="/logo"' in response.text
+
+
+def test_register_serves_register_page(client):
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert 'id="register-form"' in response.text
+
+
+def test_login_page_links_to_register(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert 'href="/register"' in response.text
