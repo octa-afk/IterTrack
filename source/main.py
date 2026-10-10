@@ -22,7 +22,7 @@ def view_register():
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
-    return FileResponse("source/static/imagen-removebg-preview.png")
+    return FileResponse("source/static/isologo.png")
 
 @app.get("/logo", include_in_schema=False)
 def logo():
