@@ -21,3 +21,5 @@ alembic.ini
 .claude/
 .codegraph/
 *.local.json
+# Archivos locales compartidos (iconos, logos, etc.)
+extras/
