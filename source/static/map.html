@@ -71,6 +71,19 @@
         font-size: 12px;
         border: 1px solid #bfdbfe;
       }
+      .btn-logout {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        padding: 3px 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn-logout:hover {
+        background: #fecaca;
+      }
 
       /* Contenedor del marcador e icono rotativo del camión */
       .truck-marker-wrapper {
@@ -121,10 +134,32 @@
           <span style="font-size: 11px; color: #64748b;">Auto</span>
         </label>
       </p>
+      <p style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
+        <span>Usuario:</span>
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <strong id="user-name" style="font-size: 13px; color: #334155;">-</strong>
+          <button type="button" id="btn-logout" class="btn-logout">Cerrar sesión</button>
+        </span>
+      </p>
     </div>
 
     <script>
       const TRUCK_ID = 1;
+
+      // Clave de localStorage compartida con login.html
+      const TOKEN_KEY = "itertrack_token";
+
+      // Headers con Bearer para TODOS los fetch (en GET públicos el header es inocuo)
+      function authHeaders() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        return token ? { Authorization: `Bearer ${token}` } : {};
+      }
+
+      // Cerrar sesión: limpiar el token y volver al login
+      function cerrarSesion() {
+        localStorage.removeItem(TOKEN_KEY);
+        window.location.replace("/");
+      }
 
       // Distancia mínima en píxeles de pantalla entre flechas para evitar saturación visual
       const MIN_ESPACIADO_PIXELES = 85;
@@ -390,7 +425,7 @@
       // 5. Cargar datos del camión (patente)
       async function cargarInfoCamion() {
         try {
-          const res = await fetch('/trucks');
+          const res = await fetch('/trucks', { headers: authHeaders() });
           if (res.ok) {
             const trucks = await res.json();
             const truck = trucks.find(t => t.id === TRUCK_ID);
@@ -408,7 +443,7 @@
       // 6. Cargar el historial previo (/iter)
       async function cargarHistorial() {
         try {
-          const res = await fetch(`/trucks/${TRUCK_ID}/iter`);
+          const res = await fetch(`/trucks/${TRUCK_ID}/iter`, { headers: authHeaders() });
           if (res.ok) {
             const puntos = await res.json();
             if (puntos.length > 0) {
@@ -445,7 +480,7 @@
       async function actualizarUbicacionEnVivo() {
         try {
           // Detectar si el recorrido fue borrado (reset de vuelta)
-          const iterRes = await fetch(`/trucks/${TRUCK_ID}/iter`);
+          const iterRes = await fetch(`/trucks/${TRUCK_ID}/iter`, { headers: authHeaders() });
           if (iterRes.ok) {
             const puntos = await iterRes.json();
             if (puntos.length < iterCountAnterior) {
@@ -464,7 +499,7 @@
             iterCountAnterior = puntos.length;
           }
 
-          const res = await fetch(`/trucks/${TRUCK_ID}/location`);
+          const res = await fetch(`/trucks/${TRUCK_ID}/location`, { headers: authHeaders() });
           if (res.ok) {
             const data = await res.json();
             const nuevaPos = [data.lat, data.long];
@@ -506,10 +541,38 @@
         }
       }
 
-      // Arrancar llamadas
-      cargarInfoCamion();
-      cargarHistorial();
-      setInterval(actualizarUbicacionEnVivo, 2000);
+      // Guard de sesión: validar el token contra /auth/me antes de arrancar
+      async function verificarSesion() {
+        if (!localStorage.getItem(TOKEN_KEY)) {
+          window.location.replace("/");
+          return false;
+        }
+        try {
+          const res = await fetch("/auth/me", { headers: authHeaders() });
+          if (res.ok) {
+            const user = await res.json();
+            // textContent, nunca innerHTML (XSS)
+            document.getElementById("user-name").textContent = user.username;
+            return true;
+          }
+        } catch (error) {
+          console.error("Error al validar la sesión:", error);
+        }
+        // 401 o sin conexión: limpiar token y volver al login
+        localStorage.removeItem(TOKEN_KEY);
+        window.location.replace("/");
+        return false;
+      }
+
+      document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
+
+      // Arrancar llamadas solo con una sesión válida
+      verificarSesion().then((sesionValida) => {
+        if (!sesionValida) return;
+        cargarInfoCamion();
+        cargarHistorial();
+        setInterval(actualizarUbicacionEnVivo, 2000);
+      });
     </script>
   </body>
 </html>

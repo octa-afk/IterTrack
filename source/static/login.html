@@ -1,0 +1,150 @@
+<!DOCTYPE HTML>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IterTrack - Iniciar sesión</title>
+    <style>
+      html, body {
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .login-card {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 360px;
+        margin: 16px;
+        padding: 24px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+      .login-card h1 {
+        margin: 0 0 4px 0;
+        font-size: 18px;
+        color: #1a1a1a;
+      }
+      .login-card .subtitle {
+        margin: 0 0 18px 0;
+        font-size: 13px;
+        color: #64748b;
+      }
+      .login-card label {
+        display: block;
+        margin: 0 0 4px 0;
+        font-size: 13px;
+        color: #475569;
+      }
+      .login-card input {
+        box-sizing: border-box;
+        width: 100%;
+        margin-bottom: 14px;
+        padding: 10px;
+        font-size: 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+      }
+      .login-card input:focus {
+        outline: 2px solid #bfdbfe;
+        border-color: #2563eb;
+      }
+      .login-card button {
+        width: 100%;
+        padding: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #ffffff;
+        background: #2563eb;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .login-card button:hover {
+        background: #1d4ed8;
+      }
+      #login-error {
+        margin: 0 0 14px 0;
+        padding: 8px 10px;
+        font-size: 13px;
+        color: #b91c1c;
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+      }
+      #login-error[hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-card">
+      <h1>IterTrack</h1>
+      <p class="subtitle">Monitoreo de flota en vivo</p>
+      <form id="login-form" method="post" action="/auth/login">
+        <label for="username">Usuario</label>
+        <input type="text" id="username" name="username" autocomplete="username" required>
+
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+        <p id="login-error" role="alert" hidden></p>
+
+        <button type="submit">Ingresar</button>
+      </form>
+    </div>
+
+    <script>
+      // Misma clave de localStorage que usa map.html para el guard de sesión
+      const TOKEN_KEY = "itertrack_token";
+
+      const form = document.getElementById("login-form");
+      const errorMsg = document.getElementById("login-error");
+
+      function mostrarError(mensaje) {
+        // Nunca innerHTML: el mensaje vive en textContent (XSS)
+        errorMsg.textContent = mensaje;
+        errorMsg.hidden = false;
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        errorMsg.hidden = true;
+        errorMsg.textContent = "";
+
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+
+        try {
+          // OAuth2PasswordRequestForm exige application/x-www-form-urlencoded
+          const res = await fetch("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ username, password }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem(TOKEN_KEY, data.access_token);
+            window.location.href = "/map";
+            return;
+          }
+
+          mostrarError(
+            res.status === 400 || res.status === 401
+              ? "Usuario o contraseña incorrectos."
+              : "No se pudo iniciar sesión. Intenta de nuevo más tarde."
+          );
+        } catch (error) {
+          mostrarError("No se pudo conectar con el servidor.");
+        }
+      });
+    </script>
+  </body>
+</html>

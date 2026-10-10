@@ -26,7 +26,11 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 
 ### Fase 3 — Dashboard web
 - Frontend web para seguir la flota en tiempo real.
-- **A definir stack**: extender el HTML estático actual, SPA (React/Vue) consumiendo la API, o SSR con FastAPI + Jinja2.
+- **Stack decidido: vanilla ahora, SPA después.** Seguimos con HTML/JS estático sin build tooling: el flujo JWT queda a la vista y no agregamos herramientas sin necesidad.
+- **Migrar a SPA (Vite + React o Vue) SOLO cuando se cumpla al menos uno de estos criterios:**
+  - (a) el dashboard necesita rutas propias con varias vistas,
+  - (b) el estado se comparte entre 3 o más vistas independientes, o
+  - (c) el cliente valida el MVP y empiezan las estadísticas de la Fase 4.
 - Fichas por camión: ubicación, estado, historial de viajes.
 
 ### Fase 4 — Estadísticas logísticas
