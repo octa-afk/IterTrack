@@ -419,6 +419,12 @@
   .app.nav-off .top,.app.nav-off .mapcard .card-h,.app.nav-off .bottom,
   .app.nav-off .leaflet-top.leaflet-left,.app.nav-off .leaflet-bottom.leaflet-right{transition:left .3s ease}
   :root.dark{--g-bg:rgba(22,29,48,.62);--g-solid:rgba(18,24,40,.97);--g-bd:rgba(255,255,255,.14);--g-hi:inset 0 1px 0 rgba(255,255,255,.10);--g-sh:0 14px 44px rgba(0,0,0,.45);--g-fill:rgba(255,255,255,.07);--g-fill2:rgba(255,255,255,.13);--g-on:rgba(255,255,255,.16);--ac:#4f6fe0}
+  /* Keep dark glass values effective after the generic C3 panel declarations. */
+  :root.dark .side,:root.dark .top,:root.dark .card,:root.dark .mapcard .card-h{
+    background:var(--g-bg);border-color:var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)
+  }
+  :root.dark .search{background:var(--g-fill);box-shadow:none}
+  :root.dark .pill{background:none;color:var(--ink)}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
   @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
   @media (max-width:1265px){

@@ -271,3 +271,15 @@ def test_map_page_preserves_real_hooks_with_glass_layer(client):
     assert "fetch('/auth/me'" in response.text
     assert "fetch('/trucks'" in response.text
     assert "function actualizarUbicaciones" in response.text
+
+
+def test_map_page_dark_glass_panel_cascade_wins_over_c3_defaults(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    html = response.text
+    glass_start = html.index("/* ===== C3 v10 glass layer")
+    dark_panels = html.index(":root.dark .side,:root.dark .top,:root.dark .card", glass_start)
+    assert dark_panels > html.index(".side,.top,.card,.mapcard .card-h", glass_start)
+    assert "background:var(--g-bg);border-color:var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)" in html[dark_panels:]
+    assert ":root.dark .search{background:var(--g-fill)" in html[dark_panels:]
+    assert ":root.dark .pill{background:none" in html[dark_panels:]
