@@ -30,7 +30,7 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 * **Telemetría GPS en tiempo real:** Recepción continua de coordenadas (latitud, longitud, timestamp).
 * **Monitoreo en vivo en mapa interactivo:** Visualización en tiempo real sobre OpenStreetMap y Leaflet (`/map`) con rotación de vehículo según rumbo (*bearing*), flechas direccionales adaptativas al zoom y seguimiento automático.
 * **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
-* **Autenticación OAuth2 + JWT:** Registro de usuarios, login con token Bearer y endpoints protegidos para operaciones de escritura. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
+* **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`), con token Bearer para los endpoints protegidos de escritura. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
 * **Persistencia Robusta:** Modelos relacionales con SQLAlchemy 2.0 y control de versiones de esquema con Alembic sobre PostgreSQL.
 * **Simulador integrado con ruta realista:** Script Python con un circuito cerrado de 13 km por Córdoba Capital (425 puntos) para pruebas de avance y orientación en tiempo real.
 * **Documentación interactiva automática:** Swagger UI y ReDoc nativos de FastAPI.
@@ -106,6 +106,8 @@ IterTrack/
 └── source/
     ├── main.py                    # Punto de entrada de la aplicación FastAPI (API y /map)
     ├── static/
+    │   ├── login.html               # Página de login (enlace a /register)
+    │   ├── register.html            # Formulario de registro con auto-login
     │   └── map.html               # Frontend interactivo con Leaflet, rumbo y telemetría
     ├── database/
     │   ├── config.py              # Carga de variables de entorno (DB, JWT)
@@ -221,6 +223,7 @@ El servidor quedará disponible en `http://127.0.0.1:8000`.
 
 Una vez iniciado el servidor, puedes interactuar directamente con los endpoints y el mapa desde el navegador:
 
+* **Login:** [http://127.0.0.1:8000/](http://127.0.0.1:8000/) (acceso al mapa; el enlace "Registrate" lleva a `/register`)
 * **Mapa en Vivo (Leaflet):** [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map) (visualización de flotas en tiempo real)
 * **Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 * **ReDoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
@@ -269,8 +272,10 @@ git checkout IterTrack-Hardware
 
 | Método | Endpoint | Descripción | Cuerpo de la Petición (Ejemplo) | Auth |
 |---|---|---|---|---|
-| `GET` | `/` | Comprobación de estado de la API (*Health check*) | — | — |
+| `GET` | `/` | Página de login (`static/login.html`) | — | — |
+| `GET` | `/register` | Página de registro (`static/register.html`) | — | — |
 | `GET` | `/map` | Interfaz web de monitoreo satelital en vivo (OpenStreetMap / Leaflet) | — | — |
+| `GET` | `/logo` | Logotipo de IterTrack (`static/Itertrack_logo.png`) | — | — |
 | `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`static/imagen-removebg-preview.png`) | — | — |
 | `POST` | `/auth/register` | Registra un nuevo usuario | `{"username": "...", "email": "...", "full_name": "...", "password": "..."}` | — |
 | `POST` | `/auth/login` | Login OAuth2 (form-data) y devuelve JWT | `username` / `password` (form) | — |
@@ -284,6 +289,10 @@ git checkout IterTrack-Hardware
 | `GET` | `/trucks/ids` | Lista únicamente los IDs y patentes | — | — |
 
 ### Flujo de autenticación:
+
+**En el navegador (camino principal):** abrí `http://127.0.0.1:8000/` e iniciá sesión, o seguí el enlace "Registrate" a `/register`; el registro inicia sesión automáticamente, guarda el token en el navegador y redirige a `/map`.
+
+**Vía API (alternativa programática):**
 
 1. **Registro:** `POST /auth/register` con usuario, email y contraseña (se persiste hasheada con bcrypt).
 2. **Login:** `POST /auth/login` con `username` y `password` como *form-data*; devuelve `{"access_token": "...", "token_type": "bearer"}`.
