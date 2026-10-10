@@ -10,7 +10,7 @@ app.include_router(auth_router)
  
 @app.get("/")
 async def root():
-    return "Itertrack in the house 😎💯🚚"
+    return FileResponse("source/static/login.html")
 
 @app.get("/map")
 def view_map():

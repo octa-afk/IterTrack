@@ -71,8 +71,10 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * El `response_model=UserResponse` en endpoints garantiza que `hashed_password` nunca se expone en respuestas JSON.
 
 6. **Assets estáticos (`source/static/`):**
-   * Se sirven con `FileResponse` desde `source/main.py`: `GET /map` → `map.html` y `GET /favicon.ico` → `imagen-removebg-preview.png`.
+   * Se sirven con `FileResponse` desde `source/main.py`: `GET /` → `login.html` (página de login), `GET /map` → `map.html` y `GET /favicon.ico` → `imagen-removebg-preview.png`.
    * `GET /favicon.ico` lleva `include_in_schema=False` para que no aparezca en `/docs`.
+   * El login es client-side: `login.html` envía usuario/contraseña a `POST /auth/login` como `application/x-www-form-urlencoded`, guarda el `access_token` en `localStorage` (clave `itertrack_token`) y redirige a `/map`.
+   * La protección de `/map` también es client-side: `map.html` valida el token contra `GET /auth/me` con header `Authorization: Bearer` al cargar; sin token o con respuesta 401 limpia `localStorage` y redirige a `/`. Todos los `fetch` de la página adjuntan el header y hay un botón "Cerrar sesión" que borra el token.
    * Si se reemplaza el ícono, mantener el nombre del archivo o actualizar el endpoint (no se usa `StaticFiles`).
 
 ---
