@@ -368,6 +368,72 @@
     :root.dark .app{border:0;box-shadow:none}
   }
   @media (max-width:943px){ :root.dark .side{border-bottom:1px solid rgba(255,255,255,.12)} }
+
+  /* ===== C3 v10 glass layer: full-screen map with floating panels =====
+     This ports the visual shell only; live data, auth, and existing hooks stay
+     in the project markup and scripts below. Dimensions retain the C1 15%
+     scale used by this page (example --rp/--lx: 360/236 -> 414/271). */
+  :root{
+    --g-bg:rgba(255,255,255,.64);--g-solid:rgba(248,250,254,.97);
+    --g-bd:rgba(255,255,255,.78);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);
+    --g-sh:0 12px 39px rgba(25,45,95,.16);--g-fill:rgba(31,42,61,.06);
+    --g-fill2:rgba(31,42,61,.11);--g-on:rgba(255,255,255,.95);
+    --ac:#5a7ee6;--blur:blur(28px) saturate(180%);--rp:414px;--lx:271px;
+  }
+  .app{position:relative;background:var(--mint)}
+  .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
+  .mapbox{position:absolute;inset:0;z-index:0;min-height:0;border-radius:0;box-shadow:none}
+  .side,.top,.card,.mapcard .card-h,.leaflet-bar,.leaflet-control-attribution{
+    background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)
+  }
+  .side{position:absolute;z-index:5;left:16px;top:16px;bottom:16px;width:235px;border-radius:30px;padding:0;transition:width .3s ease,opacity .2s ease}
+  .side-in{width:100%;height:100%;padding:40px 0 23px}
+  .logo{margin-bottom:39px}
+  .top{position:absolute;z-index:5;left:var(--lx);right:16px;top:16px;height:64px;padding:0 10px 0 9px;border-radius:32px}
+  .search{background:var(--g-fill);box-shadow:none;height:44px}
+  .search:focus-within{box-shadow:0 0 0 2px var(--ac)}
+  .pill{background:none;padding:0;height:auto;color:var(--ink)}
+  .pill .al{background:var(--g-fill2);color:var(--ink)} .pill .bell{fill:var(--ink)}
+  .avatar{background:var(--ac);color:#fff}
+  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:97px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px}
+  .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
+  .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:97px;bottom:39px;width:var(--rp);gap:14px}
+  .card{border-radius:28px}
+  .bottom{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;height:202px;gap:14px}
+  .dn{gap:7px}.dn svg{width:62px;height:62px}.dn .t b{white-space:nowrap;font-size:15px}.dn .pc{font-size:13px}
+  .detail,.detail .st{background:var(--g-fill)}
+  .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
+  .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
+  .bar i{background:var(--g-fill2)}.bar:hover i,.bar.sel i{background:var(--green-l)}
+  .bars .limit span{background:transparent}.dn circle:first-child{stroke:var(--g-fill2)}
+  .leaflet-top.leaflet-left{left:var(--lx);top:147px}.leaflet-left .leaflet-control{margin-left:0}
+  .leaflet-bar,.leaflet-touch .leaflet-bar{border:1px solid var(--g-bd)!important;border-radius:18px;overflow:hidden}
+  .leaflet-bar a{background:transparent;color:var(--ink);border-bottom:1px solid var(--g-bd);width:39px;height:39px;line-height:39px}
+  .leaflet-bar a:hover{background:var(--g-fill)}
+  .leaflet-bottom.leaflet-right{right:auto;left:var(--lx);bottom:0}
+  .leaflet-control-attribution{border-radius:12px 12px 0 0;color:var(--muted);box-shadow:none;border-bottom:0}
+  .leaflet-control-attribution a{color:var(--green-d)}
+  .app.nav-off .side{width:0;opacity:0;pointer-events:none;border:0}
+  .app.nav-off{--lx:16px}
+  .app.nav-off .top,.app.nav-off .mapcard .card-h,.app.nav-off .bottom,
+  .app.nav-off .leaflet-top.leaflet-left,.app.nav-off .leaflet-bottom.leaflet-right{transition:left .3s ease}
+  :root.dark{--g-bg:rgba(22,29,48,.62);--g-solid:rgba(18,24,40,.97);--g-bd:rgba(255,255,255,.14);--g-hi:inset 0 1px 0 rgba(255,255,255,.10);--g-sh:0 14px 44px rgba(0,0,0,.45);--g-fill:rgba(255,255,255,.07);--g-fill2:rgba(255,255,255,.13);--g-on:rgba(255,255,255,.16);--ac:#4f6fe0}
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
+  @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
+  @media (max-width:1265px){
+    body{display:block;overflow:auto}.app{height:auto;min-height:100vh;display:block;padding:14px}
+    .content,.grid,.grid>.col:first-child,.mapcard{display:block}
+    .side,.top,.bottom,.mapcard .card-h,.grid>.col:last-child{position:relative;inset:auto;width:auto;height:auto;margin:0 0 14px}
+    .grid>.col:last-child{display:flex}.side{flex-direction:row;padding:0}.side-in{height:auto;min-height:64px;flex-direction:row;padding:12px 16px;align-items:center}
+    .logo{margin:0}.mapbox{position:relative;inset:auto;height:64vh;margin-bottom:14px;border-radius:28px}
+    .mapcard .card-h{display:inline-flex}.bottom{display:grid;grid-template-columns:1fr}.bottom .card{height:219px}
+    .leaflet-top.leaflet-left{left:0;top:0}.leaflet-bottom.leaflet-right{left:auto;right:0}
+  }
+  @media (max-width:943px){
+    .app{padding:0}.side-in{width:100%}.top{padding:0 14px}.grid{padding:14px}.mapbox{height:56vh}
+  }
+  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom{transition:none!important}}
 </style>
 <script>
   // Apply the persisted theme before first paint: no flash of the wrong theme.

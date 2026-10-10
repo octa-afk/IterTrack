@@ -245,3 +245,29 @@ def test_map_page_has_collapsible_sidebar_and_solid_topbar(client):
     # The project's own hooks survive the port (the v10 example has neither)
     assert 'id="btn-logout"' in response.text
     assert 'id="themeBtn"' in response.text
+
+
+# --- login-map-ui (C3): v10 glass dashboard layer ---
+
+def test_map_page_has_v10_glass_fullscreen_layer(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "--g-bg:rgba(255,255,255,.64)" in response.text
+    assert ".content,.grid,.grid>.col:first-child,.mapcard{display:contents}" in response.text
+    assert ".mapbox{position:absolute;inset:0;z-index:0" in response.text
+    assert ".side,.top,.card,.mapcard .card-h,.leaflet-bar,.leaflet-control-attribution" in response.text
+    assert ".leaflet-top.leaflet-left{left:var(--lx);top:147px}" in response.text
+    assert "@media (max-width:1265px)" in response.text
+
+
+def test_map_page_preserves_real_hooks_with_glass_layer(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    for hook in ('id="map"', 'id="liveTag"', 'id="bars"', 'id="donuts"',
+                 'id="detail"', 'id="list"', 'id="q"', 'id="sort"',
+                 'id="dir"', 'id="chips"', 'id="seg"', 'id="alertBtn"',
+                 'id="btn-logout"', 'id="navToggle"'):
+        assert hook in response.text
+    assert "fetch('/auth/me'" in response.text
+    assert "fetch('/trucks'" in response.text
+    assert "function actualizarUbicaciones" in response.text
