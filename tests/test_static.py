@@ -89,3 +89,60 @@ def test_pages_use_scaled_ui_scale(client):
     # Media-query breakpoints: login 860 -> 989, map 820 -> 943
     assert "max-width:989px" in login.text
     assert "max-width:943px" in page.text
+
+
+# --- login-map-ui (C2): truck marker redesign (SVG truck, status halo, plate label) ---
+
+def test_map_page_renders_truck_marker_design(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # The arrow pointer is replaced by the truck SVG (cabin on top, evenodd windshield)
+    assert "M9.5 2h5A1.5 1.5" in response.text
+    assert "const arrow" not in response.text
+    assert "${truck}" in response.text
+    # divIcon box matches .pin and the anchor stays exactly half of iconSize
+    assert "iconSize:[40,40]" in response.text
+    assert "iconAnchor:[20,20]" in response.text
+    # v9 pin design: status halo + pulse, reduced-motion guard, plate label, ring token
+    assert ".pin .halo" in response.text
+    assert "animation:pulse 1.8s ease-out infinite" in response.text
+    assert "prefers-reduced-motion" in response.text
+    assert ".pin .lbl" in response.text
+    assert "--ring" in response.text
+    # The old generic badge rules must be gone: markup now uses .badge / .halo / .lbl
+    assert ".pin div{" not in response.text
+    assert ".pin.sel div{" not in response.text
+
+
+# --- login-map-ui (C2c): truck moves between samples instead of teleporting ---
+
+def test_map_page_animates_truck_movement(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # Two received samples are tweened on a rAF loop, clamped to a sane duration
+    assert "requestAnimationFrame" in response.text
+    assert "function programarMovimiento" in response.text
+    assert "function tickMovimiento" in response.text
+    assert "MOVE_MAX_MS" in response.text
+    # render() must not jump the pin straight to the newest sample anymore
+    assert "mk.setLatLng([t.lat,t.lng]).setIcon(" not in response.text
+
+
+# --- login-map-ui (C2d): one stable identity color per truck + map opens on a truck ---
+
+def test_map_page_gives_truck_a_stable_color(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # The pin keeps a per-truck identity color instead of recoloring with status
+    assert "TRUCK_COLORS" in response.text
+    assert "function colorDeCamion" in response.text
+    assert "background:${t.color}" in response.text
+    assert 'badge" style="background:${STATUS[t.status].color}' not in response.text
+
+
+def test_map_page_opens_centered_on_first_truck(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "function centrarEnPrimerCamion" in response.text
+    # Boot must center after the first real location poll, not on the default view
+    assert "centrarEnPrimerCamion();" in response.text
