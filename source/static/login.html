@@ -1,170 +1,202 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IterTrack - Iniciar sesión</title>
-    <style>
-      html, body {
-        height: 100%;
-        padding: 0;
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background: #f1f5f9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .login-card {
-        box-sizing: border-box;
-        width: 100%;
-        max-width: 360px;
-        margin: 16px;
-        padding: 24px;
-        background: #ffffff;
-        border-radius: 12px;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-      }
-      .login-card .logo {
-        display: block;
-        width: 150px;
-        height: auto;
-        margin: 0 auto 10px auto;
-      }
-      .login-card h1 {
-        margin: 0 0 4px 0;
-        font-size: 18px;
-        color: #1a1a1a;
-        text-align: center;
-      }
-      .login-card .subtitle {
-        margin: 0 0 18px 0;
-        font-size: 13px;
-        color: #64748b;
-        text-align: center;
-      }
-      .login-card label {
-        display: block;
-        margin: 0 0 4px 0;
-        font-size: 13px;
-        color: #475569;
-      }
-      .login-card input {
-        box-sizing: border-box;
-        width: 100%;
-        margin-bottom: 14px;
-        padding: 10px;
-        font-size: 14px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-      }
-      .login-card input:focus {
-        outline: 2px solid #bfdbfe;
-        border-color: #2563eb;
-      }
-      .login-card button {
-        width: 100%;
-        padding: 10px;
-        font-size: 15px;
-        font-weight: 600;
-        color: #ffffff;
-        background: #2563eb;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      .login-card button:hover {
-        background: #1d4ed8;
-      }
-      #login-error {
-        margin: 0 0 14px 0;
-        padding: 8px 10px;
-        font-size: 13px;
-        color: #b91c1c;
-        background: #fee2e2;
-        border: 1px solid #fecaca;
-        border-radius: 8px;
-      }
-      #login-error[hidden] {
-        display: none;
-      }
-      .login-card .alt-link {
-        display: block;
-        margin: 14px 0 0 0;
-        font-size: 13px;
-        color: #2563eb;
-        text-align: center;
-        text-decoration: none;
-      }
-      .login-card .alt-link:hover {
-        text-decoration: underline;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="login-card">
-      <img class="logo" src="/logo" alt="IterTrack" width="225" height="126">
-      <p class="subtitle">Monitoreo de flota en vivo</p>
-      <form id="login-form" method="post" action="/auth/login">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iniciar sesión · IterTrack</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22380 355 1210 1200%22%3E%3Cpath fill=%22%235472d2%22 d=%22M390 752C385 590 500 465 665 465H1200L900 752Z%22/%3E%3Cpath fill=%22%233a58b4%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z%22/%3E%3Cpath fill=%22%236a8cee%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z%22/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#dbe7f8; --bg2:#cbdcf3; --ink:#1f2a3d; --muted:#6b778c; --line:#dfe5f0;
+  --acc:#5a7ee6; --acc-d:#4666cc; --acc-xl:#ecf1fc; --err:#d2594e;
+  --field:rgba(255,255,255,.85); --form:rgba(255,255,255,.62); --shadow:0 18px 50px rgba(60,90,150,.20);
+  --b1:rgba(120,165,240,.38); --b2:rgba(165,210,245,.55); --b3:rgba(185,180,240,.28);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    color-scheme:dark;
+    --bg1:#121a31; --bg2:#0d1426; --ink:#e7edf9; --muted:#8e9bb5; --line:rgba(255,255,255,.12);
+    --acc:#8aa6ff; --acc-d:#b4c6ff; --acc-xl:rgba(138,166,255,.14); --err:#ff8a80;
+    --field:rgba(255,255,255,.07); --form:rgba(255,255,255,.05); --shadow:0 18px 50px rgba(0,0,0,.55);
+    --b1:rgba(79,111,224,.38); --b2:rgba(90,150,230,.26); --b3:rgba(130,110,220,.22);
+  }
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:Poppins,system-ui,sans-serif;color:var(--ink);font-size:14px;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px;
+  background:
+    radial-gradient(560px 400px at 5% 6%,var(--b1),transparent 70%),
+    radial-gradient(620px 420px at 82% -6%,var(--b2),transparent 70%),
+    radial-gradient(520px 420px at 10% 100%,var(--b3),transparent 70%),
+    linear-gradient(135deg,var(--bg1),var(--bg2));background-attachment:fixed}
+svg{display:block}
+.shell{width:100%;max-width:1020px;display:grid;grid-template-columns:1.02fr 1fr;border-radius:28px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.75);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);background:var(--form)}
+@media (prefers-color-scheme:dark){.shell{border-color:rgba(255,255,255,.12)}}
+
+/* Panel de marca */
+.brand{position:relative;padding:34px 36px;color:#fff;display:flex;flex-direction:column;gap:18px;
+  background:linear-gradient(160deg,#7494ec 0%,#5a7ee6 55%,#4a6bd2 100%);overflow:hidden}
+.logo{display:flex;align-items:center;gap:11px;font-weight:600;font-size:20px;letter-spacing:.2px;position:relative}
+.logo svg{width:34px;height:34px}
+.mark .m1{fill:var(--m1)}.mark .m2{fill:var(--m2)}.mark .m3{fill:var(--m3)}
+.brand .logo{--m1:#ffffff;--m2:#c3d3fa;--m3:#e1e9fd}
+.brand h2{font-size:25px;line-height:1.25;font-weight:600;max-width:15em;position:relative;margin-top:10px}
+.brand p{color:rgba(255,255,255,.85);max-width:26em;line-height:1.55;position:relative}
+.live{position:relative;margin-top:auto;border-radius:18px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);padding:6px 18px 4px}
+.live-h{font-size:12px;opacity:.85;padding:10px 0 6px}
+.live ul{list-style:none;padding:0}
+.live li{display:grid;grid-template-columns:10px 1fr auto;column-gap:12px;align-items:center;padding:10px 0;border-top:1px solid rgba(255,255,255,.22)}
+.live li i{width:10px;height:10px;border-radius:50%;grid-row:span 2}
+.live b{font-weight:600;font-size:13px}
+.live em{font-style:normal;font-weight:600;font-size:13px;text-align:right}
+.live span{grid-column:2/4;font-size:11.5px;opacity:.8}
+
+/* Formulario */
+.side{padding:38px 42px;display:flex;flex-direction:column;justify-content:center}
+.side h1{font-size:24px;font-weight:600;margin-bottom:4px}
+.side .lead{color:var(--muted);margin-bottom:22px}
+form{display:grid;gap:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f label{display:block;font-weight:500;font-size:12.5px;margin-bottom:6px}
+.input{position:relative}
+.input input{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--field);font:inherit;color:var(--ink);transition:border-color .15s}
+.input input::placeholder{color:var(--muted);opacity:.8}
+.input input:focus{outline:2px solid var(--acc);outline-offset:0;border-color:var(--acc)}
+.input input[aria-invalid="true"]{border-color:var(--err)}
+.input.pw input{padding-right:78px}
+.show{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--acc-d);font:500 12px Poppins;padding:6px 10px;border-radius:8px;cursor:pointer}
+.show:hover{background:var(--acc-xl)}
+.show:focus-visible,a:focus-visible,.btn:focus-visible,.check input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.err{color:var(--err);font-size:11.5px;min-height:0;margin-top:5px}
+.err:empty{display:none}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px}
+.check{display:flex;align-items:flex-start;gap:8px;color:var(--muted);line-height:1.4}
+.check input{accent-color:var(--acc);margin-top:2px;width:15px;height:15px}
+a{color:var(--acc-d);text-decoration:none;font-weight:500} a:hover{text-decoration:underline}
+.btn{border:0;border-radius:12px;padding:12px;font:600 14px Poppins;color:#fff;background:#5a7ee6;cursor:pointer;transition:transform .1s,background .15s}
+.btn:hover{background:#4f73dc} .btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.7;cursor:progress}
+.status{font-size:12.5px;text-align:center;min-height:18px}
+.status.ok{color:#2f8f68}.status.bad{color:var(--err)}
+.alt{text-align:center;color:var(--muted);margin-top:18px}
+.meter{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}
+.meter i{height:4px;border-radius:4px;background:var(--line);transition:background .2s}
+.hint{font-size:11.5px;color:var(--muted);margin-top:5px}
+
+@media (max-width:860px){
+  body{padding:12px;align-items:start}
+  .shell{grid-template-columns:1fr}
+  .brand{padding:22px 24px}
+  .brand h2,.brand p,.live{display:none}
+  .side{padding:26px 22px}
+}
+@media (max-width:480px){.row2{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="shell">
+<section class="brand" aria-hidden="false">
+  <div class="logo">
+    <svg class="mark" viewBox="380 355 1210 1200" role="img" aria-label="IterTrack"><path class="m3" d="M390 752C385 590 500 465 665 465H1200L900 752Z"/><path class="m2" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z"/><path class="m1" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z"/></svg>
+    IterTrack
+  </div>
+  <h2>Toda tu flota, en un solo mapa.</h2>
+  <p>Seguí cada camión en tiempo real, filtrá por estado y recibí alertas antes de que se conviertan en problemas.</p>
+  <div class="live" aria-hidden="true">
+    <div class="live-h">En ruta ahora</div>
+    <ul>
+      <li><i style="background:#a6e3c4"></i><b>AF 412 KD</b><em>82 km/h</em><span>Córdoba → Rosario</span></li>
+      <li><i style="background:#f6cf7a"></i><b>AG 233 MP</b><em>Detenido</em><span>Córdoba → Tucumán</span></li>
+      <li><i style="background:#ffa49a"></i><b>AF 678 NC</b><em>105 km/h</em><span>Río Cuarto → San Luis</span></li>
+    </ul>
+  </div>
+</section>
+  <section class="side">
+    <h1>Iniciar sesión</h1>
+    <p class="lead">Ingresá con tu cuenta para ver el panel de la flota.</p>
+    <form id="login-form" novalidate>
+      <div class="f">
         <label for="username">Usuario</label>
-        <input type="text" id="username" name="username" autocomplete="username" required>
+        <div class="input"><input id="username" type="text" autocomplete="username" placeholder="Tu usuario" required></div>
+        <div class="err" id="e-username" aria-live="polite"></div>
+      </div>
+      <div class="f">
+        <label for="pass">Contraseña</label>
+        <div class="input pw"><input id="pass" type="password" autocomplete="current-password" placeholder="Tu contraseña" required>
+          <button class="show" type="button" aria-label="Mostrar contraseña">Mostrar</button></div>
+        <div class="err" aria-live="polite"></div>
+      </div>
+      <div class="meta">
+        <label class="check"><input type="checkbox" id="remember"> Mantener sesión iniciada</label>
+        <a href="#">¿Olvidaste tu contraseña?</a>
+      </div>
+      <button class="btn" id="submit" type="submit">Iniciar sesión</button>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+    </form>
+    <p class="alt">¿Todavía no tenés cuenta? <a href="/register">Crear cuenta</a></p>
+  </section>
+</main>
+<script>
+const REDIRECT = '/map'; // página a la que va después de iniciar sesión
+const TOKEN_KEY = 'itertrack_token'; // misma clave que usa map.html para el guard de sesión
 
-        <label for="password">Contraseña</label>
-        <input type="password" id="password" name="password" autocomplete="current-password" required>
+const $ = s => document.querySelector(s);
+function setErr(input, msg){
+  const box = input.closest('.f').querySelector('.err');
+  box.textContent = msg || '';
+  input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+  return !msg;
+}
+document.querySelectorAll('.show').forEach(b => b.addEventListener('click', () => {
+  const inp = b.parentElement.querySelector('input');
+  const hide = inp.type === 'password';
+  inp.type = hide ? 'text' : 'password';
+  b.textContent = hide ? 'Ocultar' : 'Mostrar';
+  b.setAttribute('aria-label', hide ? 'Ocultar contraseña' : 'Mostrar contraseña');
+}));
+function setStatus(msg, kind){ const s = $('#status'); s.textContent = msg; s.className = 'status ' + (kind||''); }
 
-        <p id="login-error" role="alert" hidden></p>
+// Flujo real: OAuth2 Password Flow contra POST /auth/login (x-www-form-urlencoded).
+// El token se guarda en localStorage.itertrack_token y se redirige a /map.
+async function sendToServer(username, password){
+  const res = await fetch('/auth/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({username, password})
+  });
+  if (!res.ok){
+    // La API responde {detail: ...}; nunca innerHTML, solo textContent (vía setStatus)
+    let detail = '';
+    try{
+      const data = await res.json();
+      detail = data && data.detail ? String(data.detail) : '';
+    }catch(_){}
+    throw new Error(detail || 'No pudimos iniciar sesión. Probá de nuevo.');
+  }
+  const data = await res.json();
+  localStorage.setItem(TOKEN_KEY, data.access_token);
+  return data;
+}
 
-        <button type="submit">Ingresar</button>
-      </form>
-      <a class="alt-link" href="/register">¿No tenés cuenta? Registrate</a>
-    </div>
-
-    <script>
-      // Misma clave de localStorage que usa map.html para el guard de sesión
-      const TOKEN_KEY = "itertrack_token";
-
-      const form = document.getElementById("login-form");
-      const errorMsg = document.getElementById("login-error");
-
-      function mostrarError(mensaje) {
-        // Nunca innerHTML: el mensaje vive en textContent (XSS)
-        errorMsg.textContent = mensaje;
-        errorMsg.hidden = false;
-      }
-
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        errorMsg.hidden = true;
-        errorMsg.textContent = "";
-
-        const username = document.getElementById("username").value.trim();
-        const password = document.getElementById("password").value;
-
-        try {
-          // OAuth2PasswordRequestForm exige application/x-www-form-urlencoded
-          const res = await fetch("/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({ username, password }),
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            localStorage.setItem(TOKEN_KEY, data.access_token);
-            window.location.href = "/map";
-            return;
-          }
-
-          mostrarError(
-            res.status === 400 || res.status === 401
-              ? "Usuario o contraseña incorrectos."
-              : "No se pudo iniciar sesión. Intenta de nuevo más tarde."
-          );
-        } catch (error) {
-          mostrarError("No se pudo conectar con el servidor.");
-        }
-      });
-    </script>
-  </body>
+const username = $('#username'), pass = $('#pass');
+username.addEventListener('blur', () => setErr(username, !username.value.trim() ? 'Ingresá tu usuario.' : ''));
+$('#login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const a = setErr(username, !username.value.trim() ? 'Ingresá tu usuario.' : '');
+  const b = setErr(pass, !pass.value ? 'Ingresá tu contraseña.' : '');
+  if (!a || !b){ (a ? pass : username).focus(); return; }
+  const btn = $('#submit'); btn.disabled = true; btn.textContent = 'Ingresando…'; setStatus('');
+  try{
+    await sendToServer(username.value.trim(), pass.value);
+    setStatus('Sesión iniciada. Redirigiendo…','ok');
+    setTimeout(() => location.href = REDIRECT, 600);
+  }catch(err){
+    setStatus(err.message || 'No pudimos iniciar sesión. Probá de nuevo.','bad');
+    btn.disabled = false; btn.textContent = 'Iniciar sesión';
+  }
+});
+</script>
+</body>
 </html>

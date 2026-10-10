@@ -71,7 +71,7 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * El `response_model=UserResponse` en endpoints garantiza que `hashed_password` nunca se expone en respuestas JSON.
 
 6. **Assets estáticos (`source/static/`):**
-   * Se sirven con `FileResponse` desde `source/main.py`: `GET /` → `login.html` (página de login), `GET /map` → `map.html`, `GET /register` → `register.html` (página de registro), `GET /logo` → `Itertrack_logo.png` y `GET /favicon.ico` → `imagen-removebg-preview.png`.
+   * Se sirven con `FileResponse` desde `source/main.py`: `GET /` → `login.html` (página de login), `GET /map` → `map.html`, `GET /register` → `register.html` (página de registro) y `GET /favicon.ico` → `isologo.png`.
    * `GET /favicon.ico` lleva `include_in_schema=False` para que no aparezca en `/docs`.
    * El login es client-side: `login.html` envía usuario/contraseña a `POST /auth/login` como `application/x-www-form-urlencoded`, guarda el `access_token` en `localStorage` (clave `itertrack_token`) y redirige a `/map`.
    * El registro es client-side: `register.html` envía usuario/email/nombre completo/contraseña a `POST /auth/register` como JSON; ante un `201` hace login automático con `POST /auth/login`, guarda el token y redirige a `/map`. Ante `400`/`422` muestra el `detail` de la API con `textContent` (nunca `innerHTML`). El login enlaza a `/register` y `register.html` enlaza de vuelta a `/`.
