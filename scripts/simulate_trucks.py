@@ -4,6 +4,9 @@ import json
 import math
 import time
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from threading import Event
 import requests
 from pathlib import Path
 
@@ -12,6 +15,57 @@ AUTH_URL = os.getenv("AUTH_URL", "http://127.0.0.1:8000/auth/login")
 ROUTE_FILE = Path(__file__).parent / "cordoba_route.json"
 
 HEADERS = {}
+
+
+@dataclass(frozen=True)
+class TruckConfig:
+    truck_id: int
+    plate: str
+    route_offset: int
+
+
+def build_truck_configs(
+    base_id: int,
+    base_plate: str,
+    count: int,
+    route_length: int | None = None,
+) -> list[TruckConfig]:
+    """Build deterministic identities and route offsets for the workers."""
+    if count < 1:
+        raise ValueError("count must be at least 1")
+
+    offsets = (
+        [route_offset(route_length, index, count) for index in range(count)]
+        if route_length is not None
+        else list(range(count))
+    )
+    return [
+        TruckConfig(
+            truck_id=base_id + index,
+            plate=base_plate if count == 1 else f"{base_plate}-{index + 1:02d}",
+            route_offset=offsets[index],
+        )
+        for index in range(count)
+    ]
+
+
+def route_offset(route_length: int, truck_index: int, truck_count: int) -> int:
+    """Return an evenly distributed, valid phase offset for a route."""
+    if route_length < 1:
+        raise ValueError("route_length must be at least 1")
+    if truck_count < 1 or not 0 <= truck_index < truck_count:
+        raise ValueError("truck_index must be within truck_count")
+    if truck_count > route_length:
+        return truck_index % route_length
+    return truck_index * route_length // truck_count
+
+
+def rotate_route(route: list, offset: int) -> list:
+    """Return a route beginning at offset without mutating the source route."""
+    if not route:
+        return []
+    offset %= len(route)
+    return route[offset:] + route[:offset]
 
 def autenticar() -> dict:
     """Hace login y devuelve los headers con el Bearer token JWT."""
@@ -72,7 +126,7 @@ def cargar_ruta():
             [-31.415118, -64.205147]
         ]
 
-def registrar_camion(truck_id: int, lat: float, long: float, plate: str):
+def registrar_camion(truck_id: int, lat: float, long: float, plate: str, headers=None):
     """Registra el camión si aún no existe en el sistema."""
     try:
         response = requests.post(
@@ -81,7 +135,7 @@ def registrar_camion(truck_id: int, lat: float, long: float, plate: str):
                 "truck": {"id": truck_id, "plate": plate},
                 "location": {"lat": lat, "long": long}
             },
-            headers=HEADERS,
+            headers=HEADERS if headers is None else headers,
             timeout=5
         )
         if response.status_code in (200, 201):
@@ -93,10 +147,14 @@ def registrar_camion(truck_id: int, lat: float, long: float, plate: str):
     except requests.RequestException as e:
         print(f"⚠️ Error conectando al servidor en {BASE_URL}: {e}")
 
-def limpiar_recorrido(truck_id: int):
+def limpiar_recorrido(truck_id: int, headers=None):
     """Borra todo el recorrido registrado del camión llamando a DELETE /trucks/{id}/iter."""
     try:
-        response = requests.delete(f"{BASE_URL}/{truck_id}/iter", headers=HEADERS, timeout=5)
+        response = requests.delete(
+            f"{BASE_URL}/{truck_id}/iter",
+            headers=HEADERS if headers is None else headers,
+            timeout=5,
+        )
         if response.status_code == 204:
             print(f"🗑️ Recorrido del camión #{truck_id} borrado correctamente.")
         else:
@@ -104,13 +162,13 @@ def limpiar_recorrido(truck_id: int):
     except requests.RequestException as e:
         print(f"⚠️ Error al borrar recorrido: {e}")
 
-def actualizar_ubicacion(truck_id: int, lat: float, long: float) -> bool:
+def actualizar_ubicacion(truck_id: int, lat: float, long: float, headers=None) -> bool:
     """Envía la nueva coordenada del camión al endpoint PUT /trucks/{id}/location."""
     try:
         response = requests.put(
             f"{BASE_URL}/{truck_id}/location",
             json={"lat": lat, "long": long},
-            headers=HEADERS,
+            headers=HEADERS if headers is None else headers,
             timeout=5
         )
         return response.status_code == 200
@@ -118,23 +176,35 @@ def actualizar_ubicacion(truck_id: int, lat: float, long: float) -> bool:
         print(f"⚠️ Error al actualizar ubicación: {e}")
         return False
 
-def simular_ruta(truck_id: int, plate: str, intervalo: float):
-    ruta = cargar_ruta()
+def simular_ruta(
+    truck_id: int,
+    plate: str,
+    intervalo: float,
+    headers=None,
+    stop_event: Event | None = None,
+    phase_offset: int = 0,
+):
+    ruta = rotate_route(cargar_ruta(), phase_offset)
     total_puntos = len(ruta)
     print(f"\n🚚 Iniciando simulación de ruta urbana en Córdoba ({total_puntos} puntos)")
     print(f"⏱️ Intervalo: {intervalo}s entre pings | API: {BASE_URL}\n")
 
-    HEADERS.update(autenticar())
+    if headers is None:
+        headers = autenticar()
+    if stop_event is None:
+        stop_event = Event()
 
     # Registrar el camión en su punto inicial
     lat_inicial, lon_inicial = ruta[0]
-    registrar_camion(truck_id, lat_inicial, lon_inicial, plate)
+    registrar_camion(truck_id, lat_inicial, lon_inicial, plate, headers=headers)
 
     vuelta = 1
-    while True:
+    while not stop_event.is_set():
         print(f"\n--- 🔄 Iniciando Vuelta #{vuelta} del circuito ---")
-        limpiar_recorrido(truck_id)
+        limpiar_recorrido(truck_id, headers=headers)
         for i, (lat, lon) in enumerate(ruta):
+            if stop_event.is_set():
+                break
             # Calcular rumbo respecto al punto anterior
             if i > 0:
                 prev_lat, prev_lon = ruta[i - 1]
@@ -146,19 +216,55 @@ def simular_ruta(truck_id: int, plate: str, intervalo: float):
             else:
                 telemetria_str = "| Punto de partida"
 
-            ok = actualizar_ubicacion(truck_id, lat, lon)
+            ok = actualizar_ubicacion(truck_id, lat, lon, headers=headers)
             status = "🟢 OK" if ok else "🔴 FAIL"
 
             print(f"[{i + 1:3}/{total_puntos}] {status} | Lat: {lat:10.6f}, Long: {lon:10.6f} {telemetria_str}")
-            time.sleep(intervalo)
+            stop_event.wait(intervalo)
 
         vuelta += 1
+
+
+def ejecutar_simulaciones(base_id: int, base_plate: str, intervalo: float, count: int):
+    """Authenticate once and run all configured truck workers until interrupted."""
+    route_length = len(cargar_ruta())
+    configs = build_truck_configs(base_id, base_plate, count, route_length)
+    headers = dict(autenticar())
+    stop_event = Event()
+    executor = ThreadPoolExecutor(max_workers=count)
+    futures = [
+        executor.submit(
+            simular_ruta,
+            config.truck_id,
+            config.plate,
+            intervalo,
+            headers,
+            stop_event,
+            config.route_offset,
+        )
+        for config in configs
+    ]
+    try:
+        for future in futures:
+            future.result()
+    except KeyboardInterrupt:
+        print("\n⏹️ Deteniendo simulaciones...")
+        stop_event.set()
+    finally:
+        stop_event.set()
+        executor.shutdown(wait=True, cancel_futures=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simulador de camión con ruta urbana realista en Córdoba")
     parser.add_argument("--id", type=int, default=1, help="ID del camión (default: 1)")
     parser.add_argument("--plate", type=str, default="ABC123", help="Patente del camión (default: ABC123)")
     parser.add_argument("-i", "--interval", type=float, default=2.0, help="Intervalo en segundos entre pings (default: 2.0)")
+    parser.add_argument("-n", "--count", type=int, default=1, help="Cantidad de camiones (default: 1)")
 
     args = parser.parse_args()
-    simular_ruta(truck_id=args.id, plate=args.plate, intervalo=args.interval)
+    ejecutar_simulaciones(
+        base_id=args.id,
+        base_plate=args.plate,
+        intervalo=args.interval,
+        count=args.count,
+    )
