@@ -59,15 +59,9 @@
   #map{position:absolute;inset:0}
   .leaflet-container{font-family:Poppins,sans-serif}
   .pin{width:40px;height:40px;display:grid;place-items:center;position:relative}
-  .pin .halo{display:none;position:absolute;inset:0;border-radius:50%;opacity:.2}
-  .pin.move .halo,.pin.alert .halo{display:block}
-  .pin.alert .halo{animation:pulse 1.8s ease-out infinite}
-  @keyframes pulse{0%{transform:scale(.75);opacity:.4}100%{transform:scale(1.35);opacity:0}}
-  @media (prefers-reduced-motion:reduce){.pin.alert .halo{animation:none}}
-  .pin .badge{position:relative;width:30px;height:30px;border-radius:50%;border:2.5px solid var(--ring);box-shadow:0 1px 5px rgba(0,0,0,.3);display:grid;place-items:center;transition:transform .2s,box-shadow .2s}
-  .pin .badge span{display:grid;transition:transform .4s}
-  .pin svg{width:17px;height:17px;fill:#fff}
-  .pin.sel .badge{transform:scale(1.15);box-shadow:0 0 0 2px var(--ink),0 2px 8px rgba(0,0,0,.35)}
+  .pin .truck-svg{display:grid;transition:transform .2s,filter .2s}
+  .pin svg{width:18px;height:38px}
+  .pin.sel .truck-svg{transform:scale(1.15);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
   .pin .lbl{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
   .pin.sel .lbl{display:block}
 
@@ -565,12 +559,13 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('map'));
 
 const markers = new Map();
-const truck = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M9.5 2h5A1.5 1.5 0 0 1 16 3.5V9H8V3.5A1.5 1.5 0 0 1 9.5 2zM9.4 3.6h5.2v1.7H9.4z"/><path d="M7.5 10.5h9a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-9.5a1 1 0 0 1 1-1z"/></svg>';
+const truck = '<svg viewBox="-36 -76 72 152" aria-hidden="true"><path d="M-17,-62 Q0,-68 17,-62 Q22,-60 22,-52 L22,-6 Q22,0 16,0 L-16,0 Q-22,0 -22,-6 L-22,-52 Q-22,-60 -17,-62 Z" fill="#000" fill-opacity="0.10" stroke="#000" stroke-opacity="0.10" stroke-width="16" stroke-linejoin="round"/><rect x="-22" y="6" width="44" height="58" rx="6" fill="#000" fill-opacity="0.10" stroke="#000" stroke-opacity="0.10" stroke-width="16" stroke-linejoin="round"/><rect x="-4" y="-3" width="8" height="12" rx="2" fill="#2C2C2A"/><rect x="-22" y="6" width="44" height="58" rx="6" fill="#F26B1D" stroke="#B8480F" stroke-width="2"/><rect x="-16" y="12" width="32" height="46" rx="3" fill="#F9955A"/><path d="M-17,-62 Q0,-68 17,-62 Q22,-60 22,-52 L22,-6 Q22,0 16,0 L-16,0 Q-22,0 -22,-6 L-22,-52 Q-22,-60 -17,-62 Z" fill="#F26B1D" stroke="#B8480F" stroke-width="2"/><path d="M-16,-49 Q0,-54 16,-49 L18,-31 L-18,-31 Z" fill="#111111"/><path d="M-18,-17 L18,-17 L15,-7 Q0,-4 -15,-7 Z" fill="#111111"/></svg>';
 
+const truckSvg = color => truck.replaceAll('#F26B1D', color).replaceAll('#B8480F', color).replaceAll('#F9955A', color);
 const pinIcon = (t, sel) => L.divIcon({
   className:'', iconSize:[40,40], iconAnchor:[20,20],
-  html:`<div class="pin ${t.status} ${sel?'sel':''}"><i class="halo" style="background:${STATUS[t.status].color}"></i>
-    <div class="badge" style="background:${t.color}"><span style="transform:rotate(${t.heading}deg)">${truck}</span></div>
+  html:`<div class="pin ${t.status} ${sel?'sel':''}">
+    <span class="truck-svg" style="transform:rotate(${t.heading}deg)">${truckSvg(t.color)}</span>
     <em class="lbl" style="font-style:normal">${t.plate}</em></div>`
 });
 
@@ -640,9 +635,9 @@ function haversineM(aLat, aLng, bLat, bLng){
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 function bearing(aLat, aLng, bLat, bLng){
-  const y = Math.sin(toDeg(bLng - aLng)) * Math.cos(toRad(bLat));
+  const y = Math.sin(toRad(bLng - aLng)) * Math.cos(toRad(bLat));
   const x = Math.cos(toRad(aLat)) * Math.sin(toRad(bLat)) -
-            Math.sin(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.cos(toDeg(bLng - aLng));
+            Math.sin(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.cos(toRad(bLng - aLng));
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 

@@ -136,22 +136,23 @@ def test_pages_use_scaled_ui_scale(client):
 def test_map_page_renders_truck_marker_design(client):
     response = client.get("/map")
     assert response.status_code == 200
-    # The arrow pointer is replaced by the truck SVG (cabin on top, evenodd windshield)
-    assert "M9.5 2h5A1.5 1.5" in response.text
+    # The arrow pointer is replaced by the supplied vertical truck SVG.
+    assert 'viewBox="-36 -76 72 152"' in response.text
+    assert 'fill="#F26B1D"' in response.text
+    assert ".pin svg{width:18px;height:38px}" in response.text
     assert "const arrow" not in response.text
-    assert "${truck}" in response.text
+    assert "${truckSvg(t.color)}" in response.text
     # divIcon box matches .pin and the anchor stays exactly half of iconSize
     assert "iconSize:[40,40]" in response.text
     assert "iconAnchor:[20,20]" in response.text
-    # v9 pin design: status halo + pulse, reduced-motion guard, plate label, ring token
-    assert ".pin .halo" in response.text
-    assert "animation:pulse 1.8s ease-out infinite" in response.text
-    assert "prefers-reduced-motion" in response.text
+    # The supplied truck is rendered directly, without a circular badge or halo.
+    assert "const truckSvg" in response.text
+    assert 'replaceAll(\'#F26B1D\', color)' in response.text
+    assert 'class="truck-svg"' in response.text
+    assert 'class="halo"' not in response.text
+    assert 'class="badge"' not in response.text
     assert ".pin .lbl" in response.text
-    assert "--ring" in response.text
-    # The old generic badge rules must be gone: markup now uses .badge / .halo / .lbl
-    assert ".pin div{" not in response.text
-    assert ".pin.sel div{" not in response.text
+    assert ".pin.sel .truck-svg" in response.text
 
 
 # --- login-map-ui (C2c): truck moves between samples instead of teleporting ---
@@ -166,6 +167,10 @@ def test_map_page_animates_truck_movement(client):
     assert "MOVE_MAX_MS" in response.text
     # render() must not jump the pin straight to the newest sample anymore
     assert "mk.setLatLng([t.lat,t.lng]).setIcon(" not in response.text
+    # Longitude deltas must be converted to radians before bearing math;
+    # the truck SVG points north at zero degrees and rotates clockwise.
+    assert "Math.sin(toRad(bLng - aLng))" in response.text
+    assert "Math.cos(toRad(bLng - aLng))" in response.text
 
 
 # --- login-map-ui (C2d): one stable identity color per truck + map opens on a truck ---
@@ -176,7 +181,7 @@ def test_map_page_gives_truck_a_stable_color(client):
     # The pin keeps a per-truck identity color instead of recoloring with status
     assert "TRUCK_COLORS" in response.text
     assert "function colorDeCamion" in response.text
-    assert "background:${t.color}" in response.text
+    assert "truckSvg(t.color)" in response.text
     assert 'badge" style="background:${STATUS[t.status].color}' not in response.text
 
 
