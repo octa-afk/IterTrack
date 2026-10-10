@@ -76,13 +76,19 @@ lands on `/map`.
       because every medium/high candidate dead-ends on this runtime. Re-enable with
       `gentle-ai review mode enable --scope clone` once the lens relay works.
 - [ ] User browser click-through (register → land on `/map`).
-- [ ] Commit — NOT done (user policy: explicit request only). Worktree carries 4 modified +
-      2 untracked files, including the user's own uncommitted logo tweak in `login.html`.
+- [x] Work-unit commits on `experiment/http` (user requested the commit):
+      - `b51430d style(auth): resize login logo mark` — the user's own uncommitted logo tweak,
+        split into its own unit so the feature commit stays independently revertable.
+      - `d3e8c57 feat(auth): add browser registration flow` — page, route, link, tests and docs.
+      - Post-restore re-verification: `make check && make test` 19 passed, selfcheck 17/17.
 
 ## Route declaration
 - Writer task: delegated direct (trigger: 2+ files across page + route + tests).
 - Exploration: parent inline (one bounded batch, <3 calls per step).
 
 ## Delivery
-Forecast ~250 authored changed lines → single work unit, no chaining.
-Branch: `experiment/http`.
+- Single work unit, no chaining: `d3e8c57` (6 files, +315/−1) plus the separate 3-line logo unit
+  `b51430d`. Branch `experiment/http`, 2 commits ahead of `origin/experiment/http`; push only on
+  explicit user request.
+- Review state for this slice: receipt-driven development disabled clone-local by user decision,
+  so delivery is `disabled/unmanaged` under ordinary repository policy — no receipt, no approval.
