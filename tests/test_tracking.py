@@ -6,7 +6,7 @@ from source.database.database import Base, get_db
 from source.services.auth import get_current_user
 from source.models.organization import Organization
 from source.models.user import User
-from source.models.truck import Truck
+from source.models.truck import Truck, TrackingPoint
 from source.services.auth import hash_password
 
 
@@ -73,7 +73,7 @@ def test_post_truck_assigns_organization(tracking_client, db_session, test_user)
     """POST /trucks asigna automáticamente la organización del usuario."""
     response = tracking_client.post(
         "/trucks",
-        json={"truck": {"id": 2, "plate": "NEW123"}, "location": {"lat": -31.42, "long": -64.18}},
+        json={"truck": {"id": 2, "plate": "NEW123"}, "location": {"lat": -31.42, "long": -64.18, "speed": 42.5, "heading": 180}},
     )
     assert response.status_code == 200
     
@@ -81,13 +81,16 @@ def test_post_truck_assigns_organization(tracking_client, db_session, test_user)
     truck = db_session.query(Truck).filter(Truck.plate == "NEW123").first()
     assert truck is not None
     assert truck.organization_id == test_user.organization_id
+    point = db_session.query(TrackingPoint).filter(TrackingPoint.truck_id == truck.id).one()
+    assert point.speed == 42.5
+    assert point.heading == 180
 
 
 def test_put_location_other_org_truck_returns_404(tracking_client, other_truck):
     """PUT /{truck_id}/location con camión de otra organización → 404."""
     response = tracking_client.put(
         f"/trucks/{other_truck.id}/location",
-        json={"lat": -31.42, "long": -64.18},
+        json={"lat": -31.42, "long": -64.18, "speed": 0, "heading": 0},
     )
     assert response.status_code == 404
 
@@ -124,7 +127,38 @@ def test_put_location_own_truck_succeeds(tracking_client, test_truck):
     """PUT /{truck_id}/location con camión de la organización del usuario → 200."""
     response = tracking_client.put(
         f"/trucks/{test_truck.id}/location",
-        json={"lat": -31.42, "long": -64.18},
+        json={"lat": -31.42, "long": -64.18, "speed": 12.25, "heading": 359.5},
     )
     assert response.status_code == 200
     assert response.json()["mensaje"] == "Ubicación actualizada correctamente"
+
+
+def test_location_responses_include_telemetry(tracking_client, db_session, test_truck):
+    db_session.add_all([
+        TrackingPoint(truck_id=test_truck.id, lat=-31.42, long=-64.18, speed=10, heading=90),
+        TrackingPoint(truck_id=test_truck.id, lat=-31.43, long=-64.19, speed=20, heading=270),
+    ])
+    db_session.commit()
+
+    latest = tracking_client.get(f"/trucks/{test_truck.id}/location")
+    history = tracking_client.get(f"/trucks/{test_truck.id}/iter")
+
+    assert latest.status_code == 200
+    assert latest.json()["speed"] == 20
+    assert latest.json()["heading"] == 270
+    assert history.status_code == 200
+    assert {point["speed"] for point in history.json()} == {10, 20}
+    assert {point["heading"] for point in history.json()} == {90, 270}
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [("speed", -0.1), ("heading", -0.1), ("heading", 360.1)],
+)
+def test_location_rejects_invalid_telemetry(tracking_client, test_truck, field, value):
+    payload = {"lat": -31.42, "long": -64.18, "speed": 1, "heading": 1}
+    payload[field] = value
+
+    response = tracking_client.put(f"/trucks/{test_truck.id}/location", json=payload)
+
+    assert response.status_code == 422

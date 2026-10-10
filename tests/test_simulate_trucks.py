@@ -1,8 +1,31 @@
 from scripts.simulate_trucks import (
+    actualizar_ubicacion,
     build_truck_configs,
     route_offset,
     rotate_route,
 )
+
+
+def test_actualizar_ubicacion_sends_telemetry(monkeypatch):
+    captured = {}
+
+    class Response:
+        status_code = 200
+
+    def fake_put(url, **kwargs):
+        captured["url"] = url
+        captured.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.put", fake_put)
+
+    assert actualizar_ubicacion(7, -31.42, -64.18, speed=35.5, heading=123.4, headers={"X-Test": "yes"})
+    assert captured["json"] == {
+        "lat": -31.42,
+        "long": -64.18,
+        "speed": 35.5,
+        "heading": 123.4,
+    }
 
 
 def test_build_truck_configs_preserves_base_identity_for_single_truck():

@@ -17,7 +17,13 @@ def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = De
     db_truck = models.Truck(id=truck.id, plate=truck.plate, organization_id=current_user.organization_id)
     db.add(db_truck)
 
-    db_tracking_point = models.TrackingPoint(truck_id=truck.id, lat=location.lat, long=location.long)
+    db_tracking_point = models.TrackingPoint(
+        truck_id=truck.id,
+        lat=location.lat,
+        long=location.long,
+        speed=location.speed,
+        heading=location.heading,
+    )
     db.add(db_tracking_point)
 
     db.commit()
@@ -35,7 +41,13 @@ def update_location(truck_id: int, location: schemas.Location, db: Session = Dep
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="camión no encontrado"
             )
-    db_point = models.TrackingPoint(truck_id=truck_id,lat=location.lat,long=location.long)
+    db_point = models.TrackingPoint(
+        truck_id=truck_id,
+        lat=location.lat,
+        long=location.long,
+        speed=location.speed,
+        heading=location.heading,
+    )
     #actualiza el recorrido del camión
     db.add(db_point)
     db.commit()
@@ -107,4 +119,3 @@ def get_trucks(db: Session = Depends(get_db), current_user: models.User = Depend
 def get_truck_ids(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck_list = db.query(models.Truck.id, models.Truck.plate).filter(models.Truck.organization_id == current_user.organization_id).all()
     return [{"id": row.id, "plate": row.plate} for row in truck_list]
-
