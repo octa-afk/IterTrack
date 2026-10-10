@@ -22,6 +22,46 @@ def test_register_serves_register_page(client):
     assert 'id="register-form"' in response.text
 
 
+# --- register-ui (T1): v10 register page wiring (create/join + auto-login) ---
+
+def test_register_page_wires_real_auth_flow(client):
+    response = client.get("/register")
+    assert response.status_code == 200
+    # Test hook + real API contract
+    assert 'id="register-form"' in response.text
+    assert 'action="/auth/register"' in response.text
+    assert "/auth/login" in response.text
+    assert "application/x-www-form-urlencoded" in response.text
+    assert "itertrack_token" in response.text
+    assert "REDIRECT = '/map'" in response.text  # redirect target, same style as login.html
+    # Create-organization vs join-with-code mode survives the redesign
+    assert 'id="mode-create"' in response.text
+    assert 'id="mode-join"' in response.text
+    # New v10 form hooks (submit button now carries an id)
+    assert 'id="submit"' in response.text
+
+
+# --- register-ui (T2): v10 reference design markers (same family as login.html) ---
+
+def test_register_page_uses_v10_poppins_design(client):
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert "Poppins" in response.text
+    assert 'class="shell"' in response.text   # two-panel glass shell
+    assert 'class="brand"' in response.text   # brand panel with live fleet card
+    assert 'class="meter"' in response.text   # password strength meter
+    # 15%-scaled tokens: 1020px shell -> 1173px, 860px breakpoint -> 989px
+    assert "max-width:1173px" in response.text
+    assert "max-width:989px" in response.text
+
+
+def test_register_page_links_to_login_route(client):
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert 'href="/"' in response.text
+    assert 'href="login.html"' not in response.text
+
+
 def test_login_page_links_to_register(client):
     response = client.get("/")
     assert response.status_code == 200
@@ -146,3 +186,22 @@ def test_map_page_opens_centered_on_first_truck(client):
     assert "function centrarEnPrimerCamion" in response.text
     # Boot must center after the first real location poll, not on the default view
     assert "centrarEnPrimerCamion();" in response.text
+
+
+# --- login-map-ui (C2e): v10 chrome — collapsible sidebar + solid top bar ---
+
+def test_map_page_has_collapsible_sidebar_and_solid_topbar(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # Sidebar wrapper, toggle button and the mini brand shown when it is hidden
+    assert 'id="sidebar"' in response.text
+    assert 'class="side-in"' in response.text
+    assert 'id="navToggle"' in response.text
+    assert 'class="tl"' in response.text
+    assert ".minibrand" in response.text
+    assert ".app.nav-off" in response.text
+    # The toggle state is persisted per browser, like the theme
+    assert "itertrack-nav" in response.text
+    # The project's own hooks survive the port (the v10 example has neither)
+    assert 'id="btn-logout"' in response.text
+    assert 'id="themeBtn"' in response.text
