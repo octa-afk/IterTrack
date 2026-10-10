@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IterTrack · Panel de seguimiento</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22380 355 1210 1200%22%3E%3Cpath fill=%22%235472d2%22 d=%22M390 752C385 590 500 465 665 465H1200L900 752Z%22/%3E%3Cpath fill=%22%233a58b4%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z%22/%3E%3Cpath fill=%22%236a8cee%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z%22/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -469,6 +470,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
 <script>
 /* ---------- Session (real auth guard) ----------
    Shared token with login.html: localStorage.itertrack_token.
@@ -516,6 +519,7 @@ themeBtn.addEventListener('click', () => {
   const oscuro = !temaOscuro();
   document.documentElement.classList.toggle('dark', oscuro);
   try{ localStorage.setItem(THEME_KEY, oscuro ? 'dark' : 'light'); }catch(e){}
+  sincronizarCapaMapa();
   sincronizarTemaBtn();
 });
 sincronizarTemaBtn();
@@ -552,10 +556,51 @@ const state = {q:'', status:'all', view:'all', sort:'plate', dir:'asc'};
 
 /* ---------- Map ---------- */
 const map = L.map('map').setView([-31.9,-64.0], 7);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom:19,
-  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+const MAP_STYLES = {
+  light: 'https://tiles.openfreemap.org/styles/positron',
+  dark: 'https://tiles.openfreemap.org/styles/dark',
+};
+const base = L.maplibreGL({
+  style: temaOscuro() ? MAP_STYLES.dark : MAP_STYLES.light,
+  attribution:'<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
+const MAP_COLORS = {
+  light: { water: '#a9d3f0', green: '#cfe8c4' },
+  dark: { water: '#1f4a6e', green: '#1f3d2b' },
+};
+let mapTheme = temaOscuro() ? 'dark' : 'light';
+function colorizeMap(mapLibreMap, theme){
+  const colors = MAP_COLORS[theme];
+  mapLibreMap.getStyle().layers.forEach(layer => {
+    const sourceLayer = layer['source-layer'];
+    if (layer.type === 'fill' && sourceLayer === 'water') {
+      mapLibreMap.setPaintProperty(layer.id, 'fill-color', colors.water);
+      mapLibreMap.setPaintProperty(layer.id, 'fill-opacity', 1);
+    }
+    if (layer.type === 'line' && sourceLayer === 'waterway') {
+      mapLibreMap.setPaintProperty(layer.id, 'line-color', colors.water);
+    }
+    if (layer.type === 'fill' && (
+      sourceLayer === 'park' ||
+      (sourceLayer === 'landcover' && /grass|wood|forest/.test(layer.id)) ||
+      (sourceLayer === 'landuse' && /park|grass|pitch|cemetery/.test(layer.id))
+    )) {
+      mapLibreMap.setPaintProperty(layer.id, 'fill-color', colors.green);
+      mapLibreMap.setPaintProperty(layer.id, 'fill-opacity', 0.9);
+    }
+  });
+}
+const mapLibreMap = base.getMaplibreMap();
+function recolorizarSiListo(){
+  if (mapLibreMap.isStyleLoaded()) colorizeMap(mapLibreMap, mapTheme);
+}
+mapLibreMap.on('style.load', recolorizarSiListo);
+mapLibreMap.on('styledata', recolorizarSiListo);
+recolorizarSiListo();
+function sincronizarCapaMapa(){
+  mapTheme = temaOscuro() ? 'dark' : 'light';
+  mapLibreMap.setStyle(MAP_STYLES[mapTheme]);
+}
 new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('map'));
 
 const markers = new Map();
