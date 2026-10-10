@@ -870,26 +870,52 @@ function select(id, fly){
 
 /* ---------- Real API calls ---------- */
 // GET /trucks: org-scoped list (id + plate) guarded by the Bearer token.
+function crearEstadoCamion(t){
+  return {
+    id: t.id,
+    plate: t.plate,
+    color: colorDeCamion(t),   // identity colour, fixed for the whole session
+    lat: null, lng: null,
+    heading: 0,
+    status: 'stop',
+    speed: 0,
+    fuel: null,  // not exposed by the backend
+    driver: '',  // not exposed by the backend
+    route: '',   // not exposed by the backend
+    updated: 0,
+    history: [],
+  };
+}
+
 async function cargarCamiones(){
   try{
     const res = await fetch('/trucks', { headers: authHeaders() });
     if (res.status === 401){ clearSessionAndRedirect(); return false; }
     if (!res.ok) return false;
     const data = await res.json();
-    trucks = data.map(t => ({
-      id: t.id,
-      plate: t.plate,
-      color: colorDeCamion(t),   // identity colour, fixed for the whole session
-      lat: null, lng: null,
-      heading: 0,
-      status: 'stop',
-      speed: 0,
-      fuel: null,  // not exposed by the backend
-      driver: '',  // not exposed by the backend
-      route: '',   // not exposed by the backend
-      updated: 0,
-      history: [],
-    }));
+    const existentes = new Map(trucks.map(t => [t.id, t]));
+    const idsActuales = new Set(data.map(t => t.id));
+
+    // Remove stale client-only state, including pins and in-flight tweens.
+    existentes.forEach((t, id) => {
+      if (idsActuales.has(id)) return;
+      const marker = markers.get(id);
+      if (marker) map.removeLayer(marker);
+      markers.delete(id);
+      moves.delete(id);
+      if (selectedId === id) selectedId = null;
+    });
+
+    // Reuse existing objects so telemetry, history, selection and marker state
+    // survive every list refresh; only newly discovered trucks get defaults.
+    trucks = data.map(t => {
+      const conocido = existentes.get(t.id);
+      if (conocido) {
+        conocido.plate = t.plate;
+        return conocido;
+      }
+      return crearEstadoCamion(t);
+    });
     return true;
   }catch(error){
     console.error('Error al cargar camiones:', error);
@@ -921,6 +947,7 @@ function aplicarPunto(t, p){
 // Poll GET /trucks/{id}/location for every truck (replaces the example's
 // movement simulation with real telemetry).
 async function actualizarUbicaciones(){
+  await cargarCamiones();
   await Promise.all(trucks.map(async t => {
     try{
       const res = await fetch(`/trucks/${t.id}/location`, { headers: authHeaders() });
