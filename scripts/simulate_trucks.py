@@ -126,14 +126,27 @@ def cargar_ruta():
             [-31.415118, -64.205147]
         ]
 
-def registrar_camion(truck_id: int, lat: float, long: float, plate: str, headers=None):
+def registrar_camion(
+    truck_id: int,
+    lat: float,
+    long: float,
+    plate: str,
+    speed: float = 0,
+    heading: float = 0,
+    headers=None,
+):
     """Registra el camión si aún no existe en el sistema."""
     try:
         response = requests.post(
             BASE_URL,
             json={
                 "truck": {"id": truck_id, "plate": plate},
-                "location": {"lat": lat, "long": long}
+                "location": {
+                    "lat": lat,
+                    "long": long,
+                    "speed": speed,
+                    "heading": heading,
+                }
             },
             headers=HEADERS if headers is None else headers,
             timeout=5
@@ -162,12 +175,19 @@ def limpiar_recorrido(truck_id: int, headers=None):
     except requests.RequestException as e:
         print(f"⚠️ Error al borrar recorrido: {e}")
 
-def actualizar_ubicacion(truck_id: int, lat: float, long: float, headers=None) -> bool:
+def actualizar_ubicacion(
+    truck_id: int,
+    lat: float,
+    long: float,
+    speed: float,
+    heading: float,
+    headers=None,
+) -> bool:
     """Envía la nueva coordenada del camión al endpoint PUT /trucks/{id}/location."""
     try:
         response = requests.put(
             f"{BASE_URL}/{truck_id}/location",
-            json={"lat": lat, "long": long},
+            json={"lat": lat, "long": long, "speed": speed, "heading": heading},
             headers=HEADERS if headers is None else headers,
             timeout=5
         )
@@ -214,9 +234,18 @@ def simular_ruta(
                 velocidad_kmh = (dist / intervalo) * 3.6
                 telemetria_str = f"| Rumbo: {rumbo:5.1f}° {cardinal:2} | Vel: {velocidad_kmh:4.1f} km/h | Tramo: {dist:4.1f}m"
             else:
+                rumbo = 0
+                velocidad_kmh = 0
                 telemetria_str = "| Punto de partida"
 
-            ok = actualizar_ubicacion(truck_id, lat, lon, headers=headers)
+            ok = actualizar_ubicacion(
+                truck_id,
+                lat,
+                lon,
+                speed=velocidad_kmh,
+                heading=rumbo,
+                headers=headers,
+            )
             status = "🟢 OK" if ok else "🔴 FAIL"
 
             print(f"[{i + 1:3}/{total_puntos}] {status} | Lat: {lat:10.6f}, Long: {lon:10.6f} {telemetria_str}")
