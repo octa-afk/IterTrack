@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -65,11 +66,37 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario ya existe")
     if db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya está registrado")
+    
+    organization = None
+
+    if user.invitation_code and user.org_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No puede proporcionar un código de invitación y un nombre de organización a la vez",
+        )
+    elif user.invitation_code:
+        organization = db.query(models.Organization).filter(
+            models.Organization.invitation_code == user.invitation_code
+        ).first()
+        if not organization:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Código de invitación inválido")
+    elif user.org_name:
+        invitation_code = secrets.token_urlsafe(12)
+        organization = models.Organization(name=user.org_name, invitation_code=invitation_code)
+        db.add(organization)
+        db.flush()  # Get the ID without committing yet
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debe proporcionar un código de invitación o un nombre de organización",
+        )
+
     db_user = models.User(
         username=user.username,
         email=user.email,
         full_name=user.full_name,
         hashed_password=hash_password(user.password),
+        organization_id=organization.id,
     )
     db.add(db_user)
     db.commit()

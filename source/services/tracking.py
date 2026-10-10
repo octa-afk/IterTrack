@@ -14,7 +14,7 @@ def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = De
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El camión ya existe")
     if db.query(models.Truck).filter(models.Truck.plate == truck.plate).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La patente ya existe")
-    db_truck = models.Truck(id=truck.id, plate=truck.plate)
+    db_truck = models.Truck(id=truck.id, plate=truck.plate, organization_id=current_user.organization_id)
     db.add(db_truck)
 
     db_tracking_point = models.TrackingPoint(truck_id=truck.id, lat=location.lat, long=location.long)
@@ -30,7 +30,7 @@ def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = De
 @router.put("/{truck_id}/location")
 def update_location(truck_id: int, location: schemas.Location, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
-    if not truck:
+    if not truck or truck.organization_id != current_user.organization_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="camión no encontrado"
@@ -43,9 +43,9 @@ def update_location(truck_id: int, location: schemas.Location, db: Session = Dep
 
 #devuelve la ubicación actual del camion
 @router.get("/{truck_id}/location")
-def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db)):
+def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
-    if not truck:
+    if not truck or truck.organization_id != current_user.organization_id:
             raise HTTPException(
                  status_code=status.HTTP_404_NOT_FOUND,
                  detail="camión no encontrado"
@@ -63,9 +63,9 @@ def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db)):
 
 #devuelve todas las ubicaciones de un camión
 @router.get("/{truck_id}/iter")
-def get_history_truck(truck_id: int, db: Session = Depends(get_db)):
+def get_history_truck(truck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck=db.query(models.Truck).filter(models.Truck.id==truck_id).first()
-    if not truck:
+    if not truck or truck.organization_id != current_user.organization_id:
          raise HTTPException(
               status_code=status.HTTP_404_NOT_FOUND,
               detail="camión no encontrado"
@@ -83,8 +83,8 @@ def get_history_truck(truck_id: int, db: Session = Depends(get_db)):
 #borra todo el recorrido registrado de un camión
 @router.delete("/{truck_id}/iter", status_code=status.HTTP_204_NO_CONTENT)
 def delete_truck_iter(truck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    truck = db.query(models.Truck).filter(models.Truck.id == truck_id).all()
-    if not truck:
+    truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
+    if not truck or truck.organization_id != current_user.organization_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="camión no encontrado"
@@ -98,13 +98,13 @@ def delete_truck_iter(truck_id: int, db: Session = Depends(get_db), current_user
 
 #devuelve el listado de todos los camiones
 @router.get("")
-def get_trucks(db: Session = Depends(get_db)):
-    truck_list = db.query(models.Truck).all()
+def get_trucks(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    truck_list = db.query(models.Truck).filter(models.Truck.organization_id == current_user.organization_id).all()
     return truck_list
 
 #devuelve el listado de ids y sus respectivas patentes de los camiones registrados
 @router.get("/ids")
-def get_truck_ids(db: Session = Depends(get_db)):
-    truck_list = db.query(models.Truck.id, models.Truck.plate).all()
+def get_truck_ids(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    truck_list = db.query(models.Truck.id, models.Truck.plate).filter(models.Truck.organization_id == current_user.organization_id).all()
     return [{"id": row.id, "plate": row.plate} for row in truck_list]
 

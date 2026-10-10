@@ -100,6 +100,31 @@
       #register-error[hidden] {
         display: none;
       }
+      .mode-toggle {
+        display: flex;
+        margin-bottom: 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .mode-toggle button {
+        flex: 1;
+        padding: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        border: none;
+        background: #ffffff;
+        color: #64748b;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+      }
+      .mode-toggle button.active {
+        background: #2563eb;
+        color: #ffffff;
+      }
+      .mode-toggle button:hover:not(.active) {
+        background: #f1f5f9;
+      }
     </style>
   </head>
   <body>
@@ -118,6 +143,21 @@
 
         <label for="password">Contraseña</label>
         <input type="password" id="password" name="password" autocomplete="new-password" required>
+
+        <div class="mode-toggle">
+          <button type="button" id="mode-create" class="active">Crear empresa</button>
+          <button type="button" id="mode-join">Unirse a empresa</button>
+        </div>
+
+        <div id="org-name-field">
+          <label for="org_name">Nombre de la organización</label>
+          <input type="text" id="org_name" name="org_name" autocomplete="organization">
+        </div>
+
+        <div id="invitation-code-field" hidden>
+          <label for="invitation_code">Código de invitación</label>
+          <input type="text" id="invitation_code" name="invitation_code" autocomplete="off">
+        </div>
 
         <p id="register-error" role="alert" hidden></p>
 
@@ -139,6 +179,28 @@
         errorMsg.hidden = false;
       }
 
+      const modeCreateBtn = document.getElementById("mode-create");
+      const modeJoinBtn = document.getElementById("mode-join");
+      const orgNameField = document.getElementById("org-name-field");
+      const invitationCodeField = document.getElementById("invitation-code-field");
+
+      function setMode(mode) {
+        const isCreate = mode === "create";
+        modeCreateBtn.classList.toggle("active", isCreate);
+        modeJoinBtn.classList.toggle("active", !isCreate);
+        orgNameField.hidden = !isCreate;
+        invitationCodeField.hidden = isCreate;
+        // Limpiar el campo que se oculta para no enviarlo
+        if (isCreate) {
+          document.getElementById("invitation_code").value = "";
+        } else {
+          document.getElementById("org_name").value = "";
+        }
+      }
+
+      modeCreateBtn.addEventListener("click", () => setMode("create"));
+      modeJoinBtn.addEventListener("click", () => setMode("join"));
+
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         errorMsg.hidden = true;
@@ -148,13 +210,21 @@
         const email = document.getElementById("email").value.trim();
         const full_name = document.getElementById("full_name").value.trim();
         const password = document.getElementById("password").value;
+        const isCreateMode = !orgNameField.hidden;
+
+        const payload = { username, email, full_name, password };
+        if (isCreateMode) {
+          payload.org_name = document.getElementById("org_name").value.trim();
+        } else {
+          payload.invitation_code = document.getElementById("invitation_code").value.trim();
+        }
 
         try {
           // /auth/register espera un body JSON
           const res = await fetch("/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, email, full_name, password }),
+            body: JSON.stringify(payload),
           });
 
           if (res.ok) {

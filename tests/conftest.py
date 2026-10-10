@@ -13,6 +13,9 @@ from sqlalchemy.pool import StaticPool
 from source.main import app
 from source.database.database import Base, get_db
 from source.services.auth import get_current_user
+from source.models.organization import Organization
+from source.models.user import User
+from source.models.truck import Truck
 
 engine = create_engine(
     "sqlite:///:memory:",
@@ -49,3 +52,50 @@ def client(db_session):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def test_org(db_session):
+    """Crea una organización de prueba con invitation_code conocido."""
+    org = Organization(name="Test Org", invitation_code="TEST-CODE")
+    db_session.add(org)
+    db_session.commit()
+    db_session.refresh(org)
+    return org
+
+
+@pytest.fixture()
+def test_org2(db_session):
+    """Crea una segunda organización de prueba para tests de aislamiento."""
+    org = Organization(name="Test Org 2", invitation_code="TEST-CODE-2")
+    db_session.add(org)
+    db_session.commit()
+    db_session.refresh(org)
+    return org
+
+
+@pytest.fixture()
+def test_user(db_session, test_org):
+    """Crea un usuario de prueba asignado a la organización de prueba."""
+    from source.services.auth import hash_password
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        full_name="Test User",
+        hashed_password=hash_password("testpass123"),
+        organization_id=test_org.id,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture()
+def test_truck(db_session, test_org):
+    """Crea un camión de prueba asignado a la organización de prueba."""
+    truck = Truck(id=1, plate="TEST123", organization_id=test_org.id)
+    db_session.add(truck)
+    db_session.commit()
+    db_session.refresh(truck)
+    return truck

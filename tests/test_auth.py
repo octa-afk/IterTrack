@@ -3,17 +3,19 @@ from fastapi.testclient import TestClient
 
 from source.main import app
 from source.database.database import Base, get_db
+from source.models.organization import Organization
 
 REGISTER_PAYLOAD = {
     "username": "chofer1",
     "email": "chofer1@example.com",
     "full_name": "Chofer Uno",
     "password": "secreto123",
+    "invitation_code": "TEST-CODE",
 }
 
 
 @pytest.fixture()
-def auth_client(db_session):
+def auth_client(db_session, test_org):
     """Client with real auth dependencies; only get_db is overridden."""
 
     def override_get_db():
@@ -43,6 +45,27 @@ def test_register_returns_201_without_password(auth_client):
     assert body["username"] == "chofer1"
     assert "password" not in body
     assert "hashed_password" not in body
+
+
+def test_register_invalid_invitation_code_returns_400(auth_client):
+    response = register(auth_client, {**REGISTER_PAYLOAD, "invitation_code": "WRONG-CODE"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Código de invitación inválido"
+
+
+def test_register_valid_invitation_code_assigns_organization(auth_client, db_session):
+    response = register(auth_client)
+    assert response.status_code == 201
+    
+    # Verificar que el usuario quedó asignado a la organización correcta
+    from source.models.user import User
+    user = db_session.query(User).filter(User.username == "chofer1").first()
+    assert user is not None
+    assert user.organization_id is not None
+    
+    org = db_session.query(Organization).filter(Organization.id == user.organization_id).first()
+    assert org is not None
+    assert org.invitation_code == "TEST-CODE"
 
 
 def test_register_duplicate_username_returns_400(auth_client):
@@ -99,3 +122,54 @@ def test_protected_endpoint_without_token_returns_401(auth_client):
         json={"truck": {"id": 1, "plate": "ABC123"}, "location": {"lat": -31.42, "long": -64.18}},
     )
     assert response.status_code == 401
+
+
+def test_register_with_org_name_creates_new_org(auth_client, db_session):
+    payload = {**REGISTER_PAYLOAD, "org_name": "Mi Empresa"}
+    del payload["invitation_code"]
+    response = register(auth_client, payload)
+    assert response.status_code == 201
+
+    from source.models.user import User
+    user = db_session.query(User).filter(User.username == "chofer1").first()
+    assert user is not None
+    assert user.organization_id is not None
+
+    org = db_session.query(Organization).filter(Organization.id == user.organization_id).first()
+    assert org is not None
+    assert org.name == "Mi Empresa"
+    assert org.invitation_code is not None
+    assert len(org.invitation_code) > 0
+
+
+def test_register_with_neither_invitation_code_nor_org_name_returns_400(auth_client):
+    payload = {**REGISTER_PAYLOAD}
+    del payload["invitation_code"]
+    response = register(auth_client, payload)
+    assert response.status_code == 400
+    assert "código de invitación o un nombre de organización" in response.json()["detail"]
+
+
+def test_register_with_both_invitation_code_and_org_name_returns_400(auth_client):
+    payload = {**REGISTER_PAYLOAD, "org_name": "Mi Empresa"}
+    response = register(auth_client, payload)
+    assert response.status_code == 400
+    assert "No puede proporcionar" in response.json()["detail"]
+
+
+def test_register_org_isolation(auth_client, db_session, test_org, test_org2):
+    """Verifica que registrarse con el código de una org no asigna a la otra."""
+    payload = {
+        **REGISTER_PAYLOAD,
+        "username": "chofer2",
+        "email": "chofer2@example.com",
+        "invitation_code": "TEST-CODE-2",
+    }
+    response = register(auth_client, payload)
+    assert response.status_code == 201
+
+    from source.models.user import User
+    user = db_session.query(User).filter(User.username == "chofer2").first()
+    assert user is not None
+    assert user.organization_id == test_org2.id
+    assert user.organization_id != test_org.id
