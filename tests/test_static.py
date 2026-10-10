@@ -104,6 +104,28 @@ def test_map_page_has_dark_theme_palette(client):
     assert ":root.dark" in response.text
 
 
+def test_map_page_switches_dark_cartography_with_theme(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "maplibre-gl@5.24.0/dist/maplibre-gl.css" in response.text
+    assert "maplibre-gl@5.24.0/dist/maplibre-gl.js" in response.text
+    assert "@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js" in response.text
+    assert "tiles.openfreemap.org/styles/positron" in response.text
+    assert "tiles.openfreemap.org/styles/dark" in response.text
+    assert "MAP_COLORS" in response.text
+    assert "#a9d3f0" in response.text
+    assert "#1f4a6e" in response.text
+    assert "function colorizeMap" in response.text
+    assert "sourceLayer === 'water'" in response.text
+    assert "sourceLayer === 'waterway'" in response.text
+    assert "function recolorizarSiListo" in response.text
+    assert "mapLibreMap.on('styledata', recolorizarSiListo)" in response.text
+    assert "L.maplibreGL" in response.text
+    assert "mapLibreMap.setStyle" in response.text
+    assert "function sincronizarCapaMapa" in response.text
+    assert "sincronizarCapaMapa();" in response.text
+
+
 def test_map_page_has_logout_button(client):
     response = client.get("/map")
     assert response.status_code == 200
