@@ -74,3 +74,18 @@ def test_map_page_uses_example_cdn_leaflet(client):
     response = client.get("/map")
     assert response.status_code == 200
     assert "cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4" in response.text
+
+
+# --- login-map-ui (C1): whole UI scaled by 15% (px literals x1.15) ---
+
+def test_pages_use_scaled_ui_scale(client):
+    login = client.get("/")
+    page = client.get("/map")
+    assert login.status_code == 200
+    assert page.status_code == 200
+    # Base font sizes: login 14px -> 16px, map 13px -> 15px (with body padding 24px -> 28px)
+    assert "font-size:16px" in login.text
+    assert "font-size:15px;padding:28px" in page.text
+    # Media-query breakpoints: login 860 -> 989, map 820 -> 943
+    assert "max-width:989px" in login.text
+    assert "max-width:943px" in page.text
