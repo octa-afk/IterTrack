@@ -1,260 +1,319 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IterTrack - Registrate</title>
-    <style>
-      html, body {
-        height: 100%;
-        padding: 0;
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background: #f1f5f9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .login-card {
-        box-sizing: border-box;
-        width: 100%;
-        max-width: 360px;
-        margin: 16px;
-        padding: 24px;
-        background: #ffffff;
-        border-radius: 12px;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-      }
-      .login-card h1 {
-        margin: 0 0 4px 0;
-        font-size: 18px;
-        color: #1a1a1a;
-        text-align: center;
-      }
-      .login-card .subtitle {
-        margin: 0 0 18px 0;
-        font-size: 13px;
-        color: #64748b;
-        text-align: center;
-      }
-      .login-card label {
-        display: block;
-        margin: 0 0 4px 0;
-        font-size: 13px;
-        color: #475569;
-      }
-      .login-card input {
-        box-sizing: border-box;
-        width: 100%;
-        margin-bottom: 14px;
-        padding: 10px;
-        font-size: 14px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-      }
-      .login-card input:focus {
-        outline: 2px solid #bfdbfe;
-        border-color: #2563eb;
-      }
-      .login-card button {
-        width: 100%;
-        padding: 10px;
-        font-size: 15px;
-        font-weight: 600;
-        color: #ffffff;
-        background: #2563eb;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      .login-card button:hover {
-        background: #1d4ed8;
-      }
-      .login-card .alt-link {
-        display: block;
-        margin: 14px 0 0 0;
-        font-size: 13px;
-        color: #2563eb;
-        text-align: center;
-        text-decoration: none;
-      }
-      .login-card .alt-link:hover {
-        text-decoration: underline;
-      }
-      #register-error {
-        margin: 0 0 14px 0;
-        padding: 8px 10px;
-        font-size: 13px;
-        color: #b91c1c;
-        background: #fee2e2;
-        border: 1px solid #fecaca;
-        border-radius: 8px;
-      }
-      #register-error[hidden] {
-        display: none;
-      }
-      .mode-toggle {
-        display: flex;
-        margin-bottom: 14px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      .mode-toggle button {
-        flex: 1;
-        padding: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        border: none;
-        background: #ffffff;
-        color: #64748b;
-        cursor: pointer;
-        transition: background 0.15s, color 0.15s;
-      }
-      .mode-toggle button.active {
-        background: #2563eb;
-        color: #ffffff;
-      }
-      .mode-toggle button:hover:not(.active) {
-        background: #f1f5f9;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="login-card">
-      <p class="subtitle">Creá tu cuenta de flota</p>
-      <form id="register-form" method="post" action="/auth/register">
-        <label for="username">Usuario</label>
-        <input type="text" id="username" name="username" autocomplete="username" required>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crear cuenta · IterTrack</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22380 355 1210 1200%22%3E%3Cpath fill=%22%235472d2%22 d=%22M390 752C385 590 500 465 665 465H1200L900 752Z%22/%3E%3Cpath fill=%22%233a58b4%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z%22/%3E%3Cpath fill=%22%236a8cee%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z%22/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#dbe7f8; --bg2:#cbdcf3; --ink:#1f2a3d; --muted:#6b778c; --line:#dfe5f0;
+  --acc:#5a7ee6; --acc-d:#4666cc; --acc-xl:#ecf1fc; --err:#d2594e;
+  --field:rgba(255,255,255,.85); --form:rgba(255,255,255,.62); --shadow:0 21px 58px rgba(60,90,150,.20);
+  --b1:rgba(120,165,240,.38); --b2:rgba(165,210,245,.55); --b3:rgba(185,180,240,.28);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    color-scheme:dark;
+    --bg1:#121a31; --bg2:#0d1426; --ink:#e7edf9; --muted:#8e9bb5; --line:rgba(255,255,255,.12);
+    --acc:#8aa6ff; --acc-d:#b4c6ff; --acc-xl:rgba(138,166,255,.14); --err:#ff8a80;
+    --field:rgba(255,255,255,.07); --form:rgba(255,255,255,.05); --shadow:0 21px 58px rgba(0,0,0,.55);
+    --b1:rgba(79,111,224,.38); --b2:rgba(90,150,230,.26); --b3:rgba(130,110,220,.22);
+  }
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:Poppins,system-ui,sans-serif;color:var(--ink);font-size:16px;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:28px;
+  background:
+    radial-gradient(644px 460px at 5% 6%,var(--b1),transparent 70%),
+    radial-gradient(713px 483px at 82% -6%,var(--b2),transparent 70%),
+    radial-gradient(598px 483px at 10% 100%,var(--b3),transparent 70%),
+    linear-gradient(135deg,var(--bg1),var(--bg2));background-attachment:fixed}
+svg{display:block}
+.shell{width:100%;max-width:1173px;display:grid;grid-template-columns:1.02fr 1fr;border-radius:32px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.75);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(25px) saturate(170%);backdrop-filter:blur(25px) saturate(170%);background:var(--form)}
+@media (prefers-color-scheme:dark){.shell{border-color:rgba(255,255,255,.12)}}
 
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" autocomplete="email" required>
+/* Panel de marca */
+.brand{position:relative;padding:39px 41px;color:#fff;display:flex;flex-direction:column;gap:21px;
+  background:linear-gradient(160deg,#7494ec 0%,#5a7ee6 55%,#4a6bd2 100%);overflow:hidden}
+.logo{display:flex;align-items:center;gap:13px;font-weight:600;font-size:23px;letter-spacing:.2px;position:relative}
+.logo svg{width:39px;height:39px}
+.mark .m1{fill:var(--m1)}.mark .m2{fill:var(--m2)}.mark .m3{fill:var(--m3)}
+.brand .logo{--m1:#ffffff;--m2:#c3d3fa;--m3:#e1e9fd}
+.brand h2{font-size:29px;line-height:1.25;font-weight:600;max-width:15em;position:relative;margin-top:12px}
+.brand p{color:rgba(255,255,255,.85);max-width:26em;line-height:1.55;position:relative}
+.live{position:relative;margin-top:auto;border-radius:21px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);padding:6.9px 21px 4.6px}
+.live-h{font-size:14px;opacity:.85;padding:12px 0 6.9px}
+.live ul{list-style:none;padding:0}
+.live li{display:grid;grid-template-columns:12px 1fr auto;column-gap:14px;align-items:center;padding:12px 0;border-top:1px solid rgba(255,255,255,.22)}
+.live li i{width:12px;height:12px;border-radius:50%;grid-row:span 2}
+.live b{font-weight:600;font-size:15px}
+.live em{font-style:normal;font-weight:600;font-size:15px;text-align:right}
+.live span{grid-column:2/4;font-size:13px;opacity:.8}
 
-        <label for="full_name">Nombre completo</label>
-        <input type="text" id="full_name" name="full_name" autocomplete="name" required>
+/* Formulario */
+.side{padding:44px 48px;display:flex;flex-direction:column;justify-content:center}
+.side h1{font-size:28px;font-weight:600;margin-bottom:4.6px}
+.side .lead{color:var(--muted);margin-bottom:25px}
+form{display:grid;gap:16px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.f label{display:block;font-weight:500;font-size:14px;margin-bottom:6.9px}
+.input{position:relative}
+.input input{width:100%;padding:13px 16px;border:1px solid var(--line);border-radius:14px;background:var(--field);font:inherit;color:var(--ink);transition:border-color .15s}
+.input input::placeholder{color:var(--muted);opacity:.8}
+.input input:focus{outline:2.3px solid var(--acc);outline-offset:0;border-color:var(--acc)}
+.input input[aria-invalid="true"]{border-color:var(--err)}
+.input.pw input{padding-right:90px}
+.show{position:absolute;right:6.9px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--acc-d);font:500 14px Poppins;padding:6.9px 12px;border-radius:9.2px;cursor:pointer}
+.show:hover{background:var(--acc-xl)}
+.show:focus-visible,a:focus-visible,.btn:focus-visible,.check input:focus-visible,.mode button:focus-visible{outline:2.3px solid var(--acc);outline-offset:2.3px}
+.err{color:var(--err);font-size:13px;min-height:0;margin-top:5.8px}
+.err:empty{display:none}
+.check{display:flex;align-items:flex-start;gap:9.2px;color:var(--muted);line-height:1.4}
+.check input{accent-color:var(--acc);margin-top:2.3px;width:17px;height:17px}
+a{color:var(--acc-d);text-decoration:none;font-weight:500} a:hover{text-decoration:underline}
+.btn{border:0;border-radius:14px;padding:14px;font:600 16px Poppins;color:#fff;background:#5a7ee6;cursor:pointer;transition:transform .1s,background .15s}
+.btn:hover{background:#4f73dc} .btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.7;cursor:progress}
+.status{font-size:14px;text-align:center;min-height:21px}
+.status.ok{color:#2f8f68}.status.bad{color:var(--err)}
+.alt{text-align:center;color:var(--muted);margin-top:21px}
+.meter{display:grid;grid-template-columns:repeat(4,1fr);gap:5.8px;margin-top:9.2px}
+.meter i{height:4.6px;border-radius:4.6px;background:var(--line);transition:background .2s}
+.hint{font-size:13px;color:var(--muted);margin-top:5.8px}
+.mode{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--field)}
+.mode button{border:0;background:none;color:var(--muted);font:600 16px Poppins;padding:12px;cursor:pointer;transition:background .15s,color .15s}
+.mode button.active{background:var(--acc);color:#fff}
+.mode button:hover:not(.active){background:var(--acc-xl)}
 
-        <label for="password">Contraseña</label>
-        <input type="password" id="password" name="password" autocomplete="new-password" required>
-
-        <div class="mode-toggle">
-          <button type="button" id="mode-create" class="active">Crear empresa</button>
-          <button type="button" id="mode-join">Unirse a empresa</button>
+@media (max-width:989px){
+  body{padding:14px;align-items:start}
+  .shell{grid-template-columns:1fr}
+  .brand{padding:25px 28px}
+  .brand h2,.brand p,.live{display:none}
+  .side{padding:30px 25px}
+}
+@media (max-width:552px){.row2{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="shell">
+<section class="brand" aria-hidden="false">
+  <div class="logo">
+    <svg class="mark" viewBox="380 355 1210 1200" role="img" aria-label="IterTrack"><path class="m3" d="M390 752C385 590 500 465 665 465H1200L900 752Z"/><path class="m2" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z"/><path class="m1" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z"/></svg>
+    IterTrack
+  </div>
+  <h2>Empezá a controlar tu flota hoy.</h2>
+  <p>Creá tu cuenta en un minuto y sumá a tus camiones, choferes y rutas en un solo lugar.</p>
+  <div class="live" aria-hidden="true">
+    <div class="live-h">En ruta ahora</div>
+    <ul>
+      <li><i style="background:#a6e3c4"></i><b>AF 412 KD</b><em>82 km/h</em><span>Córdoba → Rosario</span></li>
+      <li><i style="background:#f6cf7a"></i><b>AG 233 MP</b><em>Detenido</em><span>Córdoba → Tucumán</span></li>
+      <li><i style="background:#ffa49a"></i><b>AF 678 NC</b><em>105 km/h</em><span>Río Cuarto → San Luis</span></li>
+    </ul>
+  </div>
+</section>
+  <section class="side">
+    <h1>Crear cuenta</h1>
+    <p class="lead">Completá tus datos para empezar a usar el panel.</p>
+    <form id="register-form" method="post" action="/auth/register" novalidate>
+      <div class="mode" role="group" aria-label="Modo de registro">
+        <button type="button" id="mode-create" class="active">Crear empresa</button>
+        <button type="button" id="mode-join">Unirse a empresa</button>
+      </div>
+      <div class="row2">
+        <div class="f">
+          <label for="full_name">Nombre completo</label>
+          <div class="input"><input id="full_name" name="full_name" type="text" autocomplete="name" placeholder="Ana Pérez" required></div>
+          <div class="err" aria-live="polite"></div>
         </div>
-
-        <div id="org-name-field">
-          <label for="org_name">Nombre de la organización</label>
-          <input type="text" id="org_name" name="org_name" autocomplete="organization">
+        <div class="f" id="org-name-field">
+          <label for="org_name">Empresa</label>
+          <div class="input"><input id="org_name" name="org_name" type="text" autocomplete="organization" placeholder="Transportes del Sur" required></div>
+          <div class="err" aria-live="polite"></div>
         </div>
-
-        <div id="invitation-code-field" hidden>
+        <div class="f" id="invitation-code-field" hidden>
           <label for="invitation_code">Código de invitación</label>
-          <input type="text" id="invitation_code" name="invitation_code" autocomplete="off">
+          <div class="input"><input id="invitation_code" name="invitation_code" type="text" autocomplete="off" placeholder="Código que te compartió tu empresa" required></div>
+          <div class="err" aria-live="polite"></div>
         </div>
+      </div>
+      <div class="f">
+        <label for="email">Correo electrónico</label>
+        <div class="input"><input id="email" name="email" type="email" autocomplete="email" placeholder="nombre@empresa.com" required></div>
+        <div class="err" aria-live="polite"></div>
+      </div>
+      <div class="f">
+        <label for="username">Usuario</label>
+        <div class="input"><input id="username" name="username" type="text" autocomplete="username" placeholder="Tu usuario" required></div>
+        <div class="err" aria-live="polite"></div>
+      </div>
+      <div class="f">
+        <label for="pass">Contraseña</label>
+        <div class="input pw"><input id="pass" name="password" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" required aria-describedby="hint">
+          <button class="show" type="button" aria-label="Mostrar contraseña">Mostrar</button></div>
+        <div class="meter" id="meter" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="hint" id="hint">Usá al menos 8 caracteres y un número.</div>
+        <div class="err" aria-live="polite"></div>
+      </div>
+      <div class="f">
+        <label for="pass2">Repetir contraseña</label>
+        <div class="input pw"><input id="pass2" type="password" autocomplete="new-password" placeholder="Repetí tu contraseña" required>
+          <button class="show" type="button" aria-label="Mostrar contraseña">Mostrar</button></div>
+        <div class="err" aria-live="polite"></div>
+      </div>
+      <div class="f">
+        <label class="check"><input type="checkbox" id="terms"> <span>Acepto los <a href="#">términos de uso</a> y la <a href="#">política de privacidad</a>.</span></label>
+        <div class="err" aria-live="polite"></div>
+      </div>
+      <button class="btn" id="submit" type="submit">Crear cuenta</button>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+    </form>
+    <p class="alt">¿Ya tenés cuenta? <a href="/">Iniciar sesión</a></p>
+  </section>
+</main>
+<script>
+const REDIRECT = '/map'; // página a la que va después de registrarse e iniciar sesión
+const TOKEN_KEY = 'itertrack_token'; // misma clave que usa map.html para el guard de sesión
 
-        <p id="register-error" role="alert" hidden></p>
+const $ = s => document.querySelector(s);
+const emailOk = v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+function setErr(input, msg){
+  const box = input.closest('.f').querySelector('.err');
+  box.textContent = msg || '';
+  input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+  return !msg;
+}
+document.querySelectorAll('.show').forEach(b => b.addEventListener('click', () => {
+  const inp = b.parentElement.querySelector('input');
+  const hide = inp.type === 'password';
+  inp.type = hide ? 'text' : 'password';
+  b.textContent = hide ? 'Ocultar' : 'Mostrar';
+  b.setAttribute('aria-label', hide ? 'Ocultar contraseña' : 'Mostrar contraseña');
+}));
+function setStatus(msg, kind){ const s = $('#status'); s.textContent = msg; s.className = 'status ' + (kind||''); }
 
-        <button type="submit">Registrarme</button>
-      </form>
-      <a class="alt-link" href="/">¿Ya tenés cuenta? Iniciá sesión</a>
-    </div>
+// Flujo real: POST /auth/register (JSON) + auto-login OAuth2 contra POST /auth/login
+// (x-www-form-urlencoded). El token se guarda en localStorage.itertrack_token y
+// se redirige a /map. Nunca innerHTML: todos los mensajes van por textContent.
+async function sendToServer(payload){
+  let res;
+  try{
+    res = await fetch('/auth/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+  }catch(_){
+    throw new Error('No se pudo conectar con el servidor.');
+  }
+  if (!res.ok){
+    // La API responde {detail: ...}
+    let detail = '';
+    try{
+      const data = await res.json();
+      detail = data && data.detail ? String(data.detail) : '';
+    }catch(_){}
+    throw new Error(detail || 'No se pudo crear la cuenta. Intenta de nuevo más tarde.');
+  }
+  // Registro creado: ingreso automático con las mismas credenciales
+  let loginRes;
+  try{
+    loginRes = await fetch('/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({username: payload.username, password: payload.password})
+    });
+  }catch(_){
+    throw new Error('Cuenta creada, pero no se pudo iniciar sesión. Iniciá sesión manualmente.');
+  }
+  if (!loginRes.ok){
+    throw new Error('Cuenta creada, pero no se pudo iniciar sesión. Iniciá sesión manualmente.');
+  }
+  const data = await loginRes.json();
+  localStorage.setItem(TOKEN_KEY, data.access_token);
+  return data;
+}
 
-    <script>
-      // Misma clave de localStorage que usa map.html para el guard de sesión
-      const TOKEN_KEY = "itertrack_token";
+const full_name = $('#full_name'), org_name = $('#org_name'), invitation_code = $('#invitation_code');
+const email = $('#email'), username = $('#username'), pass = $('#pass'), pass2 = $('#pass2'), terms = $('#terms');
+const modeCreateBtn = $('#mode-create'), modeJoinBtn = $('#mode-join');
+const orgNameField = $('#org-name-field'), invitationCodeField = $('#invitation-code-field');
 
-      const form = document.getElementById("register-form");
-      const errorMsg = document.getElementById("register-error");
+// Crear organización (org_name) vs unirse a una existente (invitation_code):
+// el backend exige exactamente uno de los dos, así que el campo oculto se
+// limpia y se relaja su `required`.
+let mode = 'create';
+function setMode(next){
+  mode = next;
+  const isCreate = mode === 'create';
+  modeCreateBtn.classList.toggle('active', isCreate);
+  modeJoinBtn.classList.toggle('active', !isCreate);
+  orgNameField.hidden = !isCreate;
+  invitationCodeField.hidden = isCreate;
+  org_name.required = isCreate;
+  invitation_code.required = !isCreate;
+  if (isCreate){ invitation_code.value = ''; } else { org_name.value = ''; }
+  setErr(org_name, '');
+  setErr(invitation_code, '');
+}
+modeCreateBtn.addEventListener('click', () => setMode('create'));
+modeJoinBtn.addEventListener('click', () => setMode('join'));
 
-      function mostrarError(mensaje) {
-        // Nunca innerHTML: el mensaje vive en textContent (XSS)
-        errorMsg.textContent = mensaje;
-        errorMsg.hidden = false;
-      }
-
-      const modeCreateBtn = document.getElementById("mode-create");
-      const modeJoinBtn = document.getElementById("mode-join");
-      const orgNameField = document.getElementById("org-name-field");
-      const invitationCodeField = document.getElementById("invitation-code-field");
-
-      function setMode(mode) {
-        const isCreate = mode === "create";
-        modeCreateBtn.classList.toggle("active", isCreate);
-        modeJoinBtn.classList.toggle("active", !isCreate);
-        orgNameField.hidden = !isCreate;
-        invitationCodeField.hidden = isCreate;
-        // Limpiar el campo que se oculta para no enviarlo
-        if (isCreate) {
-          document.getElementById("invitation_code").value = "";
-        } else {
-          document.getElementById("org_name").value = "";
-        }
-      }
-
-      modeCreateBtn.addEventListener("click", () => setMode("create"));
-      modeJoinBtn.addEventListener("click", () => setMode("join"));
-
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        errorMsg.hidden = true;
-        errorMsg.textContent = "";
-
-        const username = document.getElementById("username").value.trim();
-        const email = document.getElementById("email").value.trim();
-        const full_name = document.getElementById("full_name").value.trim();
-        const password = document.getElementById("password").value;
-        const isCreateMode = !orgNameField.hidden;
-
-        const payload = { username, email, full_name, password };
-        if (isCreateMode) {
-          payload.org_name = document.getElementById("org_name").value.trim();
-        } else {
-          payload.invitation_code = document.getElementById("invitation_code").value.trim();
-        }
-
-        try {
-          // /auth/register espera un body JSON
-          const res = await fetch("/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-
-          if (res.ok) {
-            // Registro creado: ingreso automático con las mismas credenciales
-            const loginRes = await fetch("/auth/login", {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: new URLSearchParams({ username, password }),
-            });
-
-            if (loginRes.ok) {
-              const data = await loginRes.json();
-              localStorage.setItem(TOKEN_KEY, data.access_token);
-              window.location.href = "/map";
-              return;
-            }
-
-            mostrarError("Cuenta creada, pero no se pudo iniciar sesión. Iniciá sesión manualmente.");
-            return;
-          }
-
-          let mensaje = "No se pudo crear la cuenta. Intenta de nuevo más tarde.";
-          if (res.status === 400 || res.status === 422) {
-            try {
-              const data = await res.json();
-              if (typeof data.detail === "string" && data.detail) {
-                mensaje = data.detail;
-              }
-            } catch (parseError) {
-              // Respuesta sin JSON válido: mantenemos el mensaje genérico
-            }
-          }
-          mostrarError(mensaje);
-        } catch (error) {
-          mostrarError("No se pudo conectar con el servidor.");
-        }
-      });
-    </script>
-  </body>
+const meterColors = ['#e0675c','#eeb04a','#8fb86a','#5fae8a'];
+function strength(v){
+  let s = 0;
+  if (v.length >= 8) s++;
+  if (/[a-z]/.test(v) && /[A-Z]/.test(v)) s++;
+  if (/\d/.test(v)) s++;
+  if (/[^A-Za-z0-9]/.test(v) || v.length >= 12) s++;
+  return s;
+}
+pass.addEventListener('input', () => {
+  const s = pass.value ? strength(pass.value) : 0;
+  document.querySelectorAll('#meter i').forEach((el,i) => el.style.background = i < s ? meterColors[s-1] : '');
+  $('#hint').textContent = !pass.value ? 'Usá al menos 8 caracteres y un número.' : ['Muy débil','Débil','Aceptable','Fuerte'][Math.max(0,s-1)];
+});
+// El medidor y el hint son solo indicativos: el backend no exige longitud ni
+// números, así que no bloquean el envío.
+const checks = {
+  full_name:        () => setErr(full_name, !full_name.value.trim() ? 'Ingresá tu nombre.' : ''),
+  org_name:         () => setErr(org_name, mode === 'create' && !org_name.value.trim() ? 'Ingresá el nombre de tu empresa.' : ''),
+  invitation_code:  () => setErr(invitation_code, mode === 'join' && !invitation_code.value.trim() ? 'Ingresá el código de invitación.' : ''),
+  email:            () => setErr(email, !email.value.trim() ? 'Ingresá tu correo.' : !emailOk(email.value.trim()) ? 'Revisá el formato del correo.' : ''),
+  username:         () => setErr(username, !username.value.trim() ? 'Ingresá tu usuario.' : ''),
+  pass:             () => setErr(pass, !pass.value ? 'Ingresá tu contraseña.' : ''),
+  pass2:            () => setErr(pass2, pass2.value !== pass.value ? 'Las contraseñas no coinciden.' : !pass2.value ? 'Repetí tu contraseña.' : ''),
+  terms:            () => setErr(terms, !terms.checked ? 'Tenés que aceptar los términos para continuar.' : ''),
+};
+[['full_name',full_name],['org_name',org_name],['invitation_code',invitation_code],['email',email],['username',username],['pass',pass],['pass2',pass2]].forEach(([k,el]) => el.addEventListener('blur', checks[k]));
+$('#register-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const results = Object.values(checks).map(fn => fn());
+  const first = [full_name, org_name, invitation_code, email, username, pass, pass2, terms][results.indexOf(false)];
+  if (first){ first.focus(); return; }
+  const btn = $('#submit'); btn.disabled = true; btn.textContent = 'Creando cuenta…'; setStatus('');
+  const payload = {
+    username: username.value.trim(),
+    email: email.value.trim(),
+    full_name: full_name.value.trim(),
+    password: pass.value
+  };
+  // Exactamente uno de los dos, según el modo activo
+  if (mode === 'create'){ payload.org_name = org_name.value.trim(); }
+  else { payload.invitation_code = invitation_code.value.trim(); }
+  try{
+    await sendToServer(payload);
+    setStatus('Cuenta creada. Redirigiendo al panel…','ok');
+    setTimeout(() => { window.location.href = REDIRECT; }, 600);
+  }catch(err){
+    setStatus(err.message || 'No se pudo crear la cuenta. Intenta de nuevo más tarde.','bad');
+    btn.disabled = false; btn.textContent = 'Crear cuenta';
+  }
+});
+</script>
+</body>
 </html>
