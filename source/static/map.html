@@ -10,7 +10,7 @@
 <style>
   :root{
     --mint:#dfe8f6; --green:#5a7ee6; --green-d:#4666cc; --green-l:#cbd8f8; --green-xl:#ecf1fc;
-    --bg:#efefef; --card:#fff; --ink:#1f2a3d; --muted:#6b778c; --line:#e6eaf2;
+    --bg:#efefef; --card:#fff; --ink:#1f2a3d; --muted:#6b778c; --line:#e6eaf2; --ring:#fff;
     --move:#5a7ee6; --idle:#eeb04a; --stop:#8a949c; --alert:#e0675c;
   }
   *{box-sizing:border-box;margin:0}
@@ -58,10 +58,18 @@
   .mapbox{flex:1;border-radius:14px;overflow:hidden;min-height:299px;position:relative}
   #map{position:absolute;inset:0}
   .leaflet-container{font-family:Poppins,sans-serif}
-  .pin{width:39px;height:39px;display:grid;place-items:center}
-  .pin div{width:30px;height:30px;border-radius:50%;border:3.5px solid #fff;box-shadow:0 1px 6.9px rgba(0,0,0,.45);display:grid;place-items:center;transition:transform .2s}
-  .pin svg{width:14px;height:14px;fill:#fff}
-  .pin.sel div{transform:scale(1.3);box-shadow:0 0 0 4.6px rgba(110,150,235,.4),0 1px 6.9px rgba(0,0,0,.45)}
+  .pin{width:40px;height:40px;display:grid;place-items:center;position:relative}
+  .pin .halo{display:none;position:absolute;inset:0;border-radius:50%;opacity:.2}
+  .pin.move .halo,.pin.alert .halo{display:block}
+  .pin.alert .halo{animation:pulse 1.8s ease-out infinite}
+  @keyframes pulse{0%{transform:scale(.75);opacity:.4}100%{transform:scale(1.35);opacity:0}}
+  @media (prefers-reduced-motion:reduce){.pin.alert .halo{animation:none}}
+  .pin .badge{position:relative;width:30px;height:30px;border-radius:50%;border:2.5px solid var(--ring);box-shadow:0 1px 5px rgba(0,0,0,.3);display:grid;place-items:center;transition:transform .2s,box-shadow .2s}
+  .pin .badge span{display:grid;transition:transform .4s}
+  .pin svg{width:17px;height:17px;fill:#fff}
+  .pin.sel .badge{transform:scale(1.15);box-shadow:0 0 0 2px var(--ink),0 2px 8px rgba(0,0,0,.35)}
+  .pin .lbl{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .pin.sel .lbl{display:block}
 
   /* Fila inferior */
   .bottom{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;height:205px}
@@ -249,7 +257,6 @@
   .seg button[aria-pressed="true"]{background:#fff;color:var(--ink)}
   .pill .al{border:0;background:rgba(255,255,255,.2)}
   .search:focus-within{box-shadow:inset 0 0 0 1px rgba(31,42,61,.3)}
-  .pin.sel div{transform:scale(1.3);box-shadow:0 0 0 2.3px #1f2a3d,0 1px 6.9px rgba(0,0,0,.4)}
 
   /* ===== Modo oscuro =====
      Same palette as extras/ejemplos html/dashboard-flota-v8-dark.html, but
@@ -301,7 +308,6 @@
   :root.dark .leaflet-bar a:hover{background:#2a3858}
   :root.dark .leaflet-control-attribution{background:rgba(15,22,40,.75)!important;color:var(--muted)}
   :root.dark .leaflet-control-attribution a{color:#9db4ff}
-  :root.dark .pin div{border-color:#fff}
 
   :root.dark .bar i{background:rgba(255,255,255,.10)}
   :root.dark .bar:hover i,:root.dark .bar.sel i{background:var(--green)}
@@ -329,7 +335,6 @@
     :root.dark .app{border:0;box-shadow:none}
   }
   @media (max-width:943px){ :root.dark .side{border-bottom:1px solid rgba(255,255,255,.12)} }
-  :root.dark .pin.sel div{transform:scale(1.3);box-shadow:0 0 0 2.3px #fff,0 1px 6.9px rgba(0,0,0,.4)}
 </style>
 <script>
   // Apply the persisted theme before first paint: no flash of the wrong theme.
@@ -482,6 +487,10 @@ sincronizarTemaBtn();
 /* ---------- Data (real endpoints: /trucks + location polling) ---------- */
 const SPEED_LIMIT = 90;      // km/h: alert threshold and chart limit
 const POLL_MS = 3000;        // location refresh interval
+const MOVE_MIN_MS = 400;     // movement tween floor: keeps short hops visible
+const MOVE_MAX_MS = 6000;    // movement tween cap: never longer than two polls
+const MOVE_EASE = k => (k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2) / 2); // easeInOutQuad
+const OPEN_ZOOM = 12;         // zoom used when the map opens on the first truck
 const STALE_MS = 10 * 60e3;  // no signal for 10 min -> truck considered off
 const HISTORY_MAX = 18;      // speed samples kept for the detail sparkline
 
@@ -491,6 +500,13 @@ const STATUS = {
   stop: {label:'Apagado',       color:'#8a949c'},
   alert:{label:'Alerta',        color:'#e0675c'},
 };
+
+// Identity colour per truck: stable across reloads (keyed on the plate) so a
+// truck keeps the same colour whatever its status is. The status keeps its own
+// channel: the list dot, the detail panel and the pin's halo.
+const TRUCK_COLORS = ['#3f6fe0','#2f9e6b','#8b5cf0','#0e93a8','#d1468f','#7a8b2e','#e0a02f','#d64545'];
+const hashTexto = s => { let h = 0; for (const c of s) h = (h * 31 + c.codePointAt(0)) >>> 0; return h; };
+function colorDeCamion(t){ return TRUCK_COLORS[hashTexto(String(t.plate ?? t.id)) % TRUCK_COLORS.length]; }
 
 // Mapped from GET /trucks (id, plate). The backend does not expose
 // fuel/driver/route, so those stay null/empty and render as "no data".
@@ -507,12 +523,46 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('map'));
 
 const markers = new Map();
-const arrow = '<svg viewBox="0 0 24 24"><path d="M12 2 4 21l8-4 8 4z"/></svg>';
+const truck = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M9.5 2h5A1.5 1.5 0 0 1 16 3.5V9H8V3.5A1.5 1.5 0 0 1 9.5 2zM9.4 3.6h5.2v1.7H9.4z"/><path d="M7.5 10.5h9a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-9.5a1 1 0 0 1 1-1z"/></svg>';
+
 const pinIcon = (t, sel) => L.divIcon({
-  className:'', iconSize:[39,39], iconAnchor:[19.5,19.5],
-  html:`<div class="pin ${sel?'sel':''}"><div style="background:${STATUS[t.status].color}">
-    <span style="display:grid;transform:rotate(${t.heading}deg)">${arrow}</span></div></div>`
+  className:'', iconSize:[40,40], iconAnchor:[20,20],
+  html:`<div class="pin ${t.status} ${sel?'sel':''}"><i class="halo" style="background:${STATUS[t.status].color}"></i>
+    <div class="badge" style="background:${t.color}"><span style="transform:rotate(${t.heading}deg)">${truck}</span></div>
+    <em class="lbl" style="font-style:normal">${t.plate}</em></div>`
 });
+
+/* ---------- Smooth movement ----------
+   The API delivers one sample per poll, so the "two locations" the truck moves
+   between are two consecutive samples. The logical position (t.lat/t.lng) always
+   follows the newest sample, keeping speed, heading, the detail panel and flyTo
+   exact; only the marker rendering is tweened from the previous sample to the
+   new one over the time that sample actually covers. */
+const moves = new Map();     // truck id -> {from, to, start, dur}
+let rafId = null;
+
+function tickMovimiento(){
+  rafId = null;
+  const now = performance.now();
+  let activo = false;
+  moves.forEach((m, id) => {
+    const k = Math.min(1, (now - m.start) / m.dur);   // 0..1 progress
+    const e = MOVE_EASE(k);
+    const mk = markers.get(id);
+    if (mk) mk.setLatLng([m.from[0] + (m.to[0]-m.from[0])*e, m.from[1] + (m.to[1]-m.from[1])*e]);
+    if (k < 1) activo = true; else moves.delete(id);  // arrived: sample becomes the pin
+  });
+  if (activo) rafId = requestAnimationFrame(tickMovimiento);
+}
+function despertarMovimiento(){ if (rafId === null) rafId = requestAnimationFrame(tickMovimiento); }
+
+function programarMovimiento(t, from, to, dtMs){
+  // Under 5 m the truck is parked: drop any pending tween and sit on the sample.
+  if (haversineM(from[0], from[1], to[0], to[1]) < 5){ moves.delete(t.id); return; }
+  const dur = Math.max(MOVE_MIN_MS, Math.min(MOVE_MAX_MS, dtMs > 0 ? dtMs : POLL_MS));
+  moves.set(t.id, {from, to, start: performance.now(), dur});
+  despertarMovimiento();
+}
 
 /* ---------- Utilities ---------- */
 const ago = ms => {
@@ -643,7 +693,8 @@ function render(){
       mk.on('click', () => select(t.id, false));
       markers.set(t.id, mk);
     }
-    mk.setLatLng([t.lat,t.lng]).setIcon(pinIcon(t, t.id===selectedId));
+    if (!moves.has(t.id)) mk.setLatLng([t.lat,t.lng]); // an in-flight tween owns the pin
+    mk.setIcon(pinIcon(t, t.id===selectedId));
     if (ids.has(t.id)) mk.addTo(map); else map.removeLayer(mk);
   });
 
@@ -786,6 +837,7 @@ async function cargarCamiones(){
     trucks = data.map(t => ({
       id: t.id,
       plate: t.plate,
+      color: colorDeCamion(t),   // identity colour, fixed for the whole session
       lat: null, lng: null,
       heading: 0,
       status: 'stop',
@@ -806,14 +858,17 @@ async function cargarCamiones(){
 function aplicarPunto(t, p){
   const lat = p.lat, lng = p.long;
   const ts = Date.parse(p.timestamp) || Date.now();
-  if (t.lat !== null){
-    const dtSeg = (ts - t.updated) / 1000;
-    const dist = haversineM(t.lat, t.lng, lat, lng);
-    if (dtSeg > 0){
+  const anterior = t.lat === null ? null : [t.lat, t.lng];
+  if (anterior){
+    const dtMs = ts - t.updated;
+    const dist = haversineM(anterior[0], anterior[1], lat, lng);
+    if (dtMs > 0){
       // Real speed derived from displacement between consecutive points
-      t.speed = Math.max(0, Math.min(200, Math.round((dist / dtSeg) * 3.6)));
+      t.speed = Math.max(0, Math.min(200, Math.round((dist / (dtMs/1000)) * 3.6)));
     }
-    if (dist > 5) t.heading = bearing(t.lat, t.lng, lat, lng);
+    if (dist > 5) t.heading = bearing(anterior[0], anterior[1], lat, lng);
+    // Two consecutive samples received: glide from the previous one to this one.
+    programarMovimiento(t, anterior, [lat, lng], dtMs);
   }
   t.lat = lat; t.lng = lng; t.updated = ts;
   t.history.push(t.speed);
@@ -881,12 +936,20 @@ document.getElementById('alertBtn').onclick = () => setView('alert');
 document.getElementById('btn-logout').addEventListener('click', clearSessionAndRedirect);
 
 /* ---------- Boot: only with a valid session ---------- */
+// Open the map on the first truck of the list, honouring the user's sort/filter.
+function centrarEnPrimerCamion(){
+  const t = visibleTrucks()[0];
+  if (!t || t.lat === null) return;   // nothing located yet: keep the default view
+  map.setView([t.lat, t.lng], Math.max(map.getZoom(), OPEN_ZOOM));
+}
+
 verificarSesion().then(async (sesionValida) => {
   if (!sesionValida) return;
   const ok = await cargarCamiones();
   render();
   if (!ok) return;
   await actualizarUbicaciones();
+  centrarEnPrimerCamion();
   setInterval(actualizarUbicaciones, POLL_MS);
 });
 </script>
