@@ -12,7 +12,7 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
   1. **Backend:** API REST construida con **FastAPI** (`source/`).
   2. **Persistencia:** Base de datos relacional **PostgreSQL** administrada mediante **SQLAlchemy 2.0** y **Alembic** (`source/models/`, `alembic/`).
   3. **Autenticación:** Sistema **OAuth2 + JWT** con hashing bcrypt (`source/services/auth.py`, `source/models/user.py`, `source/schemas/auth.py`). Dependencias: `python-jose[cryptography]`, `passlib[bcrypt]`.
-  4. **Visualización / Frontend:** Mapa interactivo en tiempo real con **OpenStreetMap** y **Leaflet** (`source/static/map.html`, servido en `/map`) con orientación cenital del vehículo, cálculo de rumbo y flechas adaptativas.
+  4. **Visualización / Frontend:** Mapa interactivo en tiempo real con **OpenStreetMap** y **Leaflet** (`source/static/map.html`, servido en `/map`) con orientación cenital del vehículo, cálculo de rumbo y flechas adaptativas. Acceso en navegador vía `source/static/login.html` (`/`) y `source/static/register.html` (`/register`).
   5. **Simulador:** Script Python con ruta urbana realista de 13 km por Córdoba Capital (`scripts/simulate_trucks.py`, `scripts/cordoba_route.json`).
   6. **Hardware Embebido:** Firmware C++ para microcontroladores **ESP32** con **PlatformIO** (ubicado en la rama `origin/IterTrack-Hardware`).
 
@@ -141,9 +141,11 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
 * **Sin lint ni typechecking (Pendiente):**
   * No hay `ruff`, `mypy`, `black` ni `pyproject.toml`. `make check` sólo ejecuta `py_compile` sobre 4 archivos, lo que valida sintaxis pero ni tipos ni estilo.
 * **Cobertura de tests de autenticación (Resuelto):**
-  * `tests/test_auth.py` cubre registro, login, `/auth/me` y protección de endpoints (caso feliz + 400/401/422). La suite completa corre 13 tests.
+  * `tests/test_auth.py` cubre registro, login, `/auth/me` y protección de endpoints (caso feliz + 400/401/422). La suite completa corre 19 tests.
 * **Extensión de Telemetría (Opcional):**
   * Posibilidad de admitir un campo opcional `heading` (rumbo) o `speed` (velocidad) en `Location` si el hardware ESP32 con módulo GPS NMEA envía las sentencias `$GPRMC`.
+* **Registro en el navegador (Completada):**
+  * `GET /register` sirve `source/static/register.html`, enlazado desde `login.html`. El flujo completo está descrito en la sección 4.6.
 
 ---
 

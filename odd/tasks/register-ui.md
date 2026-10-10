@@ -76,6 +76,12 @@ lands on `/map`.
       because every medium/high candidate dead-ends on this runtime. Re-enable with
       `gentle-ai review mode enable --scope clone` once the lens relay works.
 - [ ] User browser click-through (register → land on `/map`).
+- [x] Docs updated to match the delivered behavior (user requested): `README.md` (endpoint table —
+      the `GET /` row described a **non-existent health check**, now the login page; added
+      `GET /register` / `GET /logo`; browser-first auth flow; project tree), `AGENTS.md`
+      (frontend component, test count 13 → 19, "(Completada)" entry cross-referencing §4.6),
+      `ROADMAP.md` (Fase 2 browser access done, Fase 3 entry points). Deliberately untouched:
+      README's mermaid diagram (data flow, not a route catalog) and AGENTS §4.6 (already complete).
 - [x] Work-unit commits on `experiment/http` (user requested the commit):
       - `b51430d style(auth): resize login logo mark` — the user's own uncommitted logo tweak,
         split into its own unit so the feature commit stays independently revertable.

@@ -21,12 +21,14 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 
 ### Fase 2 — Identidad y acceso
 - Auth OAuth2 + JWT (en progreso/completado).
+- **Login y registro en el navegador: completados** (`/` y `/register`); roles y multitenancy siguen pendientes.
 - Roles por cliente (dueño de flota, operador, solo lectura).
 - Cada camión pertenece a un cliente/organización (multitenancy).
 
 ### Fase 3 — Dashboard web
 - Frontend web para seguir la flota en tiempo real.
 - **Stack decidido: vanilla ahora, SPA después.** Seguimos con HTML/JS estático sin build tooling: el flujo JWT queda a la vista y no agregamos herramientas sin necesidad.
+- **Entradas del frontend vanilla entregadas:** `/` (login), `/register` (registro) y `/map` (guard de token).
 - **Migrar a SPA (Vite + React o Vue) SOLO cuando se cumpla al menos uno de estos criterios:**
   - (a) el dashboard necesita rutas propias con varias vistas,
   - (b) el estado se comparte entre 3 o más vistas independientes, o
