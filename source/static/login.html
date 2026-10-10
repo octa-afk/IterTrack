@@ -26,15 +26,23 @@
         border: 1px solid rgba(226, 232, 240, 0.8);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
       }
+      .login-card .logo {
+        display: block;
+        width: 150px;
+        height: auto;
+        margin: 0 auto 10px auto;
+      }
       .login-card h1 {
         margin: 0 0 4px 0;
         font-size: 18px;
         color: #1a1a1a;
+        text-align: center;
       }
       .login-card .subtitle {
         margin: 0 0 18px 0;
         font-size: 13px;
         color: #64748b;
+        text-align: center;
       }
       .login-card label {
         display: block;
@@ -85,6 +93,7 @@
   </head>
   <body>
     <div class="login-card">
+      <img class="logo" src="/logo" alt="IterTrack" width="150" height="84">
       <h1>IterTrack</h1>
       <p class="subtitle">Monitoreo de flota en vivo</p>
       <form id="login-form" method="post" action="/auth/login">

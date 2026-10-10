@@ -19,3 +19,7 @@ def view_map():
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
     return FileResponse("source/static/imagen-removebg-preview.png")
+
+@app.get("/logo", include_in_schema=False)
+def logo():
+    return FileResponse("source/static/Itertrack_logo.png")
