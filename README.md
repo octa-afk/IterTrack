@@ -275,8 +275,7 @@ git checkout IterTrack-Hardware
 | `GET` | `/` | Página de login (`static/login.html`) | — | — |
 | `GET` | `/register` | Página de registro (`static/register.html`) | — | — |
 | `GET` | `/map` | Interfaz web de monitoreo satelital en vivo (OpenStreetMap / Leaflet) | — | — |
-| `GET` | `/logo` | Logotipo de IterTrack (`static/Itertrack_logo.png`) | — | — |
-| `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`static/imagen-removebg-preview.png`) | — | — |
+| `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`static/isologo.png`) | — | — |
 | `POST` | `/auth/register` | Registra un nuevo usuario | `{"username": "...", "email": "...", "full_name": "...", "password": "..."}` | — |
 | `POST` | `/auth/login` | Login OAuth2 (form-data) y devuelve JWT | `username` / `password` (form) | — |
 | `GET` | `/auth/me` | Datos del usuario autenticado | — | 🔒 Bearer |

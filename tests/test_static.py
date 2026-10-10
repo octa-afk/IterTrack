@@ -10,22 +10,10 @@ def test_map_serves_map_page(client):
     assert 'id="map"' in response.text
 
 
-def test_logo_serves_image(client):
-    response = client.get("/logo")
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "image/png"
-
-
 def test_favicon_serves_image(client):
     response = client.get("/favicon.ico")
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
-
-
-def test_login_page_references_logo(client):
-    response = client.get("/")
-    assert response.status_code == 200
-    assert 'src="/logo"' in response.text
 
 
 def test_register_serves_register_page(client):
@@ -38,3 +26,51 @@ def test_login_page_links_to_register(client):
     response = client.get("/")
     assert response.status_code == 200
     assert 'href="/register"' in response.text
+
+
+# --- login-map-ui (T1): new behavior ---
+
+def test_login_page_wires_real_auth_flow(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "/auth/login" in response.text
+    assert "itertrack_token" in response.text
+    assert "application/x-www-form-urlencoded" in response.text
+
+
+def test_login_page_uses_v8_poppins_design(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "Poppins" in response.text
+
+
+def test_map_page_guards_with_auth_me(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "/auth/me" in response.text
+    assert "Bearer" in response.text
+
+
+def test_map_page_has_theme_toggle_hook(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "itertrack_theme" in response.text
+    assert 'id="themeBtn"' in response.text
+
+
+def test_map_page_has_dark_theme_palette(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert ":root.dark" in response.text
+
+
+def test_map_page_has_logout_button(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert 'id="btn-logout"' in response.text
+
+
+def test_map_page_uses_example_cdn_leaflet(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4" in response.text

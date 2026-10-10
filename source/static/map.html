@@ -1,578 +1,894 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IterTrack - Monitoreo en Vivo</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-      html, body {
-        height: 100%;
-        padding: 0;
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      }
-      #map {
-        width: 100%;
-        height: 100%;
-      }
-      .panel-info {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        z-index: 1000;
-        background: rgba(255, 255, 255, 0.96);
-        padding: 14px 18px;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        min-width: 240px;
-        backdrop-filter: blur(6px);
-        border: 1px solid rgba(226, 232, 240, 0.8);
-      }
-      .panel-info h3 {
-        margin: 0 0 10px 0;
-        font-size: 16px;
-        color: #1a1a1a;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .panel-info p {
-        margin: 6px 0;
-        font-size: 13px;
-        color: #475569;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .status-dot {
-        width: 10px;
-        height: 10px;
-        background-color: #10b981;
-        border-radius: 50%;
-        display: inline-block;
-        box-shadow: 0 0 8px #10b981;
-      }
-      .coord-badge {
-        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-        background: #f1f5f9;
-        padding: 2px 6px;
-        border-radius: 4px;
-        color: #334155;
-        font-weight: 500;
-      }
-      .cardinal-badge {
-        background: #eff6ff;
-        color: #2563eb;
-        font-weight: 600;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 12px;
-        border: 1px solid #bfdbfe;
-      }
-      .btn-logout {
-        background: #fee2e2;
-        color: #b91c1c;
-        border: 1px solid #fecaca;
-        border-radius: 6px;
-        padding: 3px 8px;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .btn-logout:hover {
-        background: #fecaca;
-      }
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IterTrack · Panel de seguimiento</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22380 355 1210 1200%22%3E%3Cpath fill=%22%235472d2%22 d=%22M390 752C385 590 500 465 665 465H1200L900 752Z%22/%3E%3Cpath fill=%22%233a58b4%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z%22/%3E%3Cpath fill=%22%236a8cee%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z%22/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --mint:#dfe8f6; --green:#5a7ee6; --green-d:#4666cc; --green-l:#cbd8f8; --green-xl:#ecf1fc;
+    --bg:#efefef; --card:#fff; --ink:#1f2a3d; --muted:#6b778c; --line:#e6eaf2;
+    --move:#5a7ee6; --idle:#eeb04a; --stop:#8a949c; --alert:#e0675c;
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%}
+  body{font-family:Poppins,system-ui,sans-serif;background:var(--mint);color:var(--ink);font-size:13px;padding:24px;display:grid;place-items:center}
+  svg{display:block}
+  .app{width:100%;max-width:1480px;height:calc(100vh - 48px);min-height:620px;border-radius:30px;overflow:hidden;display:grid;grid-template-columns:220px 1fr;box-shadow:0 14px 34px rgba(60,90,150,.28)}
 
-      /* Contenedor del marcador e icono rotativo del camión */
-      .truck-marker-wrapper {
-        background: transparent !important;
-        border: none !important;
-      }
-      .truck-marker-rotator {
-        width: 46px;
-        height: 46px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transform-origin: 50% 50%;
-        transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1);
-        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
-      }
+  /* Sidebar */
+  .side{background:var(--green);color:#fff;display:flex;flex-direction:column;padding:30px 0 26px}
+  .logo{display:flex;align-items:center;gap:10px;padding:0 28px;font-weight:600;font-size:16px;margin-bottom:54px}
+  .logo svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round}
+  nav{display:grid;gap:4px}
+  nav a{display:flex;align-items:center;gap:14px;padding:12px 28px;color:#e5f2ed;text-decoration:none;font-size:14px;cursor:pointer;position:relative}
+  nav a svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  nav a.on{color:#fff;font-weight:600}
+  nav a.on::after{content:"";width:6px;height:6px;border-radius:50%;background:#fff;position:absolute;right:22px}
+  nav a:hover{background:rgba(255,255,255,.08)}
+  nav a:focus-visible,.logout:focus-visible{outline:2px solid #fff;outline-offset:-4px}
+  .logout{margin:auto 28px 0;background:#fff;color:var(--ink);border:0;border-radius:999px;padding:10px 0;font:500 12px Poppins;display:flex;justify-content:center;align-items:center;gap:8px;cursor:pointer}
+  .logout svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-      /* Flechas direccionales sobre los segmentos de la línea */
-      .segment-arrow-wrapper {
-        background: transparent !important;
-        border: none !important;
-        pointer-events: none !important;
-      }
-      .segment-arrow-icon {
-        width: 18px;
-        height: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transform-origin: 50% 50%;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="map"></div>
+  /* Contenido */
+  .content{background:var(--bg);padding:20px 22px;display:grid;grid-template-rows:auto 1fr;gap:16px;min-height:0;min-width:0}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:16px}
+  .search{flex:0 1 380px;display:flex;align-items:center;background:#fff;border-radius:999px;padding:0 18px;height:40px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+  .search input{flex:1;border:0;outline:0;font:inherit;background:none;color:var(--ink);min-width:0}
+  .search svg{width:16px;height:16px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+  .search:focus-within{box-shadow:0 0 0 2px var(--green)}
+  .pill{display:flex;align-items:center;gap:14px;background:var(--green);color:#fff;border-radius:999px;padding:5px 6px 5px 14px;height:44px}
+  .pill .al{border:1.5px dashed #fff;border-radius:999px;padding:4px 14px;font-size:11px;background:none;color:#fff;font-family:inherit;cursor:pointer}
+  .pill .bell{width:20px;height:20px;fill:#fff;position:relative}
+  .avatar{width:34px;height:34px;border-radius:50%;background:#fff;color:var(--green);display:grid;place-items:center;font-weight:600;font-size:12px}
 
-    <div class="panel-info">
-      <h3><span class="status-dot"></span> Camión #<span id="truck-id">1</span></h3>
-      <p><span>Patente:</span> <strong id="truck-plate">Cargando...</strong></p>
-      <p><span>Latitud:</span> <span id="truck-lat" class="coord-badge">-</span></p>
-      <p><span>Longitud:</span> <span id="truck-long" class="coord-badge">-</span></p>
-      <p><span>Rumbo:</span> <span><span id="truck-heading" class="coord-badge">-</span> <span id="truck-cardinal" class="cardinal-badge">-</span></span></p>
-      <p><span>Último ping:</span> <span id="truck-time">-</span></p>
-      <p style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
-        <span>Seguir en mapa:</span>
-        <label style="display: flex; align-items: center; cursor: pointer; gap: 4px;">
-          <input type="checkbox" id="chk-follow" checked style="cursor: pointer; width: 15px; height: 15px; accent-color: #2563eb;">
-          <span style="font-size: 11px; color: #64748b;">Auto</span>
-        </label>
-      </p>
-      <p style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
-        <span>Usuario:</span>
-        <span style="display: flex; align-items: center; gap: 8px;">
-          <strong id="user-name" style="font-size: 13px; color: #334155;">-</strong>
-          <button type="button" id="btn-logout" class="btn-logout">Cerrar sesión</button>
-        </span>
-      </p>
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;min-height:0}
+  .col{display:flex;flex-direction:column;gap:16px;min-height:0;min-width:0}
+  .card{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04);min-height:0;min-width:0}
+  .card h3{font-size:13px;font-weight:600;margin-bottom:10px}
+  .card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .card-h h3{margin:0}
+  .tag{background:var(--green);color:#fff;border-radius:6px;font-size:10px;padding:4px 10px}
+
+  /* Mapa */
+  .mapcard{flex:1;padding:14px;display:flex;flex-direction:column}
+  .mapbox{flex:1;border-radius:12px;overflow:hidden;min-height:260px;position:relative}
+  #map{position:absolute;inset:0}
+  .leaflet-container{font-family:Poppins,sans-serif}
+  .pin{width:34px;height:34px;display:grid;place-items:center}
+  .pin div{width:26px;height:26px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.45);display:grid;place-items:center;transition:transform .2s}
+  .pin svg{width:12px;height:12px;fill:#fff}
+  .pin.sel div{transform:scale(1.3);box-shadow:0 0 0 4px rgba(110,150,235,.4),0 1px 6px rgba(0,0,0,.45)}
+
+  /* Fila inferior */
+  .bottom{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;height:178px}
+  .bottom .card{overflow:hidden}
+  .bars{height:112px;position:relative;display:flex;align-items:flex-end;gap:6px;padding-top:4px}
+  .bars .limit{position:absolute;left:0;right:0;border-top:1.5px dashed var(--idle);pointer-events:none}
+  .bars .limit span{position:absolute;right:0;top:-15px;font-size:9px;color:var(--idle);background:#fff;padding-left:4px}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;border:0;background:none;padding:0;cursor:pointer;font-family:inherit}
+  .bar i{width:100%;max-width:26px;background:#e9ebe8;border-radius:4px 4px 0 0;transition:background .2s}
+  .bar:hover i{background:var(--green-l)}
+  .bar.sel i{background:var(--green-l)}
+  .bar b{font-size:9px;font-weight:500;color:var(--muted);margin-top:4px;white-space:nowrap}
+  .bar.sel b{color:var(--green);font-weight:600}
+  .bar:focus-visible{outline:2px solid var(--green)}
+  .donuts{display:flex;justify-content:space-around;align-items:center;height:calc(100% - 28px)}
+  .dn{display:flex;align-items:center;gap:8px}
+  .dn svg{width:68px;height:68px;transform:rotate(-90deg)}
+  .dn circle{fill:none;stroke-width:9}
+  .dn .t{font-size:10px;color:var(--muted);line-height:1.35}
+  .dn .t b{display:block;color:var(--ink);font-size:15px;font-weight:600}
+  .dn .pc{position:absolute;inset:0;display:grid;place-items:center;font-weight:600;font-size:12px}
+
+  /* Columna derecha */
+  .listcard{flex:1;display:flex;flex-direction:column;padding:16px 0 0}
+  .listcard > *:not(ul){margin-left:16px;margin-right:16px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border-radius:999px;padding:3px;margin-bottom:10px}
+  .seg button{border:0;background:none;border-radius:999px;padding:7px;font:500 11px Poppins;cursor:pointer;color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--green);color:#fff}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px;font:inherit;font-size:11px;cursor:pointer;color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--green-xl);border-color:var(--green);color:var(--green-d);font-weight:600}
+  .sorts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+  select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:11px;color:var(--ink)}
+  .count{font-size:11px;color:var(--muted);margin-bottom:6px}
+  ul{list-style:none;padding:0;overflow:auto;flex:1;border-top:1px solid var(--line)}
+  li button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:10px 1fr auto;gap:1px 10px;align-items:center;width:100%;padding:10px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+  li button:hover{background:#f7f8f6}
+  li.sel button{background:var(--green-xl);box-shadow:inset 3px 0 0 var(--green)}
+  .dot{width:10px;height:10px;border-radius:50%;grid-row:span 2}
+  .nm{font-weight:600;font-size:12.5px}
+  .sb{font-size:10.5px;color:var(--muted);grid-column:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sp{font-weight:600;font-size:13px;text-align:right;color:var(--green)}
+  .sp small{font-weight:400;color:var(--muted);font-size:9.5px}
+  .fu{grid-column:3;text-align:right;font-size:10px;color:var(--muted)}
+  .fu.low{color:var(--alert);font-weight:600}
+  li button:focus-visible,.chip:focus-visible,.seg button:focus-visible,select:focus-visible{outline:2px solid var(--green);outline-offset:-2px}
+  .empty{padding:22px 16px;color:var(--muted);font-size:12px}
+
+  .detail{background:var(--bg);border-radius:14px;padding:12px}
+  .detail .when{font-size:10px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between}
+  .detail .st{display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border-radius:10px;padding:10px 4px;text-align:center}
+  .detail .st b{display:block;font-size:17px;font-weight:600;color:var(--green)}
+  .detail .st span{font-size:9.5px;color:var(--muted)}
+  .detail .info{font-size:11px;margin:10px 2px 4px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px}
+  .detail .info dt{color:var(--muted)} .detail .info dd{text-align:right;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .spark{width:100%;height:64px;margin-top:6px}
+  .noSel{color:var(--muted);font-size:12px;text-align:center;padding:18px 8px}
+
+  @media (max-width:1100px){
+    .grid{grid-template-columns:1fr}
+    .listcard{min-height:420px}
+  }
+  @media (max-width:820px){
+    body{padding:0;display:block}
+    .app{display:block;height:auto;border-radius:0;box-shadow:none}
+    .side{flex-direction:row;padding:12px 16px;align-items:center}
+    .logo{margin:0;padding:0} nav,.logout{display:none}
+    .content{padding:14px}
+    .top{flex-wrap:wrap} .search{flex:1 1 100%}
+    .mapcard{min-height:340px}
+    .bottom{grid-template-columns:1fr;height:auto} .bottom .card{height:190px}
+    .donuts{flex-wrap:wrap;gap:6px}
+  }
+
+  /* ===== Chrome unido (lateral + superior) con glass, estilo DeepSeek ===== */
+  :root{--blur:blur(22px) saturate(170%)}
+  .app{
+    background:
+      radial-gradient(520px 380px at 4% 8%,rgba(110,150,235,.55),transparent 70%),
+      radial-gradient(620px 420px at 70% -8%,rgba(150,205,245,.50),transparent 70%),
+      radial-gradient(520px 420px at 6% 100%,rgba(124,131,201,.35),transparent 70%),
+      linear-gradient(135deg,#dbe7f8,#c9daf3);
+    border:1px solid rgba(255,255,255,.6);
+  }
+  /* Lateral: pegado al borde, separado solo por una línea fina */
+  .side{
+    background:linear-gradient(180deg,rgba(22,58,140,.80),rgba(110,150,235,.55));
+    -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    border-right:1px solid rgba(255,255,255,.35);
+  }
+  nav{padding:0 12px}
+  nav a{border-radius:12px;padding:12px 16px}
+  nav a.on{background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+  nav a.on::after{right:16px}
+  .logout{background:rgba(255,255,255,.9)}
+
+  /* Contenido: la barra superior nace donde termina el lateral */
+  .content{background:transparent;padding:0;gap:0;grid-template-rows:auto minmax(0,1fr)}
+  .top{
+    padding:10px 22px;border-radius:0;
+    background:rgba(255,255,255,.45);
+    -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    border-bottom:1px solid rgba(255,255,255,.75);
+  }
+  .search{background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(255,255,255,.85)}
+  /* Zona de trabajo sólida */
+  .grid{padding:18px 22px;background:#f4f7fc;overflow:hidden}
+
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .top{background:rgba(255,255,255,.92)} .side{background:var(--green-d)}
+  }
+  @media (prefers-reduced-transparency:reduce){
+    .top{background:rgba(255,255,255,.94);-webkit-backdrop-filter:none;backdrop-filter:none}
+  }
+  @media (max-width:1100px){
+    .grid{overflow:auto;grid-template-rows:none;align-content:start}
+  }
+  @media (max-width:820px){
+    body{padding:0;display:block}
+    .app{display:block;height:auto;border:0}
+    .side{border-right:0;border-bottom:1px solid rgba(255,255,255,.35)}
+    .top{padding:10px 14px}
+    .grid{padding:14px;overflow:visible}
+  }
+
+  /* ===== Versión celeste suave (glass claro) ===== */
+  .app{
+    background:
+      radial-gradient(560px 400px at 5% 6%,rgba(120,165,240,.38),transparent 70%),
+      radial-gradient(620px 420px at 78% -6%,rgba(165,210,245,.55),transparent 70%),
+      radial-gradient(520px 420px at 10% 100%,rgba(185,180,240,.28),transparent 70%),
+      linear-gradient(135deg,#dbe7f8,#cbdcf3);
+    border:1px solid rgba(255,255,255,.85);
+    box-shadow:0 14px 34px rgba(60,90,150,.18);
+  }
+  .side{
+    background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.38));
+    border-right:1px solid rgba(255,255,255,.9);
+    color:var(--ink);
+  }
+  .logo{color:var(--ink)}
+  .logo svg{stroke:var(--green-d)}
+  nav a{color:#3b4862}
+  nav a:hover{background:rgba(90,126,230,.10)}
+  nav a.on{color:var(--green-d);background:rgba(90,126,230,.15);box-shadow:inset 0 0 0 1px rgba(90,126,230,.22)}
+  nav a.on::after{background:var(--green)}
+  nav a:focus-visible,.logout:focus-visible{outline:2px solid var(--green);outline-offset:-4px}
+  .logout{background:rgba(255,255,255,.85);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(255,255,255,.9),0 2px 8px rgba(60,90,150,.12)}
+  .top{background:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.9)}
+  .search{background:rgba(255,255,255,.75)}
+  .pill{background:var(--green)}
+  .avatar{color:var(--green-d)}
+  .card{box-shadow:0 3px 14px rgba(60,90,150,.08)}
+  @media (max-width:820px){ .side{border-bottom:1px solid rgba(255,255,255,.9)} }
+
+  /* ===== Pantalla completa ===== */
+  html,body{height:100%}
+  @media (min-width:821px){
+    body{padding:0;display:block;overflow:auto}
+    .app{width:100%;max-width:none;height:100vh;height:100dvh;min-height:560px;border-radius:0;border:0;box-shadow:none}
+  }
+  @media (max-width:820px){
+    .app{border-radius:0}
+  }
+
+  /* ===== Logo IterTrack ===== */
+  .logo{--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2}
+  .logo{gap:11px;font-size:18px;letter-spacing:.2px}
+  .logo svg.mark{width:32px;height:32px;fill:none;stroke:none;flex:none}
+  .mark .m1{fill:var(--m1)}.mark .m2{fill:var(--m2)}.mark .m3{fill:var(--m3)}
+
+  /* ===== Selección plana (sin bordes de color, sin halos) ===== */
+  nav{padding:0 12px;gap:2px}
+  nav a{border-radius:10px;padding:11px 14px}
+  nav a:hover{background:rgba(31,42,61,.05)}
+  nav a.on{background:rgba(31,42,61,.09);box-shadow:none;color:var(--ink);font-weight:500}
+  nav a.on::after{display:none}
+  ul{border-top:0;padding:4px 8px}
+  li button{border-bottom:0;border-radius:10px;padding:10px 12px}
+  li button:hover{background:rgba(31,42,61,.05)}
+  li.sel button{background:rgba(31,42,61,.09);box-shadow:none}
+  .chip{border-color:transparent;background:rgba(31,42,61,.05)}
+  .chip[aria-pressed="true"]{background:rgba(31,42,61,.14);border-color:transparent;color:var(--ink);font-weight:600}
+  .seg{background:rgba(31,42,61,.06);box-shadow:none}
+  .seg button[aria-pressed="true"]{background:#fff;color:var(--ink)}
+  .pill .al{border:0;background:rgba(255,255,255,.2)}
+  .search:focus-within{box-shadow:inset 0 0 0 1px rgba(31,42,61,.3)}
+  .pin.sel div{transform:scale(1.3);box-shadow:0 0 0 2px #1f2a3d,0 1px 6px rgba(0,0,0,.4)}
+
+  /* ===== Modo oscuro =====
+     Same palette as extras/ejemplos html/dashboard-flota-v8-dark.html, but
+     scoped under :root.dark so the light theme stays the default and the
+     toggle button can switch themes at runtime. Where the dark example's
+     later "Selección plana" rules overrode this block, the final effective
+     value from the dark file is used. */
+  :root.dark{
+    color-scheme:dark;
+    --mint:#0b1020; --card:#172036; --bg:#0f1628; --ink:#e7edf9; --muted:#8e9bb5; --line:rgba(255,255,255,.08);
+    --green:#8aa6ff; --green-d:#b4c6ff; --green-l:rgba(138,166,255,.35); --green-xl:rgba(138,166,255,.14);
+    --acc:#4f6fe0;
+  }
+  :root.dark body{background:#0b1020}
+  :root.dark .app{
+    background:
+      radial-gradient(560px 400px at 5% 4%,rgba(79,111,224,.38),transparent 70%),
+      radial-gradient(620px 420px at 80% -8%,rgba(90,150,230,.26),transparent 70%),
+      radial-gradient(520px 420px at 8% 100%,rgba(130,110,220,.22),transparent 70%),
+      linear-gradient(135deg,#121a31,#0d1426);
+    border:1px solid rgba(255,255,255,.10);
+    box-shadow:0 18px 44px rgba(0,0,0,.55);
+  }
+  :root.dark .side{
+    background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.04));
+    border-right:1px solid rgba(255,255,255,.12);
+  }
+  :root.dark .logo{--m1:#b4c6ff;--m2:#6f8cf0;--m3:#8da4f6}
+  :root.dark nav a{color:#b3c0da}
+  :root.dark nav a:hover{background:rgba(255,255,255,.06)}
+  :root.dark nav a.on{background:rgba(255,255,255,.10);box-shadow:none;color:var(--ink);font-weight:500}
+  :root.dark .logout{background:rgba(255,255,255,.10);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+  :root.dark .top{background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.12)}
+  :root.dark .search{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+  :root.dark .search input::placeholder{color:var(--muted)}
+  :root.dark .search svg{stroke:var(--ink)}
+  :root.dark .search:focus-within{box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+  :root.dark .pill{background:var(--acc)}
+  :root.dark .avatar{background:#fff;color:#3550c0}
+  :root.dark .tag{background:var(--acc)}
+
+  :root.dark .grid{background:#0e1527}
+  :root.dark .card{background:var(--card);box-shadow:0 4px 18px rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.05)}
+
+  :root.dark .mapbox{box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+  :root.dark .leaflet-tile-pane{filter:invert(1) hue-rotate(195deg) brightness(.92) contrast(.88) saturate(.75)}
+  :root.dark .leaflet-container{background:#1b2540}
+  :root.dark .leaflet-bar a{background:#1f2a45;color:var(--ink);border-bottom-color:rgba(255,255,255,.1)}
+  :root.dark .leaflet-bar a:hover{background:#2a3858}
+  :root.dark .leaflet-control-attribution{background:rgba(15,22,40,.75)!important;color:var(--muted)}
+  :root.dark .leaflet-control-attribution a{color:#9db4ff}
+  :root.dark .pin div{border-color:#fff}
+
+  :root.dark .bar i{background:rgba(255,255,255,.10)}
+  :root.dark .bar:hover i,:root.dark .bar.sel i{background:var(--green)}
+  :root.dark .bar.sel b{color:var(--green-d)}
+  :root.dark .bars .limit span{background:transparent}
+  :root.dark .dn circle:first-child{stroke:rgba(255,255,255,.10)}
+
+  :root.dark .seg{background:rgba(255,255,255,.06);box-shadow:none}
+  :root.dark .seg button{color:var(--ink)}
+  :root.dark .seg button[aria-pressed="true"]{background:rgba(255,255,255,.14);color:var(--ink)}
+  :root.dark .chip,:root.dark select{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:var(--ink)}
+  :root.dark .chip[aria-pressed="true"]{background:rgba(255,255,255,.16);border-color:transparent;color:var(--ink);font-weight:600}
+  :root.dark li button:hover{background:rgba(255,255,255,.06)}
+  :root.dark li.sel button{background:rgba(255,255,255,.10);box-shadow:none}
+  :root.dark ul::-webkit-scrollbar{width:8px} :root.dark ul::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:8px}
+
+  :root.dark .detail{background:rgba(255,255,255,.04)}
+  :root.dark .detail .st{background:rgba(255,255,255,.07)}
+  :root.dark .detail .st b{color:var(--green)}
+  :root.dark .detail .info dd{color:var(--ink)}
+  :root.dark .when b{color:var(--ink)!important}
+
+  /* Fullscreen layout wins over the dark frame, exactly as in the dark example */
+  @media (min-width:821px){
+    :root.dark .app{border:0;box-shadow:none}
+  }
+  @media (max-width:820px){ :root.dark .side{border-bottom:1px solid rgba(255,255,255,.12)} }
+  :root.dark .pin.sel div{transform:scale(1.3);box-shadow:0 0 0 2px #fff,0 1px 6px rgba(0,0,0,.4)}
+</style>
+<script>
+  // Apply the persisted theme before first paint: no flash of the wrong theme.
+  (function () {
+    try {
+      if (localStorage.getItem('itertrack_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {
+      // Storage unavailable: keep the light theme
+    }
+  })();
+</script>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="logo">
+      <svg class="mark" viewBox="380 355 1210 1200" role="img" aria-label="IterTrack"><path class="m3" d="M390 752C385 590 500 465 665 465H1200L900 752Z"/><path class="m2" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z"/><path class="m1" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z"/></svg>
+      IterTrack
+    </div>
+    <nav aria-label="Principal">
+      <a class="on" tabindex="0"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>Panel</a>
+      <a tabindex="0"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/></svg>Camiones</a>
+      <a tabindex="0"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a4 4 0 0 0 0-8h-4a4 4 0 0 1 0-8h6"/></svg>Rutas</a>
+      <a tabindex="0"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Reportes</a>
+      <a tabindex="0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4-2 1.6a7 7 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.4-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.2-.8.2-1.2z"/></svg>Ajustes</a>
+    </nav>
+    <button class="logout" id="btn-logout" type="button"><svg viewBox="0 0 24 24"><path d="M9 21H5V3h4M16 17l5-5-5-5M21 12H9"/></svg>Salir</button>
+  </aside>
+
+  <div class="content">
+    <div class="top">
+      <label class="search">
+        <input id="q" type="search" placeholder="Buscar patente, chofer o ruta" aria-label="Buscar camiones">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      </label>
+      <div class="pill">
+        <button class="al" id="themeBtn" type="button">Modo oscuro</button>
+        <button class="al" id="alertBtn" type="button">0 alertas</button>
+        <svg class="bell" viewBox="0 0 24 24"><path d="M12 2a6 6 0 0 0-6 6v4l-2 3v1h16v-1l-2-3V8a6 6 0 0 0-6-6zm-2 18a2 2 0 0 0 4 0z"/></svg>
+        <div class="avatar">FL</div>
+      </div>
     </div>
 
-    <script>
-      const TRUCK_ID = 1;
-
-      // Clave de localStorage compartida con login.html
-      const TOKEN_KEY = "itertrack_token";
-
-      // Headers con Bearer para TODOS los fetch (en GET públicos el header es inocuo)
-      function authHeaders() {
-        const token = localStorage.getItem(TOKEN_KEY);
-        return token ? { Authorization: `Bearer ${token}` } : {};
-      }
-
-      // Cerrar sesión: limpiar el token y volver al login
-      function cerrarSesion() {
-        localStorage.removeItem(TOKEN_KEY);
-        window.location.replace("/");
-      }
-
-      // Distancia mínima en píxeles de pantalla entre flechas para evitar saturación visual
-      const MIN_ESPACIADO_PIXELES = 85;
-
-      // Variables de seguimiento de posición y rumbo
-      let ultimaPosicion = null;
-      let rumboActual = 0;
-      let rotacionAcumulada = 0;
-      let patenteActual = "Cargando...";
-      let iterCountAnterior = 0;
-
-      // Estado de animación para movimiento fluido del marcador
-      let animacionId = null;
-      let animPosInicio = null;
-      let animPosFin = null;
-      let animTiempoInicio = 0;
-      const DURACION_ANIMACION = 1800; // ms, ligeramente menor al intervalo de polling
-
-      // 1. Inicializamos el mapa centrado en Córdoba
-      const map = L.map('map').setView([-31.4166867, -64.1834193], 14);
-
-      // 2. Mosaicos de OpenStreetMap
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-      }).addTo(map);
-
-      L.control.scale({imperial: false, metric: true}).addTo(map);
-
-      // 3. Icono SVG personalizado del vehículo orientado hacia el frente (0° / Norte)
-      const truckIcon = L.divIcon({
-        className: 'truck-marker-wrapper',
-        html: `
-          <div id="truck-marker-rotator" class="truck-marker-rotator">
-            <svg width="46" height="46" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <!-- Haz de luces delantero que resalta hacia dónde apunta -->
-              <polygon points="16,9 5,0 20,0" fill="#facc15" opacity="0.45"/>
-              <polygon points="32,9 28,0 43,0" fill="#facc15" opacity="0.45"/>
-              
-              <!-- Ruedas -->
-              <rect x="10" y="11" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
-              <rect x="34.5" y="11" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
-              <rect x="10" y="25" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
-              <rect x="34.5" y="25" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
-              <rect x="10" y="33" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
-              <rect x="34.5" y="33" width="3.5" height="7" rx="1.5" fill="#0f172a"/>
-              
-              <!-- Chasis / Remolque (parte trasera) -->
-              <rect x="14" y="20" width="20" height="21" rx="3" fill="#1e293b" stroke="#ffffff" stroke-width="1.5"/>
-              
-              <!-- Cabina (parte delantera) -->
-              <path d="M15 9C15 7.34315 16.3431 6 18 6H30C31.6569 6 33 7.34315 33 9V20H15V9Z" fill="#2563eb" stroke="#ffffff" stroke-width="1.5"/>
-              
-              <!-- Parabrisas delantero -->
-              <path d="M17 9.5C17 8.67157 17.6716 8 18.5 8H29.5C30.3284 8 31 8.67157 31 9.5V12.5H17V9.5Z" fill="#93c5fd"/>
-              
-              <!-- Flecha blanca indicadora de marcha en el techo -->
-              <polygon points="24,13 28,18 20,18" fill="#ffffff"/>
-            </svg>
+    <div class="grid">
+      <div class="col">
+        <div class="card mapcard">
+          <div class="card-h"><h3>Mapa en vivo</h3><span class="tag" id="liveTag">Actualizando</span></div>
+          <div class="mapbox"><div id="map"></div></div>
+        </div>
+        <div class="bottom">
+          <div class="card">
+            <div class="card-h"><h3>Velocidad por camión</h3><span class="tag">Ahora</span></div>
+            <div class="bars" id="bars"></div>
           </div>
-        `,
-        iconSize: [46, 46],
-        iconAnchor: [23, 23],
-        popupAnchor: [0, -23]
-      });
-
-      // Marcador y recorrido principal
-      const marker = L.marker([-31.4166867, -64.1834193], { icon: truckIcon }).bindPopup(`<b>Camión #${TRUCK_ID}</b>`).addTo(map);
-      const recorrido = L.polyline([], {color: '#2563eb', weight: 4, opacity: 0.85}).addTo(map);
-
-      // Capa para las flechas direccionales sobre el recorrido
-      const capaFlechas = L.layerGroup().addTo(map);
-
-      // Elementos del panel UI
-      const elLat = document.getElementById('truck-lat');
-      const elLong = document.getElementById('truck-long');
-      const elHeading = document.getElementById('truck-heading');
-      const elCardinal = document.getElementById('truck-cardinal');
-      const elTime = document.getElementById('truck-time');
-      const elPlate = document.getElementById('truck-plate');
-
-      // 4. Cálculo matemático del rumbo (bearing) entre dos coordenadas geográficas
-      function calcularRumbo(lat1, lon1, lat2, lon2) {
-        const toRad = deg => (deg * Math.PI) / 180;
-        const toDeg = rad => (rad * 180) / Math.PI;
-
-        const phi1 = toRad(lat1);
-        const phi2 = toRad(lat2);
-        const deltaLambda = toRad(lon2 - lon1);
-
-        const y = Math.sin(deltaLambda) * Math.cos(phi2);
-        const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
-        
-        const rumbo = toDeg(Math.atan2(y, x));
-        return (rumbo + 360) % 360;
-      }
-
-      // Distancia euclidiana aproximada / Haversine para filtrar pequeños ruidos de GPS
-      function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
-        const R = 6371e3; // Radio terrestre en metros
-        const toRad = deg => (deg * Math.PI) / 180;
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-      }
-
-      // Conversión de grados a dirección cardinal en español
-      function obtenerPuntoCardinal(grados) {
-        const direcciones = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
-        const indice = Math.round(grados / 45) % 8;
-        return direcciones[indice];
-      }
-
-      // Crear flecha sobre el segmento que une el punto previo (lat1, lon1) con el actual (lat2, lon2)
-      function crearFlechaSegmento(lat1, lon1, lat2, lon2, esUltimo = false) {
-        const midLat = (lat1 + lat2) / 2;
-        const midLon = (lon1 + lon2) / 2;
-        const angulo = calcularRumbo(lat1, lon1, lat2, lon2);
-        const color = esUltimo ? '#1d4ed8' : '#2563eb';
-
-        const arrowIcon = L.divIcon({
-          className: 'segment-arrow-wrapper',
-          html: `
-            <div class="segment-arrow-icon" style="transform: rotate(${angulo}deg);">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));">
-                <path d="M10 2L16 16L10 12.5L4 16L10 2Z" fill="${color}" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
-              </svg>
-            </div>
-          `,
-          iconSize: [18, 18],
-          iconAnchor: [9, 9]
-        });
-
-        return L.marker([midLat, midLon], { icon: arrowIcon, interactive: false });
-      }
-
-      // Recalcular y mostrar flechas dinámicamente según el nivel de zoom y distancia en pantalla
-      function refrescarFlechas() {
-        capaFlechas.clearLayers();
-
-        const latlngs = recorrido.getLatLngs();
-        if (latlngs.length < 2) return;
-
-        let pixelesAcumulados = 0;
-
-        for (let i = 1; i < latlngs.length; i++) {
-          const pPrev = latlngs[i - 1];
-          const pCurr = latlngs[i];
-
-          // Filtrar ruido de puntos estacionarios
-          const distMetros = calcularDistanciaMetros(pPrev.lat, pPrev.lng, pCurr.lat, pCurr.lng);
-          if (distMetros < 2) continue;
-
-          // Convertir coordenadas geográficas a píxeles de pantalla según el zoom actual
-          const pt1 = map.latLngToLayerPoint(pPrev);
-          const pt2 = map.latLngToLayerPoint(pCurr);
-          const distPx = pt1.distanceTo(pt2);
-
-          pixelesAcumulados += distPx;
-          const esUltimo = (i === latlngs.length - 1);
-
-          // Si acumuló suficiente separación visual en pantalla o es el último tramo visible
-          if (pixelesAcumulados >= MIN_ESPACIADO_PIXELES || (esUltimo && pixelesAcumulados >= 30)) {
-            const flecha = crearFlechaSegmento(pPrev.lat, pPrev.lng, pCurr.lat, pCurr.lng, esUltimo);
-            capaFlechas.addLayer(flecha);
-            pixelesAcumulados = 0;
-          }
-        }
-      }
-
-      // Actualizar visualmente la rotación del vehículo y los textos de rumbo
-      function actualizarDireccion(nuevoRumbo) {
-        rumboActual = nuevoRumbo;
-
-        // Evitar giros de 350° al cruzar 0°/360° calculando el camino angular más corto
-        const diff = ((nuevoRumbo - rotacionAcumulada) % 360 + 540) % 360 - 180;
-        rotacionAcumulada += diff;
-
-        // Aplicar rotación CSS al elemento interno del icono
-        const rotator = document.getElementById('truck-marker-rotator');
-        if (rotator) {
-          rotator.style.transform = `rotate(${rotacionAcumulada}deg)`;
-        }
-
-        // Actualizar datos en el panel flotante
-        const cardinal = obtenerPuntoCardinal(nuevoRumbo);
-        elHeading.textContent = `${Math.round(nuevoRumbo)}°`;
-        elCardinal.textContent = cardinal;
-
-        // Actualizar contenido del Popup
-        marker.setPopupContent(`
-          <div style="font-size: 13px; line-height: 1.4;">
-            <b>Camión #${TRUCK_ID}</b><br>
-            <strong>Patente:</strong> ${patenteActual}<br>
-            <strong>Rumbo:</strong> ${Math.round(nuevoRumbo)}° (${cardinal})
+          <div class="card">
+            <h3>Resumen de flota</h3>
+            <div class="donuts" id="donuts"></div>
           </div>
-        `);
-      }
+        </div>
+      </div>
 
-      // Animación fluida del marcador entre dos puntos usando requestAnimationFrame
-      function animarMovimiento() {
-        const ahora = performance.now();
-        const progreso = Math.min((ahora - animTiempoInicio) / DURACION_ANIMACION, 1);
+      <div class="col">
+        <div class="card listcard">
+          <div class="seg" id="seg">
+            <button type="button" data-v="all" aria-pressed="true">Toda la flota</button>
+            <button type="button" data-v="alert" aria-pressed="false">Solo alertas</button>
+          </div>
+          <div class="chips" id="chips">
+            <button class="chip" data-s="all" aria-pressed="true">Todos</button>
+            <button class="chip" data-s="move" aria-pressed="false">En movimiento</button>
+            <button class="chip" data-s="idle" aria-pressed="false">Detenidos</button>
+            <button class="chip" data-s="stop" aria-pressed="false">Apagados</button>
+          </div>
+          <div class="sorts">
+            <select id="sort" aria-label="Ordenar por">
+              <option value="plate">Patente</option>
+              <option value="speed">Velocidad</option>
+              <option value="fuel">Combustible</option>
+              <option value="updated">Última señal</option>
+              <option value="driver">Chofer</option>
+            </select>
+            <select id="dir" aria-label="Dirección del orden">
+              <option value="asc">Ascendente</option>
+              <option value="desc">Descendente</option>
+            </select>
+          </div>
+          <div class="count" id="count"></div>
+          <ul id="list"></ul>
+        </div>
+        <div class="card" style="padding:12px"><div class="detail" id="detail"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-        // Curva ease-out para desaceleración natural
-        const t = 1 - Math.pow(1 - progreso, 3);
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ---------- Session (real auth guard) ----------
+   Shared token with login.html: localStorage.itertrack_token.
+   Missing token or 401 from GET /auth/me -> clear storage and go back to "/". */
+const TOKEN_KEY = 'itertrack_token';
+const THEME_KEY = 'itertrack_theme';
 
-        const lat = animPosInicio[0] + (animPosFin[0] - animPosInicio[0]) * t;
-        const lng = animPosInicio[1] + (animPosFin[1] - animPosInicio[1]) * t;
-        const posActual = [lat, lng];
+function authHeaders(){
+  const token = localStorage.getItem(TOKEN_KEY);
+  return token ? { Authorization: 'Bearer ' + token } : {};
+}
 
-        marker.setLatLng(posActual);
+// Logout (and auth failures): clear localStorage, then redirect to the login page.
+function clearSessionAndRedirect(){
+  localStorage.clear();
+  window.location.replace('/');
+}
 
-        // Actualizar el último punto de la polyline para que el trazo siga al marcador
-        const latlngs = recorrido.getLatLngs();
-        if (latlngs.length > 0) {
-          latlngs[latlngs.length - 1] = L.latLng(lat, lng);
-          recorrido.setLatLngs(latlngs);
-        }
+async function verificarSesion(){
+  if (!localStorage.getItem(TOKEN_KEY)){
+    clearSessionAndRedirect();
+    return false;
+  }
+  try{
+    const res = await fetch('/auth/me', { headers: authHeaders() });
+    if (res.ok){
+      const user = await res.json();
+      // Avatar initials from the real user; textContent, never innerHTML (XSS)
+      document.querySelector('.avatar').textContent = String(user.username || '??').slice(0, 2).toUpperCase();
+      return true;
+    }
+  } catch (error){
+    console.error('Error al validar la sesión:', error);
+  }
+  // Missing token, 401 or network failure: clear storage and go back to "/"
+  clearSessionAndRedirect();
+  return false;
+}
 
-        // Seguir al camión si está activo
-        const chkFollow = document.getElementById('chk-follow');
-        if (chkFollow && chkFollow.checked) {
-          map.panTo(posActual, { animate: false });
-        }
+/* ---------- Theme toggle (persisted in localStorage) ---------- */
+const themeBtn = document.getElementById('themeBtn');
+function temaOscuro(){ return document.documentElement.classList.contains('dark'); }
+function sincronizarTemaBtn(){ themeBtn.textContent = temaOscuro() ? 'Modo claro' : 'Modo oscuro'; }
+themeBtn.addEventListener('click', () => {
+  const oscuro = !temaOscuro();
+  document.documentElement.classList.toggle('dark', oscuro);
+  try{ localStorage.setItem(THEME_KEY, oscuro ? 'dark' : 'light'); }catch(e){}
+  sincronizarTemaBtn();
+});
+sincronizarTemaBtn();
 
-        if (progreso < 1) {
-          animacionId = requestAnimationFrame(animarMovimiento);
-        } else {
-          animacionId = null;
-          refrescarFlechas();
-        }
-      }
+/* ---------- Data (real endpoints: /trucks + location polling) ---------- */
+const SPEED_LIMIT = 90;      // km/h: alert threshold and chart limit
+const POLL_MS = 3000;        // location refresh interval
+const STALE_MS = 10 * 60e3;  // no signal for 10 min -> truck considered off
+const HISTORY_MAX = 18;      // speed samples kept for the detail sparkline
 
-      function iniciarAnimacion(desde, hacia) {
-        if (animacionId) cancelAnimationFrame(animacionId);
-        animPosInicio = desde;
-        animPosFin = hacia;
-        animTiempoInicio = performance.now();
-        animacionId = requestAnimationFrame(animarMovimiento);
-      }
+const STATUS = {
+  move: {label:'En movimiento', color:'#5a7ee6'},
+  idle: {label:'Detenido',      color:'#eeb04a'},
+  stop: {label:'Apagado',       color:'#8a949c'},
+  alert:{label:'Alerta',        color:'#e0675c'},
+};
 
-      // Al cambiar el zoom: preservar rotación del camión y reajustar densidad de flechas
-      map.on('zoomend', () => {
-        const rotator = document.getElementById('truck-marker-rotator');
-        if (rotator) {
-          rotator.style.transform = `rotate(${rotacionAcumulada}deg)`;
-        }
-        refrescarFlechas();
-      });
+// Mapped from GET /trucks (id, plate). The backend does not expose
+// fuel/driver/route, so those stay null/empty and render as "no data".
+let trucks = [];
+let selectedId = null;
+const state = {q:'', status:'all', view:'all', sort:'plate', dir:'asc'};
 
-      // Si el usuario arrastra manualmente el mapa, pausamos el centrado automático
-      map.on('dragstart', () => {
-        const chkFollow = document.getElementById('chk-follow');
-        if (chkFollow) chkFollow.checked = false;
-      });
+/* ---------- Map ---------- */
+const map = L.map('map').setView([-31.9,-64.0], 7);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom:19,
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('map'));
 
-      // 5. Cargar datos del camión (patente)
-      async function cargarInfoCamion() {
-        try {
-          const res = await fetch('/trucks', { headers: authHeaders() });
-          if (res.ok) {
-            const trucks = await res.json();
-            const truck = trucks.find(t => t.id === TRUCK_ID);
-            if (truck) {
-              patenteActual = truck.plate;
-              elPlate.textContent = truck.plate;
-              actualizarDireccion(rumboActual);
-            }
-          }
-        } catch (e) {
-          console.error("Error al cargar info camión:", e);
-        }
-      }
+const markers = new Map();
+const arrow = '<svg viewBox="0 0 24 24"><path d="M12 2 4 21l8-4 8 4z"/></svg>';
+const pinIcon = (t, sel) => L.divIcon({
+  className:'', iconSize:[34,34], iconAnchor:[17,17],
+  html:`<div class="pin ${sel?'sel':''}"><div style="background:${STATUS[t.status].color}">
+    <span style="display:grid;transform:rotate(${t.heading}deg)">${arrow}</span></div></div>`
+});
 
-      // 6. Cargar el historial previo (/iter)
-      async function cargarHistorial() {
-        try {
-          const res = await fetch(`/trucks/${TRUCK_ID}/iter`, { headers: authHeaders() });
-          if (res.ok) {
-            const puntos = await res.json();
-            if (puntos.length > 0) {
-              // Invertir para ordenar cronológicamente
-              const coordenadas = puntos.reverse().map(p => [p.lat, p.long]);
-              recorrido.setLatLngs(coordenadas);
-              iterCountAnterior = coordenadas.length;
+/* ---------- Utilities ---------- */
+const ago = ms => {
+  const s = Math.max(0, Math.round((Date.now()-ms)/1000));
+  if (s < 60) return `hace ${s} s`;
+  if (s < 3600) return `hace ${Math.round(s/60)} min`;
+  return `hace ${Math.round(s/3600)} h`;
+};
+const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 
-              // Dibujar flechas adaptadas al nivel de zoom inicial
-              refrescarFlechas();
+function visibleTrucks(){
+  const q = norm(state.q.trim());
+  const list = trucks.filter(t =>
+    (state.view==='all' || t.status==='alert') &&
+    (state.status==='all' || t.status===state.status) &&
+    (!q || norm(`${t.plate} ${t.driver} ${t.route}`).includes(q))
+  );
+  const k = state.sort, m = state.dir==='asc' ? 1 : -1;
+  list.sort((a,b) => {
+    const x = a[k], y = b[k];
+    return (typeof x==='string' ? x.localeCompare(y,'es') : x-y) * m;
+  });
+  return list;
+}
 
-              const ultimoPunto = coordenadas[coordenadas.length - 1];
-              marker.setLatLng(ultimoPunto);
-              map.panTo(ultimoPunto);
-              ultimaPosicion = ultimoPunto;
+// Geographic helpers used to derive speed/heading from real coordinates.
+const toRad = d => d * Math.PI / 180;
+const toDeg = r => r * 180 / Math.PI;
+function haversineM(aLat, aLng, bLat, bLng){
+  const R = 6371e3;
+  const dLat = toRad(bLat - aLat), dLng = toRad(bLng - aLng);
+  const h = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function bearing(aLat, aLng, bLat, bLng){
+  const y = Math.sin(toDeg(bLng - aLng)) * Math.cos(toRad(bLat));
+  const x = Math.cos(toRad(aLat)) * Math.sin(toRad(bLat)) -
+            Math.sin(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.cos(toDeg(bLng - aLng));
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
 
-              // Si hay al menos 2 puntos en el historial, calculamos la dirección inicial
-              if (coordenadas.length >= 2) {
-                const penultimoPunto = coordenadas[coordenadas.length - 2];
-                const dist = calcularDistanciaMetros(penultimoPunto[0], penultimoPunto[1], ultimoPunto[0], ultimoPunto[1]);
-                if (dist > 1) {
-                  const rumboInicial = calcularRumbo(penultimoPunto[0], penultimoPunto[1], ultimoPunto[0], ultimoPunto[1]);
-                  actualizarDireccion(rumboInicial);
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Error al cargar historial:", error);
-        }
-      }
+// Status is derived from real telemetry: fresh + fast = move/alert, fresh +
+// slow = idle, stale or unknown = stop.
+function estadoDe(t){
+  if (!t.updated) return 'stop';
+  if (Date.now() - t.updated > STALE_MS) return 'stop';
+  if (t.speed > SPEED_LIMIT) return 'alert';
+  if (t.speed < 3) return 'idle';
+  return 'move';
+}
 
-      // 7. Consultar la ubicación en vivo cada 2 segundos (/location)
-      async function actualizarUbicacionEnVivo() {
-        try {
-          // Detectar si el recorrido fue borrado (reset de vuelta)
-          const iterRes = await fetch(`/trucks/${TRUCK_ID}/iter`, { headers: authHeaders() });
-          if (iterRes.ok) {
-            const puntos = await iterRes.json();
-            if (puntos.length < iterCountAnterior) {
-              // El recorrido fue limpiado: resetear polyline y flechas
-              recorrido.setLatLngs([]);
-              capaFlechas.clearLayers();
-              ultimaPosicion = null;
+/* ---------- Charts ---------- */
+function donut(pct, color, label, value, center){
+  const r = 27, c = 2*Math.PI*r;
+  const pctText = center === undefined ? Math.round(pct) + '%' : center;
+  return `<div class="dn"><div style="position:relative">
+    <svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="${r}" stroke="#e9ebe8"/>
+    <circle cx="34" cy="34" r="${r}" stroke="${color}" stroke-linecap="round" stroke-dasharray="${c*pct/100} ${c}"/></svg>
+    <div class="pc" style="color:${color}">${pctText}</div></div>
+    <div class="t">${label}<b>${value}</b></div></div>`;
+}
 
-              // Si ya hay puntos nuevos post-reset, reconstruir
-              if (puntos.length > 0) {
-                const coordenadas = puntos.reverse().map(p => [p.lat, p.long]);
-                recorrido.setLatLngs(coordenadas);
-                ultimaPosicion = coordenadas[coordenadas.length - 1];
-              }
-            }
-            iterCountAnterior = puntos.length;
-          }
+function renderDonuts(){
+  const n = trucks.length || 1;
+  const moving = trucks.filter(t=>t.status==='move'||t.status==='alert').length;
+  const fresh = trucks.filter(t=>t.updated && Date.now()-t.updated < 5*60e3).length;
+  // No fuel data in the API: render "no data" instead of inventing a value.
+  document.getElementById('donuts').innerHTML =
+    donut(moving/n*100, '#eeb04a', 'En ruta', `${moving} de ${n}`) +
+    donut(0, '#9a8fd6', 'Combustible', 'promedio', '—') +
+    donut(fresh/n*100, '#7fa0e8', 'Con señal', `${fresh} de ${n}`);
+}
 
-          const res = await fetch(`/trucks/${TRUCK_ID}/location`, { headers: authHeaders() });
-          if (res.ok) {
-            const data = await res.json();
-            const nuevaPos = [data.lat, data.long];
+function renderBars(list){
+  const max = 120, h = 112 - 16;
+  const bars = document.getElementById('bars');
+  bars.replaceChildren();
 
-            // Si ya teníamos una posición previa, calcular el rumbo hacia el nuevo punto
-            if (ultimaPosicion) {
-              const dist = calcularDistanciaMetros(ultimaPosicion[0], ultimaPosicion[1], nuevaPos[0], nuevaPos[1]);
-              
-              // Filtro de ruido GPS: solo actualizamos rumbo si se desplazó al menos 1 metro
-              if (dist > 1) {
-                const nuevoRumbo = calcularRumbo(ultimaPosicion[0], ultimaPosicion[1], nuevaPos[0], nuevaPos[1]);
-                actualizarDireccion(nuevoRumbo);
-              }
-            } else if (data.heading !== undefined && data.heading !== null) {
-              // Si la telemetría proporciona heading directamente
-              actualizarDireccion(data.heading);
-            }
+  const limit = document.createElement('div');
+  limit.className = 'limit';
+  limit.style.bottom = (16 + h*SPEED_LIMIT/max) + 'px';
+  const limitLabel = document.createElement('span');
+  limitLabel.textContent = `Límite ${SPEED_LIMIT} km/h`;
+  limit.appendChild(limitLabel);
+  bars.appendChild(limit);
 
-            // Posición de inicio para la animación (donde está el marcador ahora)
-            const posAnterior = ultimaPosicion ? [...ultimaPosicion] : nuevaPos;
-            ultimaPosicion = nuevaPos;
+  list.forEach(t => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bar ' + (t.id===selectedId ? 'sel' : '');
+    b.dataset.id = t.id;
+    b.title = `${t.plate}: ${t.speed} km/h`;
+    const bar = document.createElement('i');
+    bar.style.height = Math.max(3, h*t.speed/max) + 'px';
+    const lbl = document.createElement('b');
+    lbl.textContent = String(t.plate).slice(0,2) + String(t.plate).slice(-2);
+    b.append(bar, lbl);
+    b.onclick = () => select(+b.dataset.id, true);
+    bars.appendChild(b);
+  });
+}
 
-            // Agregar destino a la polyline e iniciar animación fluida
-            recorrido.addLatLng(nuevaPos);
-            iniciarAnimacion(posAnterior, nuevaPos);
+// Sparkline from numeric speed samples only (no API strings involved).
+function sparkline(data){
+  const w = 300, h = 64, max = Math.max(120, ...data);
+  const pts = data.map((v,i) => [i*(w/(data.length-1)), h-4 - (h-10)*v/max]);
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i=1;i<pts.length;i++){
+    const [x0,y0] = pts[i-1], [x1,y1] = pts[i], cx = (x0+x1)/2;
+    d += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`;
+  }
+  const ly = h-4 - (h-10)*SPEED_LIMIT/max;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Velocidad reciente">
+    <line x1="0" y1="${ly}" x2="${w}" y2="${ly}" stroke="#eeb04a" stroke-dasharray="4 4" stroke-width="1"/>
+    <path d="${d}" fill="none" stroke="#5a7ee6" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
 
-            // Actualizar datos en el panel flotante
-            elLat.textContent = data.lat.toFixed(6);
-            elLong.textContent = data.long.toFixed(6);
-            if (data.timestamp) {
-              const date = new Date(data.timestamp);
-              elTime.textContent = date.toLocaleTimeString();
-            } else {
-              elTime.textContent = new Date().toLocaleTimeString();
-            }
-          }
-        } catch (error) {
-          console.error("Error al actualizar ubicación:", error);
-        }
-      }
+/* ---------- Render ---------- */
+function render(){
+  const list = visibleTrucks();
+  const ids = new Set(list.map(t=>t.id));
 
-      // Guard de sesión: validar el token contra /auth/me antes de arrancar
-      async function verificarSesion() {
-        if (!localStorage.getItem(TOKEN_KEY)) {
-          window.location.replace("/");
-          return false;
-        }
-        try {
-          const res = await fetch("/auth/me", { headers: authHeaders() });
-          if (res.ok) {
-            const user = await res.json();
-            // textContent, nunca innerHTML (XSS)
-            document.getElementById("user-name").textContent = user.username;
-            return true;
-          }
-        } catch (error) {
-          console.error("Error al validar la sesión:", error);
-        }
-        // 401 o sin conexión: limpiar token y volver al login
-        localStorage.removeItem(TOKEN_KEY);
-        window.location.replace("/");
-        return false;
-      }
+  trucks.forEach(t => {
+    if (t.lat === null) return; // no location yet: nothing to pin
+    let mk = markers.get(t.id);
+    if (!mk){
+      mk = L.marker([t.lat,t.lng], {icon:pinIcon(t,false), title:t.plate});
+      mk.on('click', () => select(t.id, false));
+      markers.set(t.id, mk);
+    }
+    mk.setLatLng([t.lat,t.lng]).setIcon(pinIcon(t, t.id===selectedId));
+    if (ids.has(t.id)) mk.addTo(map); else map.removeLayer(mk);
+  });
 
-      document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
+  const ul = document.getElementById('list');
+  ul.replaceChildren();
+  if (!list.length){
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Ningún camión coincide con los filtros.';
+    ul.appendChild(li);
+  }
+  // API strings (plate, driver) go through textContent only, never innerHTML.
+  list.forEach(t => {
+    const li = document.createElement('li');
+    if (t.id===selectedId) li.classList.add('sel');
+    const btn = document.createElement('button');
+    btn.type = 'button';
 
-      // Arrancar llamadas solo con una sesión válida
-      verificarSesion().then((sesionValida) => {
-        if (!sesionValida) return;
-        cargarInfoCamion();
-        cargarHistorial();
-        setInterval(actualizarUbicacionEnVivo, 2000);
-      });
-    </script>
-  </body>
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = STATUS[t.status].color;
+
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = t.plate;
+
+    const sp = document.createElement('span');
+    sp.className = 'sp';
+    sp.textContent = t.speed;
+    const spUnit = document.createElement('small');
+    spUnit.textContent = ' km/h';
+    sp.appendChild(spUnit);
+
+    const sb = document.createElement('span');
+    sb.className = 'sb';
+    sb.textContent = [t.driver, t.updated ? ago(t.updated) : 'Sin señal'].filter(Boolean).join(' · ');
+
+    const fu = document.createElement('span');
+    fu.className = 'fu' + (t.fuel!=null && t.fuel<25 ? ' low' : '');
+    fu.textContent = t.fuel!=null ? `${t.fuel}% comb.` : '—';
+
+    btn.append(dot, nm, sp, sb, fu);
+    btn.onclick = () => select(t.id, true);
+    li.appendChild(btn);
+    ul.appendChild(li);
+  });
+
+  document.getElementById('count').textContent = `${list.length} de ${trucks.length} camiones`;
+  const nAlert = trucks.filter(t=>t.status==='alert').length;
+  document.getElementById('alertBtn').textContent = `${nAlert} ${nAlert===1?'alerta':'alertas'}`;
+
+  renderBars(list);
+  renderDonuts();
+  renderDetail();
+}
+
+function renderDetail(){
+  const el = document.getElementById('detail');
+  const t = trucks.find(x=>x.id===selectedId);
+  if (!t){
+    const empty = document.createElement('div');
+    empty.className = 'noSel';
+    empty.textContent = 'Elegí un camión en el mapa o en la lista para ver su detalle.';
+    el.replaceChildren(empty);
+    return;
+  }
+  el.replaceChildren();
+
+  const when = document.createElement('div');
+  when.className = 'when';
+  const left = document.createElement('span');
+  const plate = document.createElement('b');
+  plate.style.color = 'var(--ink)';
+  plate.style.fontSize = '12px';
+  plate.textContent = t.plate;
+  const stLabel = document.createElement('span');
+  stLabel.style.color = STATUS[t.status].color;
+  stLabel.style.fontWeight = '600';
+  stLabel.textContent = STATUS[t.status].label;
+  left.append(plate, document.createTextNode(' · '), stLabel);
+  const right = document.createElement('span');
+  right.textContent = t.updated ? ago(t.updated) : 'Sin señal';
+  when.append(left, right);
+
+  const st = document.createElement('div');
+  st.className = 'st';
+  const statCell = (value, label) => {
+    const cell = document.createElement('div');
+    const b = document.createElement('b');
+    b.textContent = value;
+    const span = document.createElement('span');
+    span.textContent = label;
+    cell.append(b, span);
+    return cell;
+  };
+  st.append(
+    statCell(t.speed, 'km/h'),
+    statCell(t.fuel!=null ? `${t.fuel}%` : '—', 'Combustible'),
+    statCell(`${Math.round(t.heading)}°`, 'Rumbo')
+  );
+
+  const info = document.createElement('dl');
+  info.className = 'info';
+  const infoRow = (dt, dd) => {
+    const a = document.createElement('dt');
+    a.textContent = dt;
+    const c = document.createElement('dd');
+    c.textContent = dd;
+    info.append(a, c);
+  };
+  infoRow('Chofer', t.driver || '—');
+  infoRow('Ruta', t.route || '—');
+  infoRow('Posición', t.lat!=null ? `${t.lat.toFixed(3)}, ${t.lng.toFixed(3)}` : '—');
+
+  el.append(when, st, info);
+  if (t.history && t.history.length > 1){
+    // Generated locally from numeric samples: safe to inject as markup.
+    el.insertAdjacentHTML('beforeend', sparkline(t.history));
+  }
+}
+
+function select(id, fly){
+  selectedId = id;
+  const t = trucks.find(x=>x.id===id);
+  if (t){
+    if (fly && t.lat!=null) map.flyTo([t.lat,t.lng], Math.max(map.getZoom(), 10), {duration:.8});
+    cargarHistorial(t);
+  }
+  render();
+}
+
+/* ---------- Real API calls ---------- */
+// GET /trucks: org-scoped list (id + plate) guarded by the Bearer token.
+async function cargarCamiones(){
+  try{
+    const res = await fetch('/trucks', { headers: authHeaders() });
+    if (res.status === 401){ clearSessionAndRedirect(); return false; }
+    if (!res.ok) return false;
+    const data = await res.json();
+    trucks = data.map(t => ({
+      id: t.id,
+      plate: t.plate,
+      lat: null, lng: null,
+      heading: 0,
+      status: 'stop',
+      speed: 0,
+      fuel: null,  // not exposed by the backend
+      driver: '',  // not exposed by the backend
+      route: '',   // not exposed by the backend
+      updated: 0,
+      history: [],
+    }));
+    return true;
+  }catch(error){
+    console.error('Error al cargar camiones:', error);
+    return false;
+  }
+}
+
+function aplicarPunto(t, p){
+  const lat = p.lat, lng = p.long;
+  const ts = Date.parse(p.timestamp) || Date.now();
+  if (t.lat !== null){
+    const dtSeg = (ts - t.updated) / 1000;
+    const dist = haversineM(t.lat, t.lng, lat, lng);
+    if (dtSeg > 0){
+      // Real speed derived from displacement between consecutive points
+      t.speed = Math.max(0, Math.min(200, Math.round((dist / dtSeg) * 3.6)));
+    }
+    if (dist > 5) t.heading = bearing(t.lat, t.lng, lat, lng);
+  }
+  t.lat = lat; t.lng = lng; t.updated = ts;
+  t.history.push(t.speed);
+  if (t.history.length > HISTORY_MAX) t.history.shift();
+  t.status = estadoDe(t);
+}
+
+// Poll GET /trucks/{id}/location for every truck (replaces the example's
+// movement simulation with real telemetry).
+async function actualizarUbicaciones(){
+  await Promise.all(trucks.map(async t => {
+    try{
+      const res = await fetch(`/trucks/${t.id}/location`, { headers: authHeaders() });
+      if (res.status === 401){ clearSessionAndRedirect(); return; }
+      if (!res.ok) return; // 404: truck without registered locations
+      const p = await res.json();
+      aplicarPunto(t, p);
+    }catch(error){
+      console.error('Error al actualizar ubicación:', error);
+    }
+  }));
+  render();
+}
+
+// GET /trucks/{id}/iter: derive a real speed history for the selected truck.
+async function cargarHistorial(t){
+  try{
+    const res = await fetch(`/trucks/${t.id}/iter`, { headers: authHeaders() });
+    if (res.status === 401){ clearSessionAndRedirect(); return; }
+    if (!res.ok) return;
+    const pts = await res.json();          // newest first
+    const chrono = pts.slice().reverse();  // oldest first
+    const hist = [];
+    for (let i = 1; i < chrono.length; i++){
+      const dtSeg = (Date.parse(chrono[i].timestamp) - Date.parse(chrono[i-1].timestamp)) / 1000;
+      const dist = haversineM(chrono[i-1].lat, chrono[i-1].long, chrono[i].lat, chrono[i].long);
+      hist.push(dtSeg > 0 ? Math.max(0, Math.min(200, Math.round((dist/dtSeg)*3.6))) : 0);
+    }
+    if (hist.length) t.history = hist.slice(-HISTORY_MAX);
+    render();
+  }catch(error){
+    console.error('Error al cargar historial:', error);
+  }
+}
+
+/* ---------- Events ---------- */
+document.getElementById('q').oninput = e => { state.q = e.target.value; render(); };
+document.getElementById('sort').onchange = e => { state.sort = e.target.value; render(); };
+document.getElementById('dir').onchange  = e => { state.dir  = e.target.value; render(); };
+document.getElementById('chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  state.status = b.dataset.s;
+  document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c===b));
+  render();
+});
+function setView(v){
+  state.view = v;
+  document.querySelectorAll('#seg button').forEach(c => c.setAttribute('aria-pressed', c.dataset.v===v));
+  render();
+}
+document.getElementById('seg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (b) setView(b.dataset.v);
+});
+document.getElementById('alertBtn').onclick = () => setView('alert');
+document.getElementById('btn-logout').addEventListener('click', clearSessionAndRedirect);
+
+/* ---------- Boot: only with a valid session ---------- */
+verificarSesion().then(async (sesionValida) => {
+  if (!sesionValida) return;
+  const ok = await cargarCamiones();
+  render();
+  if (!ok) return;
+  await actualizarUbicaciones();
+  setInterval(actualizarUbicaciones, POLL_MS);
+});
+</script>
+</body>
 </html>
