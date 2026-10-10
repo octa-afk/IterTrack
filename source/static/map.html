@@ -561,7 +561,7 @@ new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('
 const markers = new Map();
 const truck = '<svg viewBox="-36 -76 72 152" aria-hidden="true"><path d="M-17,-62 Q0,-68 17,-62 Q22,-60 22,-52 L22,-6 Q22,0 16,0 L-16,0 Q-22,0 -22,-6 L-22,-52 Q-22,-60 -17,-62 Z" fill="#000" fill-opacity="0.10" stroke="#000" stroke-opacity="0.10" stroke-width="16" stroke-linejoin="round"/><rect x="-22" y="6" width="44" height="58" rx="6" fill="#000" fill-opacity="0.10" stroke="#000" stroke-opacity="0.10" stroke-width="16" stroke-linejoin="round"/><rect x="-4" y="-3" width="8" height="12" rx="2" fill="#2C2C2A"/><rect x="-22" y="6" width="44" height="58" rx="6" fill="#F26B1D" stroke="#B8480F" stroke-width="2"/><rect x="-16" y="12" width="32" height="46" rx="3" fill="#F9955A"/><path d="M-17,-62 Q0,-68 17,-62 Q22,-60 22,-52 L22,-6 Q22,0 16,0 L-16,0 Q-22,0 -22,-6 L-22,-52 Q-22,-60 -17,-62 Z" fill="#F26B1D" stroke="#B8480F" stroke-width="2"/><path d="M-16,-49 Q0,-54 16,-49 L18,-31 L-18,-31 Z" fill="#111111"/><path d="M-18,-17 L18,-17 L15,-7 Q0,-4 -15,-7 Z" fill="#111111"/></svg>';
 
-const truckSvg = color => truck.replaceAll('#F26B1D', color).replaceAll('#B8480F', color).replaceAll('#F9955A', color);
+const truckSvg = color => truck.replaceAll('#F26B1D', color).replaceAll('#B8480F', color).replaceAll('#F9955A', '#FFFFFF');
 const pinIcon = (t, sel) => L.divIcon({
   className:'', iconSize:[40,40], iconAnchor:[20,20],
   html:`<div class="pin ${t.status} ${sel?'sel':''}">
