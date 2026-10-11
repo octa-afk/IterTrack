@@ -283,3 +283,33 @@ def test_map_page_dark_glass_panel_cascade_wins_over_c3_defaults(client):
     assert "background:var(--g-bg);border-color:var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)" in html[dark_panels:]
     assert ":root.dark .search{background:var(--g-fill)" in html[dark_panels:]
     assert ":root.dark .pill{background:none" in html[dark_panels:]
+
+
+def test_map_page_dark_glass_reuses_login_palette(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    html = response.text
+    glass_start = html.index("/* ===== C3 v10 glass layer")
+    dark_panels = html.index(":root.dark .side,:root.dark .top,:root.dark .card", glass_start)
+    dark_css = html[html.index(":root.dark{"):glass_start]
+    for token in (
+        "--bg1:#121a31", "--bg2:#0d1426", "--ink:#e7edf9",
+        "--muted:#8e9bb5", "--line:rgba(255,255,255,.12)",
+        "--acc:#8aa6ff", "--acc-d:#b4c6ff",
+        "--acc-xl:rgba(138,166,255,.14)",
+        "--b1:rgba(79,111,224,.38)", "--b2:rgba(90,150,230,.26)",
+        "--b3:rgba(130,110,220,.22)",
+    ):
+        assert token in dark_css
+    assert ":root.dark body{background:linear-gradient(135deg,var(--bg1),var(--bg2))}" in dark_css
+    for token in (
+        "--g-bg:rgba(18,26,49,.78)", "--g-solid:rgba(13,20,38,.98)",
+        "--g-bd:rgba(138,166,255,.28)",
+        "--g-fill:rgba(138,166,255,.10)",
+        "--g-fill2:rgba(138,166,255,.16)",
+        "--g-on:rgba(138,166,255,.22)", "--ac:#8aa6ff",
+    ):
+        assert token in html[glass_start:]
+    assert dark_panels > html.index(".side,.top,.card,.mapcard .card-h", glass_start)
+    assert "fetch('/auth/me'" in html
+    assert "function actualizarUbicaciones" in html
