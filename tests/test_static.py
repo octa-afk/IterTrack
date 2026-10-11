@@ -252,3 +252,31 @@ def test_map_page_preserves_real_hooks_with_glass_layer(client):
     assert "fetch('/auth/me'" in response.text
     assert "fetch('/trucks'" in response.text
     assert "function actualizarUbicaciones" in response.text
+
+
+def test_map_page_integrates_mobile_tabs_with_live_map_only(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    page = response.text
+
+    assert 'id="mobile-tabs"' in page
+    for view in ("panel", "fleet", "map"):
+        assert f'data-mobile-view="{view}"' in page
+        assert f'body[data-mobile-view="{view}"]' in page
+    assert "function setMobileView(view)" in page
+    assert "requestAnimationFrame(() => map.invalidateSize())" in page
+    assert "L.map('map')" in page
+    assert "fetch('/auth/me'" in page
+    assert "fetch('/trucks'" in page
+    assert "function actualizarUbicaciones" in page
+    assert "label.textContent = t.plate" in page
+    assert '<em class="lbl" style="font-style:normal">${t.plate}' not in page
+
+    # The visual prototype's simulated fleet and coordinate-grid map stay out
+    # of the authenticated page; its existing requestAnimationFrame movement
+    # tween is legitimate because it animates received GPS samples.
+    assert "const NAMES" not in page
+    assert "Math.random()" not in page
+    assert 'id="world"' not in page
+    assert "const W = 2400" not in page
+    assert "function loop(now)" not in page
