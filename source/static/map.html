@@ -685,7 +685,12 @@ function recolorizarSiListo(){
     ocultarCargaEstilo();
   }
 }
+function mapaListo(){
+  recolorizarSiListo();
+  ocultarCargaEstilo();
+}
 mapLibreMap.on('styledataloading', mostrarCargaEstilo);
+mapLibreMap.on('load', mapaListo);
 mapLibreMap.on('style.load', recolorizarSiListo);
 mapLibreMap.on('styledata', recolorizarSiListo);
 mapLibreMap.on('error', ocultarCargaEstilo);
