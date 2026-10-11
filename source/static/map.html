@@ -59,6 +59,7 @@
   .mapbox{flex:1;border-radius:14px;overflow:hidden;min-height:299px;position:relative}
   #map{position:absolute;inset:0}
   .mapbox,#map,.leaflet-container,.maplibregl-canvas{background:var(--map-bg,#f4f6fb)}
+  .map-style-loading::before{content:'';position:absolute;inset:0;z-index:500;background:var(--map-bg,#f4f6fb);pointer-events:none}
   .leaflet-container{font-family:Poppins,sans-serif}
   .pin{width:40px;height:40px;display:grid;place-items:center;position:relative}
   .pin .truck-svg{display:grid;transition:transform .2s,filter .2s}
@@ -636,6 +637,8 @@ const MAP_STYLES = {
   light: 'https://tiles.openfreemap.org/styles/positron',
   dark: 'https://tiles.openfreemap.org/styles/dark',
 };
+const mapContainer = document.getElementById('map');
+mapContainer.classList.add('map-style-loading');
 const base = L.maplibreGL({
   style: temaOscuro() ? MAP_STYLES.dark : MAP_STYLES.light,
   attribution:'<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -670,11 +673,22 @@ function colorizeMap(mapLibreMap, theme){
   });
 }
 const mapLibreMap = base.getMaplibreMap();
-function recolorizarSiListo(){
-  if (mapLibreMap.isStyleLoaded()) colorizeMap(mapLibreMap, mapTheme);
+function mostrarCargaEstilo(){
+  mapContainer.classList.add('map-style-loading');
 }
+function ocultarCargaEstilo(){
+  mapContainer.classList.remove('map-style-loading');
+}
+function recolorizarSiListo(){
+  if (mapLibreMap.isStyleLoaded()) {
+    colorizeMap(mapLibreMap, mapTheme);
+    ocultarCargaEstilo();
+  }
+}
+mapLibreMap.on('styledataloading', mostrarCargaEstilo);
 mapLibreMap.on('style.load', recolorizarSiListo);
 mapLibreMap.on('styledata', recolorizarSiListo);
+mapLibreMap.on('error', ocultarCargaEstilo);
 recolorizarSiListo();
 function sincronizarCapaMapa(){
   mapTheme = temaOscuro() ? 'dark' : 'light';
