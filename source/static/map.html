@@ -61,9 +61,9 @@
   .mapbox,#map,.leaflet-container,.maplibregl-canvas{background:var(--map-bg,#f4f6fb)}
   .map-style-loading::before{content:'';position:absolute;inset:0;z-index:500;background:var(--map-bg,#f4f6fb);pointer-events:none}
   .leaflet-container{font-family:Poppins,sans-serif}
-  .pin{width:40px;height:40px;display:grid;place-items:center;position:relative}
+  .pin{width:48px;height:48px;display:grid;place-items:center;position:relative}
   .pin .truck-svg{display:grid;transition:transform .2s,filter .2s}
-  .pin svg{width:18px;height:38px}
+  .pin svg{width:48px;height:48px}
   .pin.sel .truck-svg{transform:scale(1.15);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
   .pin .lbl{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
   .pin.sel .lbl{display:block}
@@ -195,7 +195,7 @@
   /* ===== Versión celeste suave (glass claro) ===== */
   .app{
     background:
-      radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 70%),
+      radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 100%),
       radial-gradient(713px 483px at 78% -6%,rgba(165,210,245,.55),transparent 70%),
       radial-gradient(598px 483px at 10% 100%,rgba(185,180,240,.28),transparent 70%),
       linear-gradient(135deg,#dbe7f8,#cbdcf3);
@@ -611,9 +611,32 @@ mapLibreMap.on('error', ocultarCargaEstilo);
 new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('map'));
 
 const markers = new Map();
-const truck = '<svg viewBox="-36 -76 72 152" aria-hidden="true"><path d="M-17,-62 Q0,-68 17,-62 Q22,-60 22,-52 L22,-6 Q22,0 16,0 L-16,0 Q-22,0 -22,-6 L-22,-52 Q-22,-60 -17,-62 Z" fill="#000" fill-opacity="0.10" stroke="#000" stroke-opacity="0.10" stroke-width="16" stroke-linejoin="round"/><rect x="-22" y="6" width="44" height="58" rx="6" fill="#000" fill-opacity="0.10" stroke="#000" stroke-opacity="0.10" stroke-width="16" stroke-linejoin="round"/><rect x="-4" y="-3" width="8" height="12" rx="2" fill="#2C2C2A"/><rect x="-22" y="6" width="44" height="58" rx="6" fill="#F26B1D" stroke="#B8480F" stroke-width="2"/><rect x="-16" y="12" width="32" height="46" rx="3" fill="#F9955A"/><path d="M-17,-62 Q0,-68 17,-62 Q22,-60 22,-52 L22,-6 Q22,0 16,0 L-16,0 Q-22,0 -22,-6 L-22,-52 Q-22,-60 -17,-62 Z" fill="#F26B1D" stroke="#B8480F" stroke-width="2"/><path d="M-16,-49 Q0,-54 16,-49 L18,-31 L-18,-31 Z" fill="#111111"/><path d="M-18,-17 L18,-17 L15,-7 Q0,-4 -15,-7 Z" fill="#111111"/></svg>';
+const truck = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">
+  <circle cx="256" cy="256" r="232" fill="#1F4E8C" stroke="#FFFFFF" stroke-width="24"/>
+  <g transform="translate(256 256) scale(0.74) translate(-256 -258)">
+    <g fill="#FFFFFF">
+      <path d="M96 120 Q96 38 170 34 Q256 28 342 34 Q416 38 416 120 V300 Q416 308 408 308 H104 Q96 308 96 300 Z"/>
+      <rect x="92" y="310" width="328" height="142" rx="18"/>
+      <rect x="100" y="446" width="52" height="36" rx="9"/>
+      <rect x="360" y="446" width="52" height="36" rx="9"/>
+    </g>
+    <g fill="#FFFFFF" stroke="#1F4E8C" stroke-width="12" paint-order="stroke">
+      <rect x="58" y="108" width="42" height="98" rx="16"/>
+      <rect x="412" y="108" width="42" height="98" rx="16"/>
+    </g>
+    <g fill="#1F4E8C">
+      <rect x="106" y="90" width="300" height="120" rx="18"/>
+      <rect x="126" y="312" width="34" height="74" rx="7"/>
+      <rect x="352" y="312" width="34" height="74" rx="7"/>
+      <rect x="172" y="322" width="168" height="8" rx="4"/>
+      <rect x="172" y="340" width="168" height="8" rx="4"/>
+      <rect x="172" y="358" width="168" height="8" rx="4"/>
+      <rect x="172" y="376" width="168" height="8" rx="4"/>
+    </g>
+  </g>
+</svg>`;
 
-const truckSvg = color => truck.replaceAll('#F26B1D', color).replaceAll('#B8480F', color).replaceAll('#F9955A', '#FFFFFF');
+const truckSvg = () => truck;
 const pinIcon = (t, sel) => {
   const pin = document.createElement('div');
   pin.className = `pin ${t.status} ${sel?'sel':''}`;
@@ -627,7 +650,7 @@ const pinIcon = (t, sel) => {
   label.style.fontStyle = 'normal';
   label.textContent = t.plate;
   pin.append(truckElement, label);
-  return L.divIcon({className:'', iconSize:[40,40], iconAnchor:[20,20], html:pin});
+  return L.divIcon({className:'', iconSize:[10,10], iconAnchor:[5,5], html:pin});
 };
 
 /* ---------- Smooth movement ----------
