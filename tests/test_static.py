@@ -104,6 +104,26 @@ def test_map_page_has_dark_theme_palette(client):
     assert ":root.dark" in response.text
 
 
+def test_map_page_has_stable_dark_map_fallback(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert ".mapbox,#map,.leaflet-container,.maplibregl-canvas" in response.text
+    assert "--map-bg:#0d1426" in response.text
+
+
+def test_map_page_recolors_maplibre_background_layers(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "layer.type === 'background'" in response.text
+    assert "background-color', colors.background" in response.text
+
+
+def test_map_page_uses_moderately_opaque_dark_glass(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "--g-bg:rgba(18,26,49,.86)" in response.text
+
+
 def test_map_page_switches_dark_cartography_with_theme(client):
     response = client.get("/map")
     assert response.status_code == 200
@@ -303,7 +323,7 @@ def test_map_page_dark_glass_reuses_login_palette(client):
         assert token in dark_css
     assert ":root.dark body{background:linear-gradient(135deg,var(--bg1),var(--bg2))}" in dark_css
     for token in (
-        "--g-bg:rgba(18,26,49,.78)", "--g-solid:rgba(13,20,38,.98)",
+        "--g-bg:rgba(18,26,49,.86)", "--g-solid:rgba(13,20,38,.98)",
         "--g-bd:rgba(138,166,255,.28)",
         "--g-fill:rgba(138,166,255,.10)",
         "--g-fill2:rgba(138,166,255,.16)",

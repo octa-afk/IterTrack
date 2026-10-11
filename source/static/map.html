@@ -58,6 +58,7 @@
   .mapcard{flex:1;padding:16px;display:flex;flex-direction:column}
   .mapbox{flex:1;border-radius:14px;overflow:hidden;min-height:299px;position:relative}
   #map{position:absolute;inset:0}
+  .mapbox,#map,.leaflet-container,.maplibregl-canvas{background:var(--map-bg,#f4f6fb)}
   .leaflet-container{font-family:Poppins,sans-serif}
   .pin{width:40px;height:40px;display:grid;place-items:center;position:relative}
   .pin .truck-svg{display:grid;transition:transform .2s,filter .2s}
@@ -338,7 +339,8 @@
 
   :root.dark .mapbox{box-shadow:0 0 0 1px rgba(255,255,255,.08)}
   :root.dark .leaflet-tile-pane{filter:invert(1) hue-rotate(195deg) brightness(.92) contrast(.88) saturate(.75)}
-  :root.dark .leaflet-container{background:#1b2540}
+  :root.dark{--map-bg:#0d1426}
+  :root.dark .leaflet-container{background:var(--map-bg)}
   :root.dark .leaflet-bar a{background:#1f2a45;color:var(--ink);border-bottom-color:rgba(255,255,255,.1)}
   :root.dark .leaflet-bar a:hover{background:#2a3858}
   :root.dark .leaflet-control-attribution{background:rgba(15,22,40,.75)!important;color:var(--muted)}
@@ -420,7 +422,7 @@
   .app.nav-off{--lx:16px}
   .app.nav-off .top,.app.nav-off .mapcard .card-h,.app.nav-off .bottom,
   .app.nav-off .leaflet-top.leaflet-left,.app.nav-off .leaflet-bottom.leaflet-right{transition:left .3s ease}
-  :root.dark{--g-bg:rgba(18,26,49,.78);--g-solid:rgba(13,20,38,.98);--g-bd:rgba(138,166,255,.28);--g-hi:inset 0 1px 0 rgba(255,255,255,.18);--g-sh:0 14px 44px rgba(0,0,0,.45);--g-fill:rgba(138,166,255,.10);--g-fill2:rgba(138,166,255,.16);--g-on:rgba(138,166,255,.22);--ac:#8aa6ff}
+  :root.dark{--g-bg:rgba(18,26,49,.86);--g-solid:rgba(13,20,38,.98);--g-bd:rgba(138,166,255,.28);--g-hi:inset 0 1px 0 rgba(255,255,255,.18);--g-sh:0 14px 44px rgba(0,0,0,.45);--g-fill:rgba(138,166,255,.10);--g-fill2:rgba(138,166,255,.16);--g-on:rgba(138,166,255,.22);--ac:#8aa6ff}
   /* Keep dark glass values effective after the generic C3 panel declarations. */
   :root.dark .side,:root.dark .top,:root.dark .card,:root.dark .mapcard .card-h{
     background:var(--g-bg);border-color:var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)
@@ -639,14 +641,17 @@ const base = L.maplibreGL({
   attribution:'<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 const MAP_COLORS = {
-  light: { water: '#a9d3f0', green: '#cfe8c4' },
-  dark: { water: '#1f4a6e', green: '#1f3d2b' },
+  light: { background: '#f4f6fb', water: '#a9d3f0', green: '#cfe8c4' },
+  dark: { background: '#0d1426', water: '#1f4a6e', green: '#1f3d2b' },
 };
 let mapTheme = temaOscuro() ? 'dark' : 'light';
 function colorizeMap(mapLibreMap, theme){
   const colors = MAP_COLORS[theme];
   mapLibreMap.getStyle().layers.forEach(layer => {
     const sourceLayer = layer['source-layer'];
+    if (layer.type === 'background') {
+      mapLibreMap.setPaintProperty(layer.id, 'background-color', colors.background);
+    }
     if (layer.type === 'fill' && sourceLayer === 'water') {
       mapLibreMap.setPaintProperty(layer.id, 'fill-color', colors.water);
       mapLibreMap.setPaintProperty(layer.id, 'fill-opacity', 1);
