@@ -27,10 +27,10 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 ## 🚀 Características
 
 * **Registro y gestión de camiones:** Identificación única por ID y patente vehicular única.
-* **Telemetría GPS en tiempo real:** Recepción continua de coordenadas (latitud, longitud, timestamp).
+* **Telemetría GPS en tiempo real:** Recepción continua de coordenadas, velocidad, rumbo y timestamp.
 * **Monitoreo en vivo en mapa interactivo:** Visualización en tiempo real sobre OpenStreetMap y Leaflet (`/map`) con rotación de vehículo según rumbo (*bearing*), flechas direccionales adaptativas al zoom y seguimiento automático.
 * **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
-* **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`), con token Bearer para los endpoints protegidos de escritura. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
+* **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`); todos los endpoints de camiones, tanto de lectura como de escritura, requieren token Bearer. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
 * **Persistencia Robusta:** Modelos relacionales con SQLAlchemy 2.0 y control de versiones de esquema con Alembic sobre PostgreSQL.
 * **Simulador integrado con ruta realista:** Script Python con un circuito cerrado de 13 km por Córdoba Capital (425 puntos) para pruebas de avance y orientación en tiempo real.
 * **Documentación interactiva automática:** Swagger UI y ReDoc nativos de FastAPI.
@@ -78,7 +78,7 @@ flowchart TD
     DBCfg --> PG
     AL -.->|Control de Esquemas| PG
     API -->|GET /map| MAP
-    MAP -->|Polling GET /trucks/...| Router
+    MAP -->|Polling GET /trucks/... + Bearer JWT| Router
     API --> DOCS
 ```
 
@@ -224,7 +224,7 @@ El servidor quedará disponible en `http://127.0.0.1:8000`.
 Una vez iniciado el servidor, puedes interactuar directamente con los endpoints y el mapa desde el navegador:
 
 * **Login:** [http://127.0.0.1:8000/](http://127.0.0.1:8000/) (acceso al mapa; el enlace "Registrate" lleva a `/register`)
-* **Mapa en Vivo (Leaflet):** [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map) (visualización de flotas en tiempo real)
+* **Mapa en Vivo (Leaflet):** [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map) (la página valida la sesión y consulta la API con Bearer JWT)
 * **Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 * **ReDoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
@@ -232,7 +232,7 @@ Una vez iniciado el servidor, puedes interactuar directamente con los endpoints 
 
 ## 🛰 Simulación de Telemetría
 
-El repositorio incluye un simulador avanzado para verificar la recepción y visualización continua de coordenadas en tiempo real:
+El repositorio incluye un simulador para verificar la recepción y visualización continua de telemetría en tiempo real. Antes de ejecutarlo, inicia el backend y registra una cuenta asociada a una organización. Configura `API_USER` y `API_PASSWORD` con las credenciales válidas de esa cuenta; el simulador inicia sesión en `/auth/login` y usa el token Bearer para enviar datos. Los camiones que registra quedan asociados a la organización de esa cuenta.
 
 ```bash
 # Ejecución estándar (2 segundos por ping):
@@ -274,18 +274,18 @@ git checkout IterTrack-Hardware
 |---|---|---|---|---|
 | `GET` | `/` | Página de login (`static/login.html`) | — | — |
 | `GET` | `/register` | Página de registro (`static/register.html`) | — | — |
-| `GET` | `/map` | Interfaz web de monitoreo satelital en vivo (OpenStreetMap / Leaflet) | — | — |
+| `GET` | `/map` | Página pública; el frontend valida la sesión antes de consultar la API | — | — |
 | `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`static/isologo.png`) | — | — |
-| `POST` | `/auth/register` | Registra un nuevo usuario | `{"username": "...", "email": "...", "full_name": "...", "password": "..."}` | — |
+| `POST` | `/auth/register` | Registra un usuario; el JSON incluye `org_name` o `invitation_code` | Ver JSON de registro abajo | — |
 | `POST` | `/auth/login` | Login OAuth2 (form-data) y devuelve JWT | `username` / `password` (form) | — |
 | `GET` | `/auth/me` | Datos del usuario autenticado | — | 🔒 Bearer |
 | `POST` | `/trucks` | Registra un nuevo camión y su punto inicial | Ver JSON abajo | 🔒 Bearer |
-| `PUT` | `/trucks/{truck_id}/location` | Actualiza la ubicación actual del camión | `{"lat": -31.416, "long": -64.183}` | 🔒 Bearer |
-| `GET` | `/trucks/{truck_id}/location` | Obtiene la última ubicación conocida | — | — |
-| `GET` | `/trucks/{truck_id}/iter` | Obtiene el historial reciente (hasta 100 puntos) | — | — |
-| `DELETE` | `/trucks/{truck_id}/iter` | Borra el historial de recorrido | — | 🔒 Bearer |
-| `GET` | `/trucks` | Lista todos los camiones registrados | — | — |
-| `GET` | `/trucks/ids` | Lista únicamente los IDs y patentes | — | — |
+| `PUT` | `/trucks/{truck_id}/location` | Agrega un punto de ubicación al historial del camión | `{"lat": -31.416, "long": -64.183, "speed": 0, "heading": 0}` | 🔒 Bearer |
+| `GET` | `/trucks/{truck_id}/location` | Obtiene el punto de tracking más reciente | — | 🔒 Bearer |
+| `GET` | `/trucks/{truck_id}/iter` | Obtiene hasta 100 puntos, del más nuevo al más antiguo | — | 🔒 Bearer |
+| `DELETE` | `/trucks/{truck_id}/iter` | Elimina los puntos de tracking del camión, no el camión | — | 🔒 Bearer |
+| `GET` | `/trucks` | Lista los camiones de la organización del usuario autenticado | — | 🔒 Bearer |
+| `GET` | `/trucks/ids` | Lista IDs y patentes de los camiones de la organización del usuario autenticado | — | 🔒 Bearer |
 
 ### Flujo de autenticación:
 
@@ -293,9 +293,27 @@ git checkout IterTrack-Hardware
 
 **Vía API (alternativa programática):**
 
-1. **Registro:** `POST /auth/register` con usuario, email y contraseña (se persiste hasheada con bcrypt).
+1. **Registro:** `POST /auth/register` con usuario, email, nombre completo, contraseña y exactamente uno de `org_name` o `invitation_code` (la contraseña se persiste hasheada con bcrypt).
 2. **Login:** `POST /auth/login` con `username` y `password` como *form-data*; devuelve `{"access_token": "...", "token_type": "bearer"}`.
 3. **Uso del token:** incluir el header `Authorization: Bearer <access_token>` en las peticiones a los endpoints protegidos (🔒). El token expira según `ACCESS_TOKEN_EXPIRE_MINUTES` (60 min por defecto).
+
+Ejemplo de registro creando una organización:
+
+```json
+{
+  "username": "usuario",
+  "email": "usuario@example.com",
+  "full_name": "Nombre Apellido",
+  "password": "<password>",
+  "org_name": "Mi organización"
+}
+```
+
+Para unirse a una organización existente, usa `invitation_code` en lugar de `org_name`. La API rechaza solicitudes que incluyan ambos campos o ninguno.
+
+### Membresía y alcance de acceso
+
+El registro crea una organización con `org_name` o asocia al usuario a una organización existente con `invitation_code`. Los camiones creados pertenecen a la organización del usuario autenticado; los listados se filtran por organización y los endpoints que consultan o modifican un camión verifican esa pertenencia. La membresía y el alcance de datos por organización están implementados; los permisos basados en roles siguen pendientes y se mantienen como trabajo futuro del producto.
 
 ### Ejemplo de Payload para `POST /trucks`:
 
@@ -307,7 +325,9 @@ git checkout IterTrack-Hardware
   },
   "location": {
     "lat": -31.4166867,
-    "long": -64.1834193
+    "long": -64.1834193,
+    "speed": 0,
+    "heading": 0
   }
 }
 ```
@@ -322,7 +342,7 @@ git checkout IterTrack-Hardware
 2. **Validación de Datos:**
    * Las coordenadas GPS deben restringirse en los esquemas Pydantic (`-90 <= lat <= 90` y `-180 <= long <= 180`).
 3. **Autenticación:**
-   * Implementada con OAuth2 Password Flow + JWT (HS256). Los endpoints de escritura (`POST /trucks`, `PUT .../location`, `DELETE .../iter`) requieren Bearer Token; `GET /auth/me` devuelve el usuario autenticado.
+   * Implementada con OAuth2 Password Flow + JWT (HS256). Todos los endpoints `/trucks` (lectura y escritura) requieren Bearer Token; las páginas estáticas se sirven públicamente, pero `/map` valida la sesión en el navegador antes de mostrar los datos. `GET /auth/me` devuelve el usuario autenticado.
    * Las contraseñas nunca se almacenan en texto plano: se hashean con bcrypt antes de persistir en la tabla `users`.
    * `UserResponse` garantiza que `hashed_password` nunca se expone en las respuestas.
 4. **Integración Continua:**

@@ -120,7 +120,8 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * `source/schemas/auth.py` y `source/services/auth.py` implementados: registro, login (OAuth2PasswordRequestForm), `/auth/me`, hashing bcrypt y tokens JWT HS256.
   * Configuración JWT centralizada en `source/database/config.py`: `SECRET_KEY`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES` (60).
   * `auth_router` incluido en `source/main.py`.
-  * Endpoints de escritura de `tracking.py` (`POST /trucks`, `PUT /{truck_id}/location`, `DELETE /{truck_id}/iter`) protegidos con `Depends(get_current_user)`. Los `GET` permanecen públicos para el mapa.
+  * Todos los endpoints de `tracking.py` (`POST`, `PUT`, `GET` y `DELETE` bajo `/trucks`) requieren `Depends(get_current_user)` y Bearer JWT. Las páginas estáticas se sirven sin autenticación HTTP; el frontend de `/map` valida el token y envía el Bearer en las llamadas a la API.
+  * Cada usuario pertenece a una organización y los camiones nuevos se asignan a ella; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia. Los permisos basados en roles siguen pendientes.
   * `bcrypt` fijado en `4.0.1` en `requirements.txt` por incompatibilidad de passlib 1.7.4 con bcrypt 5.x.
 * **Manejo de Errores Semántico (Completado):**
   * `add_truck` ahora lanza `HTTPException(status_code=400, ...)` en duplicados.
@@ -141,9 +142,9 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
 * **Sin lint ni typechecking (Pendiente):**
   * No hay `ruff`, `mypy`, `black` ni `pyproject.toml`. `make check` sólo ejecuta `py_compile` sobre 4 archivos, lo que valida sintaxis pero ni tipos ni estilo.
 * **Cobertura de tests de autenticación (Resuelto):**
-  * `tests/test_auth.py` cubre registro, login, `/auth/me` y protección de endpoints (caso feliz + 400/401/422). La suite completa corre 19 tests.
-* **Extensión de Telemetría (Opcional):**
-  * Posibilidad de admitir un campo opcional `heading` (rumbo) o `speed` (velocidad) en `Location` si el hardware ESP32 con módulo GPS NMEA envía las sentencias `$GPRMC`.
+  * `tests/test_auth.py` cubre registro, login, `/auth/me` y protección de endpoints, incluidos casos de validación y credenciales no autorizadas.
+* **Telemetría de velocidad y rumbo (Implementada):**
+  * `Location` admite `speed` y `heading`; ambos valores se guardan en cada punto de tracking. La integración del hardware puede enviar estos campos cuando estén disponibles.
 * **Registro en el navegador (Completada):**
   * `GET /register` sirve `source/static/register.html`, enlazado desde `login.html`. El flujo completo está descrito en la sección 4.6.
 
