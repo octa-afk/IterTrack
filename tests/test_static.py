@@ -280,3 +280,20 @@ def test_map_page_integrates_mobile_tabs_with_live_map_only(client):
     assert 'id="world"' not in page
     assert "const W = 2400" not in page
     assert "function loop(now)" not in page
+
+
+def test_map_page_uses_mobile_glass_surfaces_and_floating_controls(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    page = response.text
+    mobile_styles = page.split("/* Mobile surfaces follow the supplied glass treatment without changing desktop. */", 1)[1].split("</style>", 1)[0]
+
+    assert "@media (max-width:943px){" in mobile_styles
+    assert "body{background:radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 100%)" in mobile_styles
+    assert ".card:not(.mapcard),.side,.top{background:var(--g-bg)" in mobile_styles
+    assert "-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
+    assert ".mobile-tabs{" in mobile_styles
+    assert "background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
+    assert "body[data-mobile-view=\"map\"] .mapcard .card-h{position:absolute" in mobile_styles
+    assert ".leaflet-bar,.leaflet-control-attribution{background:var(--g-bg)" in mobile_styles
+    assert ".leaflet-top.leaflet-left{left:auto;right:10px;top:10px}" in mobile_styles
