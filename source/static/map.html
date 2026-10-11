@@ -645,13 +645,19 @@ const base = L.maplibreGL({
 }).addTo(map);
 const MAP_COLORS = {
   light: { background: '#f4f6fb', water: '#a9d3f0', green: '#cfe8c4' },
-  dark: { background: '#0d1426', water: '#1f4a6e', green: '#1f3d2b' },
+  dark: {
+    background: '#0d1426', land: '#121a31', building: '#1a2742',
+    water: '#1f4a6e', green: '#1f3d2b', road: '#49658f',
+    boundary: '#6d8fc4', text: '#b7c7e3', halo: '#0d1426',
+  },
 };
 let mapTheme = temaOscuro() ? 'dark' : 'light';
 function colorizeMap(mapLibreMap, theme){
   const colors = MAP_COLORS[theme];
   mapLibreMap.getStyle().layers.forEach(layer => {
     const sourceLayer = layer['source-layer'];
+    const hasPaint = property => Boolean(layer.paint && property in layer.paint);
+    const hasText = Boolean(layer.layout && layer.layout['text-field']);
     if (layer.type === 'background') {
       mapLibreMap.setPaintProperty(layer.id, 'background-color', colors.background);
     }
@@ -669,6 +675,31 @@ function colorizeMap(mapLibreMap, theme){
     )) {
       mapLibreMap.setPaintProperty(layer.id, 'fill-color', colors.green);
       mapLibreMap.setPaintProperty(layer.id, 'fill-opacity', 0.9);
+    }
+    if (theme === 'dark' && layer.type === 'fill' && hasPaint('fill-color')) {
+      const isGreen = sourceLayer === 'park' ||
+        (sourceLayer === 'landcover' && /grass|wood|forest/.test(layer.id)) ||
+        (sourceLayer === 'landuse' && /park|grass|pitch|cemetery/.test(layer.id));
+      const fillColor = sourceLayer === 'water' ? colors.water :
+        (isGreen ? colors.green :
+          (sourceLayer === 'building' ? colors.building : colors.land));
+      mapLibreMap.setPaintProperty(layer.id, 'fill-color', fillColor);
+      if (hasPaint('fill-opacity')) mapLibreMap.setPaintProperty(layer.id, 'fill-opacity', 1);
+    }
+    if (theme === 'dark' && layer.type === 'line' && hasPaint('line-color')) {
+      const isWater = sourceLayer === 'waterway';
+      const isBoundary = /boundary|admin|border|contour/.test(`${sourceLayer || ''} ${layer.id}`);
+      const isTransport = sourceLayer === 'transportation' || sourceLayer === 'transportation_name' ||
+        /road|street|motorway|trunk|primary|secondary|tertiary/.test(layer.id);
+      if (isWater) mapLibreMap.setPaintProperty(layer.id, 'line-color', colors.water);
+      else if (isBoundary) mapLibreMap.setPaintProperty(layer.id, 'line-color', colors.boundary);
+      else if (isTransport) mapLibreMap.setPaintProperty(layer.id, 'line-color', colors.road);
+    }
+    if (theme === 'dark' && layer.type === 'symbol' && hasText && hasPaint('text-color')) {
+      mapLibreMap.setPaintProperty(layer.id, 'text-color', colors.text);
+      if (hasPaint('text-halo-color')) {
+        mapLibreMap.setPaintProperty(layer.id, 'text-halo-color', colors.halo);
+      }
     }
   });
 }
