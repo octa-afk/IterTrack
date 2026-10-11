@@ -297,17 +297,19 @@
      value from the dark file is used. */
   :root.dark{
     color-scheme:dark;
-    --mint:#0b1020; --card:#172036; --bg:#0f1628; --ink:#e7edf9; --muted:#8e9bb5; --line:rgba(255,255,255,.08);
+    --bg1:#121a31; --bg2:#0d1426; --mint:#0d1426; --card:#121a31; --bg:#0d1426;
+    --ink:#e7edf9; --muted:#8e9bb5; --line:rgba(255,255,255,.12);
+    --acc:#8aa6ff; --acc-d:#b4c6ff; --acc-xl:rgba(138,166,255,.14);
+    --b1:rgba(79,111,224,.38); --b2:rgba(90,150,230,.26); --b3:rgba(130,110,220,.22);
     --green:#8aa6ff; --green-d:#b4c6ff; --green-l:rgba(138,166,255,.35); --green-xl:rgba(138,166,255,.14);
-    --acc:#4f6fe0;
   }
-  :root.dark body{background:#0b1020}
+  :root.dark body{background:linear-gradient(135deg,var(--bg1),var(--bg2))}
   :root.dark .app{
     background:
-      radial-gradient(644px 460px at 5% 4%,rgba(79,111,224,.38),transparent 70%),
-      radial-gradient(713px 483px at 80% -8%,rgba(90,150,230,.26),transparent 70%),
-      radial-gradient(598px 483px at 8% 100%,rgba(130,110,220,.22),transparent 70%),
-      linear-gradient(135deg,#121a31,#0d1426);
+      radial-gradient(644px 460px at 5% 4%,var(--b1),transparent 70%),
+      radial-gradient(713px 483px at 80% -8%,var(--b2),transparent 70%),
+      radial-gradient(598px 483px at 8% 100%,var(--b3),transparent 70%),
+      linear-gradient(135deg,var(--bg1),var(--bg2));
     border:1px solid rgba(255,255,255,.10);
     box-shadow:0 21px 51px rgba(0,0,0,.55);
   }
@@ -418,7 +420,7 @@
   .app.nav-off{--lx:16px}
   .app.nav-off .top,.app.nav-off .mapcard .card-h,.app.nav-off .bottom,
   .app.nav-off .leaflet-top.leaflet-left,.app.nav-off .leaflet-bottom.leaflet-right{transition:left .3s ease}
-  :root.dark{--g-bg:rgba(22,29,48,.62);--g-solid:rgba(18,24,40,.97);--g-bd:rgba(255,255,255,.14);--g-hi:inset 0 1px 0 rgba(255,255,255,.10);--g-sh:0 14px 44px rgba(0,0,0,.45);--g-fill:rgba(255,255,255,.07);--g-fill2:rgba(255,255,255,.13);--g-on:rgba(255,255,255,.16);--ac:#4f6fe0}
+  :root.dark{--g-bg:rgba(18,26,49,.78);--g-solid:rgba(13,20,38,.98);--g-bd:rgba(138,166,255,.28);--g-hi:inset 0 1px 0 rgba(255,255,255,.18);--g-sh:0 14px 44px rgba(0,0,0,.45);--g-fill:rgba(138,166,255,.10);--g-fill2:rgba(138,166,255,.16);--g-on:rgba(138,166,255,.22);--ac:#8aa6ff}
   /* Keep dark glass values effective after the generic C3 panel declarations. */
   :root.dark .side,:root.dark .top,:root.dark .card,:root.dark .mapcard .card-h{
     background:var(--g-bg);border-color:var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)
