@@ -127,6 +127,8 @@ def test_map_page_veils_maplibre_style_transitions(client):
     assert "classList.add('map-style-loading')" in response.text
     assert "mapLibreMap.on('styledataloading'" in response.text
     assert "mapLibreMap.on('style.load'" in response.text
+    assert "function mapaListo" in response.text
+    assert "mapLibreMap.on('load', mapaListo)" in response.text
     assert "classList.remove('map-style-loading')" in response.text
     assert "mapLibreMap.on('error', ocultarCargaEstilo)" in response.text
 
