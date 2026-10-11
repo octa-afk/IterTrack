@@ -32,7 +32,7 @@ def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = De
         "truck": truck
     }
 
-#actualiza la ubicación actual del camión
+#Agrega un punto de ubicación al historial del camión
 @router.put("/{truck_id}/location")
 def update_location(truck_id: int, location: schemas.Location, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
@@ -48,12 +48,12 @@ def update_location(truck_id: int, location: schemas.Location, db: Session = Dep
         speed=location.speed,
         heading=location.heading,
     )
-    #actualiza el recorrido del camión
+    #Cada actualización se agrega como un nuevo punto de tracking.
     db.add(db_point)
     db.commit()
     return{"mensaje": "Ubicación actualizada correctamente"}
 
-#devuelve la ubicación actual del camion
+#Devuelve el punto de tracking más reciente del camión
 @router.get("/{truck_id}/location")
 def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
@@ -73,7 +73,7 @@ def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db), curren
 
     return latest_point
 
-#devuelve todas las ubicaciones de un camión
+#Devuelve hasta 100 puntos de tracking, del más nuevo al más antiguo
 @router.get("/{truck_id}/iter")
 def get_history_truck(truck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck=db.query(models.Truck).filter(models.Truck.id==truck_id).first()
@@ -92,7 +92,7 @@ def get_history_truck(truck_id: int, db: Session = Depends(get_db), current_user
 
     return locations
 
-#borra todo el recorrido registrado de un camión
+#Borra los puntos de tracking del camión sin eliminar el camión
 @router.delete("/{truck_id}/iter", status_code=status.HTTP_204_NO_CONTENT)
 def delete_truck_iter(truck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
