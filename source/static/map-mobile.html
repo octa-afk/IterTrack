@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#dbe7f8">
+<title>IterTrack · móvil</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f6fb;--road:#fff;--roadb:#dde4f0;--park:#e1eee6;--water:#cddff4;--glass:rgba(255,255,255,.72);--g-bd:rgba(255,255,255,.8);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);--g-sh:0 12px 39px rgba(25,45,95,.16);--blur:blur(28px) saturate(180%);--card:rgba(255,255,255,.8);--ink:#1f2a3d;--muted:#6b778c;--fill:rgba(31,42,61,.06);--fill2:rgba(31,42,61,.11);--sel:rgba(31,42,61,.09);--ac:#5a7ee6;--acd:#4666cc;--mv:#5a7ee6;--id:#eeb04a;--st:#8a949c;--al:#e0675c;--safe-t:env(safe-area-inset-top);--safe-b:env(safe-area-inset-bottom)}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{position:fixed;inset:0;font:14px/1.4 Poppins,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 100%),radial-gradient(713px 483px at 78% -6%,rgba(165,210,245,.55),transparent 70%),radial-gradient(598px 483px at 10% 100%,rgba(185,180,240,.28),transparent 70%),linear-gradient(135deg,#dbe7f8,#cbdcf3)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;text-align:inherit}
+svg{display:block}
+.screen{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;padding:calc(16px + var(--safe-t)) 16px calc(104px + var(--safe-b));display:none}
+body[data-tab=home] #home,body[data-tab=fleet] #fleet{display:block}
+#mapscreen{position:absolute;inset:0;display:none}
+body[data-tab=map] #mapscreen{display:block}
+.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:19px}
+.brand svg{width:32px;height:32px}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--ac);color:#fff;display:grid;place-items:center;font-weight:600;font-size:13px}
+h1{font-size:22px;font-weight:600;line-height:1.2}
+.sub{color:var(--muted);font-size:13px;margin:2px 0 16px;display:flex;align-items:center;gap:7px}
+.live{width:8px;height:8px;border-radius:50%;background:var(--mv);animation:pulse 1.8s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.card{background:var(--card);border:1px solid var(--g-bd);box-shadow:var(--g-hi),0 3.5px 16px rgba(60,90,150,.08);border-radius:22px;padding:16px}
+.sec{display:flex;justify-content:space-between;align-items:center;margin:22px 2px 10px}
+.sec h2{font-size:15px;font-weight:600}
+.tag{background:var(--fill2);border-radius:12px;font-size:12px;padding:3px 11px;font-weight:500}
+.tag.red{background:var(--al);color:#fff}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border:1px solid var(--g-bd);box-shadow:var(--g-hi),0 3.5px 16px rgba(60,90,150,.08);border-radius:20px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:0 10px;align-items:center;min-height:76px}
+.tile:active{background:#fff}
+.tile i{width:12px;height:12px;border-radius:50%;background:var(--c);grid-row:span 2}
+.tile b{font-size:26px;font-weight:600;line-height:1.1}
+.tile span{color:var(--muted);font-size:12px;grid-column:2}
+.al{display:grid;grid-template-columns:42px 1fr auto;gap:2px 12px;align-items:center;width:100%;padding:12px 14px;border-radius:18px;background:var(--card);border:1px solid var(--g-bd);box-shadow:var(--g-hi),0 3.5px 16px rgba(60,90,150,.08);margin-bottom:8px}
+.al:active{background:#fff}
+.al .ic{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;grid-row:span 3;color:var(--c);background:color-mix(in srgb,var(--c) 15%,#fff)}
+.al .ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.al b{font-size:14px;font-weight:600}
+.al small{color:var(--muted);font-size:12px;grid-column:2}
+.al em{font-style:normal;font-size:13px;font-weight:500;color:var(--c);grid-column:2}
+.al .ago{grid-column:3;grid-row:1;font-size:11px;color:var(--muted);white-space:nowrap}
+.ok{display:flex;align-items:center;gap:12px;color:var(--muted)}
+.ok svg{width:34px;height:34px;color:var(--mv);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ok b{display:block;color:var(--ink);font-weight:600}
+.bars{position:relative;display:flex;align-items:flex-end;gap:7px;height:150px;margin-top:6px}
+.bars .lim{position:absolute;left:0;right:0;border-top:1.5px dashed var(--id);pointer-events:none}
+.bars .lim span{position:absolute;right:0;top:-17px;font-size:10px;color:var(--id)}
+.bar{flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0}
+.bar i{width:100%;max-width:30px;border-radius:5px 5px 0 0;background:rgba(90,126,230,.3);transition:height .4s}
+.bar.over i{background:var(--al)}
+.bar b{font-size:10px;font-weight:500;color:var(--muted);margin-top:5px;white-space:nowrap}
+.search{display:flex;align-items:center;gap:8px;height:46px;border-radius:23px;background:var(--card);border:1px solid var(--g-bd);padding:0 16px;margin:14px 0 10px}
+.search:focus-within{box-shadow:0 0 0 2px var(--ac)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:16px;color:var(--ink)}
+.search svg{width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--fill);border-radius:22px;padding:3.5px;margin-bottom:10px}
+.seg button{min-height:40px;border-radius:20px;font-weight:500;text-align:center}
+.seg button[aria-pressed=true]{background:rgba(255,255,255,.95);box-shadow:0 1px 4px rgba(25,45,95,.12)}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:10px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;min-height:38px;padding:0 15px;border-radius:19px;background:rgba(31,42,61,.06);font-size:13px}
+.chip[aria-pressed=true]{background:rgba(31,42,61,.14);font-weight:600}
+#count{font-size:12px;color:var(--muted);margin:0 4px 6px}
+#list{list-style:none;padding:6px}
+#list li[hidden]{display:none}
+#list button{width:100%;min-height:62px;padding:10px 12px;border-radius:14px;display:grid;grid-template-columns:12px 1fr auto;gap:1px 12px;align-items:center}
+#list button:active{background:var(--sel)}
+.dot{width:12px;height:12px;border-radius:50%;grid-row:span 2;background:var(--c)}
+.nm{font-weight:600}
+.sp{font-weight:600;font-size:15px;color:var(--ac);text-align:right}
+.sp small,.sb,.fu{font-size:12px;color:var(--muted);font-weight:400}
+.sb{grid-column:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fu{grid-column:3;text-align:right}
+.fu.low{color:var(--al);font-weight:600}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+#tabs{position:fixed;z-index:10;left:14px;right:14px;bottom:calc(10px + var(--safe-b));height:66px;border-radius:33px;background:var(--glass);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh);display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px}
+#tabs button{border-radius:27px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:11px;font-weight:500;color:#3b4862;position:relative;text-align:center}
+#tabs button[aria-selected=true]{background:var(--sel);color:var(--ink);font-weight:600}
+#tabs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#tabs .badge{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:var(--al);color:#fff;font-size:10px;font-weight:600;display:grid;place-items:center;padding:0 5px}
+#tabs .badge[hidden]{display:none}
+#map{position:absolute;inset:0;touch-action:none;overflow:hidden;cursor:grab;background:var(--bg)}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.pin{position:absolute;left:0;top:0;width:40px;height:40px;border-radius:50%;box-shadow:0 0 0 3px var(--c),0 2px 8px rgba(0,0,0,.35);will-change:transform}
+.pin svg{width:100%;height:100%;pointer-events:none}
+.pin.sel{z-index:5;width:48px;height:48px;margin:-4px 0 0 -4px}
+.glass{background:var(--glass);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)}
+.maptop{position:absolute;z-index:3;left:12px;top:calc(12px + var(--safe-t));height:46px;border-radius:23px;padding:0 18px;display:flex;align-items:center;gap:8px;font-weight:600}
+.zoom{position:absolute;z-index:3;right:12px;top:calc(12px + var(--safe-t));border-radius:18px;overflow:hidden}
+.zoom button{display:block;width:44px;height:44px;font-size:22px;text-align:center}
+.zoom button+button{border-top:1px solid rgba(31,42,61,.1)}
+#mini{position:absolute;z-index:3;left:12px;right:12px;bottom:calc(88px + var(--safe-b));border-radius:24px;padding:14px 16px}
+#mini[hidden]{display:none}
+#mini .r{display:flex;justify-content:space-between;align-items:center;gap:10px}
+#mini .r b{font-size:16px}
+#mini .m{display:flex;gap:18px;margin:8px 0 12px;color:var(--muted);font-size:12px}
+#mini .m b{display:block;color:var(--ac);font-size:18px;font-weight:600}
+.btn{display:block;width:100%;min-height:46px;border-radius:23px;background:var(--ac);color:#fff;font-weight:600;text-align:center}
+.btn.soft{background:var(--fill2);color:var(--ink);font-weight:500}
+#detail{position:fixed;z-index:30;inset:0;overflow-y:auto;padding:calc(12px + var(--safe-t)) 16px calc(24px + var(--safe-b));background:radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 100%),linear-gradient(135deg,#dbe7f8,#cbdcf3);transform:translateX(104%);visibility:hidden;transition:transform .3s cubic-bezier(.4,0,.2,1),visibility 0s .3s}
+body.dopen #detail{transform:none;visibility:visible;transition:transform .3s cubic-bezier(.4,0,.2,1),visibility 0s}
+.dhd{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.ib{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none}
+.ib svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dhd b{font-size:18px;font-weight:600;display:block;line-height:1.2}
+.dhd small{color:var(--muted)}
+.hero{display:flex;align-items:baseline;gap:8px;justify-content:space-between}
+.hero b{font-size:42px;font-weight:600;color:var(--ac);line-height:1}
+.hero small{color:var(--muted);font-size:13px}
+.st3{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;margin-top:14px;background:#fff;border-radius:14px;padding:12px 4px}
+.st3 b{display:block;font-size:19px;font-weight:600;color:var(--ac)}
+.st3 span{font-size:11px;color:var(--muted)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+dt{color:var(--muted)}dd{text-align:right;font-weight:500}
+.spark{width:100%;height:80px;margin-top:8px}
+.dal{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px}
+.dal i{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+@media(prefers-reduced-motion:reduce){#detail,.live,.bar i{transition:none;animation:none}}
+</style>
+</head>
+<body data-tab="home">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="trk" viewBox="0 0 512 512"><circle cx="256" cy="256" r="232" fill="#1F4E8C" stroke="#fff" stroke-width="24"/><g transform="translate(256 256) scale(.74) translate(-256 -258)"><g fill="#fff"><path d="M96 120Q96 38 170 34Q256 28 342 34Q416 38 416 120V300Q416 308 408 308H104Q96 308 96 300Z"/><rect x="92" y="310" width="328" height="142" rx="18"/><rect x="100" y="446" width="52" height="36" rx="9"/><rect x="360" y="446" width="52" height="36" rx="9"/></g><g fill="#fff" stroke="#1F4E8C" stroke-width="12" paint-order="stroke"><rect x="58" y="108" width="42" height="98" rx="16"/><rect x="412" y="108" width="42" height="98" rx="16"/></g><g fill="#1F4E8C"><rect x="106" y="90" width="300" height="120" rx="18"/><rect x="126" y="312" width="34" height="74" rx="7"/><rect x="352" y="312" width="34" height="74" rx="7"/><rect x="172" y="322" width="168" height="8" rx="4"/><rect x="172" y="340" width="168" height="8" rx="4"/><rect x="172" y="358" width="168" height="8" rx="4"/><rect x="172" y="376" width="168" height="8" rx="4"/></g></g></symbol>
+</defs></svg>
+
+<!-- PANEL (pantalla principal) -->
+<section class="screen" id="home" aria-label="Panel">
+  <div class="hd">
+    <div class="brand"><svg viewBox="380 355 1210 1200" aria-hidden="true"><path fill="#5472d2" d="M390 752C385 590 500 465 665 465H1200L900 752Z"/><path fill="#3a58b4" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z"/><path fill="#6a8cee" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z"/></svg>IterTrack</div>
+    <div class="avatar" aria-hidden="true">FL</div>
+  </div>
+  <h1>Resumen de flota</h1>
+  <p class="sub"><i class="live"></i>En vivo · <span id="tot"></span> camiones</p>
+  <div class="tiles" id="tiles">
+    <button class="tile" data-s="move"><i style="--c:var(--mv)"></i><b id="nMove">0</b><span>En movimiento</span></button>
+    <button class="tile" data-s="idle"><i style="--c:var(--id)"></i><b id="nIdle">0</b><span>Detenidos</span></button>
+    <button class="tile" data-s="stop"><i style="--c:var(--st)"></i><b id="nStop">0</b><span>Apagados</span></button>
+    <button class="tile" data-v="alert"><i style="--c:var(--al)"></i><b id="nAlert">0</b><span>Con alertas</span></button>
+  </div>
+  <div class="sec"><h2>Alertas activas</h2><span class="tag" id="alTag">0</span></div>
+  <div id="alerts"></div>
+  <div class="sec"><h2>Velocidad por camión</h2><span class="tag" id="avg"></span></div>
+  <div class="card"><div class="bars" id="bars"></div></div>
+</section>
+
+<!-- CAMIONES -->
+<section class="screen" id="fleet" aria-label="Camiones">
+  <h1>Camiones</h1>
+  <label class="search"><input id="q" type="search" placeholder="Buscar patente o chofer" aria-label="Buscar camiones"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></label>
+  <div class="seg" id="seg">
+    <button type="button" data-v="all" aria-pressed="true">Toda la flota</button>
+    <button type="button" data-v="alert" aria-pressed="false">Solo alertas</button>
+  </div>
+  <div class="chips" id="chips">
+    <button class="chip" data-s="all" aria-pressed="true">Todos</button>
+    <button class="chip" data-s="move" aria-pressed="false">En movimiento</button>
+    <button class="chip" data-s="idle" aria-pressed="false">Detenidos</button>
+    <button class="chip" data-s="stop" aria-pressed="false">Apagados</button>
+  </div>
+  <div id="count"></div>
+  <div class="card" style="padding:0"><ul id="list"></ul><div class="empty" id="empty" hidden>Ningún camión coincide con los filtros.</div></div>
+</section>
+
+<!-- MAPA (secundario) -->
+<section id="mapscreen" aria-label="Mapa">
+  <div id="map"><div id="world"></div></div>
+  <div class="maptop glass"><i class="live"></i>Mapa en vivo</div>
+  <div class="zoom glass"><button id="zi" aria-label="Acercar">+</button><button id="zo" aria-label="Alejar">−</button></div>
+  <div id="mini" class="glass" hidden>
+    <div class="r"><b id="mPlate"></b><span id="mSt" style="font-weight:600;font-size:13px"></span></div>
+    <div class="m"><span><b id="mSp"></b>km/h</span><span><b id="mFu"></b>Combustible</span><span><b id="mDr"></b>Chofer</span></div>
+    <button class="btn" id="mMore" type="button">Ver detalle</button>
+  </div>
+</section>
+
+<nav id="tabs" role="tablist" aria-label="Principal">
+  <button role="tab" data-t="home" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>Panel<span class="badge" id="badge" hidden>0</span></button>
+  <button role="tab" data-t="fleet" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/></svg>Camiones</button>
+  <button role="tab" data-t="map" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Mapa</button>
+</nav>
+
+<!-- DETALLE -->
+<section id="detail" inert aria-label="Detalle del camión">
+  <div class="dhd"><button class="ib glass" id="dback" aria-label="Volver"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div><b id="dPlate"></b><small id="dSub"></small></div></div>
+  <div id="dbody"></div>
+</section>
+
+<script>
+const $ = s => document.querySelector(s);
+const W = 2400, G = 100, LIMIT = 90, LOW_FUEL = 25;
+const ST = {move:['En movimiento','var(--mv)'], idle:['Detenido','var(--id)'], stop:['Apagado','var(--st)'], alert:['Exceso de velocidad','var(--al)']};
+const ICONS = {
+  speed:'<path d="M12 14l4-4M3 17a9 9 0 1 1 18 0"/>',
+  fuel:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  signal:'<path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01M3 3l18 18"/>'
+};
+const AL_COLOR = {speed:'var(--al)', fuel:'var(--id)', signal:'var(--st)'};
+
+/* ---------- Camiones simulados ---------- */
+const NAMES = ['Martín R.','Lucía F.','Diego P.','Sofía M.','Tomás G.','Valeria C.','Nicolás A.','Camila S.'];
+const trucks = NAMES.map((driver, i) => {
+  const gx = 800 + Math.floor(Math.random()*12)*G, gy = 800 + Math.floor(Math.random()*12)*G;
+  const base = i === 0 ? 102 : i === 6 ? 0 : i === 7 ? -1 : 35 + Math.random()*40;
+  const t = {id:i, plate:`${String.fromCharCode(65+i)}${String.fromCharCode(70+i)} ${100+i*137} ${String.fromCharCode(75+i)}${String.fromCharCode(66+i)}`,
+    driver, x:gx, y:gy, dx:i%2?1:0, dy:i%2?0:1, base, kmh:Math.max(0,base), ph:Math.random()*6, fuel:i===3?18:40+i*7, hist:[], al:[]};
+  t.tx = gx + t.dx*G; t.ty = gy + t.dy*G;
+  return t;
+});
+const status = t => t.base < 0 ? 'stop' : t.kmh > LIMIT ? 'alert' : t.kmh > 2 ? 'move' : 'idle';
+const ago = ms => { const s = Math.max(0, Math.round(ms/1000)); return s < 60 ? `hace ${s} s` : `hace ${Math.round(s/60)} min`; };
+function nextTarget(t){
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]].filter(d => !(d[0] === -t.dx && d[1] === -t.dy));
+  let d = Math.random() < .6 ? [t.dx, t.dy] : dirs[Math.floor(Math.random()*dirs.length)];
+  const nx = t.x + d[0]*G, ny = t.y + d[1]*G;
+  if (nx < 400 || nx > 2000 || ny < 400 || ny > 2000) d = [-t.dx, -t.dy];
+  t.dx = d[0]; t.dy = d[1]; t.tx = t.x + d[0]*G; t.ty = t.y + d[1]*G;
+}
+
+/* ---------- Alertas derivadas de los datos ---------- */
+const since = new Map();   // clave -> instante en que empezó la alerta
+function alertsOf(t){
+  const out = [];
+  if (t.base >= 0 && t.kmh > LIMIT) out.push({type:'speed', title:'Exceso de velocidad', detail:`${Math.round(t.kmh)} km/h · límite ${LIMIT}`});
+  if (t.fuel < LOW_FUEL) out.push({type:'fuel', title:'Combustible bajo', detail:`${t.fuel}% restante`});
+  if (t.base < 0) out.push({type:'signal', title:'Sin señal', detail:'Camión apagado o sin GPS'});
+  out.forEach(a => {
+    a.key = `${a.type}-${t.id}`; a.t = t;
+    if (!since.has(a.key)) since.set(a.key, Date.now() - (120 + Math.random()*2400)*1000);
+    a.since = since.get(a.key);
+  });
+  [...since.keys()].filter(k => k.endsWith('-' + t.id) && !out.some(a => a.key === k)).forEach(k => since.delete(k));
+  return out;
+}
+const RANK = {speed:0, fuel:1, signal:2};
+
+/* ---------- Mapa genérico (pestaña secundaria) ---------- */
+(function(){
+  let s = `<svg width="${W}" height="${W}" viewBox="0 0 ${W} ${W}"><rect width="${W}" height="${W}" fill="var(--bg)"/>`;
+  [[610,810,280,180],[1210,1010,380,180],[1010,1410,180,280],[1610,610,180,280],[810,1610,380,180]].forEach(p => s += `<rect x="${p[0]}" y="${p[1]}" width="${p[2]}" height="${p[3]}" rx="18" fill="var(--park)"/>`);
+  s += `<path d="M0 1850C500 1650 1000 2050 1500 1800S2200 1700 2400 1750" fill="none" stroke="var(--water)" stroke-width="90"/>`;
+  for (let i = 0; i <= W; i += G) s += `<path d="M${i} 0V${W}M0 ${i}H${W}" stroke="var(--road)" stroke-width="7"/>`;
+  for (let i = 0; i <= W; i += 400) s += `<path d="M${i} 0V${W}M0 ${i}H${W}" stroke="var(--roadb)" stroke-width="24"/><path d="M${i} 0V${W}M0 ${i}H${W}" stroke="var(--road)" stroke-width="17"/>`;
+  $('#world').innerHTML = s + '</svg>';
+})();
+const view = {x:0, y:0, k:1}, world = $('#world'), mapEl = $('#map');
+const paintView = () => world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`;
+function zoomAt(cx, cy, f){
+  const nk = Math.min(2.5, Math.max(.45, view.k*f)), r = nk/view.k;
+  view.x = cx - (cx - view.x)*r; view.y = cy - (cy - view.y)*r; view.k = nk; paintView();
+}
+view.x = innerWidth/2 - 1200; view.y = innerHeight*.4 - 1200; paintView();
+let anim = null;
+function flyTo(x, y){
+  const sx = innerWidth/2, sy = (innerHeight - 190)/2, x0 = view.x, y0 = view.y, x1 = sx - x*view.k, y1 = sy - y*view.k, t0 = performance.now();
+  cancelAnimationFrame(anim);
+  (function step(now){
+    const k = Math.min(1, (now - t0)/600), e = 1 - Math.pow(1-k, 3);
+    view.x = x0 + (x1-x0)*e; view.y = y0 + (y1-y0)*e; paintView();
+    if (k < 1) anim = requestAnimationFrame(step);
+  })(t0);
+}
+const ptrs = new Map(); let moved = 0, mapSel = null;
+mapEl.addEventListener('pointerdown', e => { cancelAnimationFrame(anim); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; });
+mapEl.addEventListener('pointermove', e => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  if (ptrs.size === 1){ view.x += e.clientX - p[0]; view.y += e.clientY - p[1]; moved += Math.abs(e.clientX - p[0]) + Math.abs(e.clientY - p[1]); paintView(); }
+  else if (ptrs.size === 2){
+    const o = [...ptrs.entries()].find(([id]) => id !== e.pointerId)[1];
+    const d0 = Math.hypot(p[0]-o[0], p[1]-o[1]), d1 = Math.hypot(e.clientX-o[0], e.clientY-o[1]);
+    moved += 10; if (d0 > 0) zoomAt((e.clientX+o[0])/2, (e.clientY+o[1])/2, d1/d0);
+  }
+  ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+});
+function upPtr(e){
+  const was = ptrs.size === 1 && ptrs.has(e.pointerId);
+  ptrs.delete(e.pointerId);
+  if (was && moved < 8 && e.type === 'pointerup'){
+    const pin = e.target.closest('.pin');
+    if (pin) mapSelect(+pin.dataset.id); else mapSelect(null);
+  }
+}
+mapEl.addEventListener('pointerup', upPtr); mapEl.addEventListener('pointercancel', upPtr);
+mapEl.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : .89); }, {passive:false});
+$('#zi').onclick = () => zoomAt(innerWidth/2, innerHeight/2, 1.4);
+$('#zo').onclick = () => zoomAt(innerWidth/2, innerHeight/2, 1/1.4);
+function mapSelect(id){
+  mapSel = id;
+  trucks.forEach(t => t.pin.classList.toggle('sel', t.id === id));
+  $('#mini').hidden = id === null;
+  if (id !== null){ flyTo(trucks[id].x, trucks[id].y); updateMini(); }
+}
+function updateMini(){
+  const t = trucks[mapSel]; if (!t) return;
+  const s = status(t);
+  $('#mPlate').textContent = t.plate; $('#mSt').textContent = ST[s][0]; $('#mSt').style.color = ST[s][1];
+  $('#mSp').textContent = Math.round(Math.max(0, t.kmh)); $('#mFu').textContent = t.fuel + '%'; $('#mDr').textContent = t.driver;
+}
+$('#mMore').onclick = () => openDetail(mapSel);
+
+/* ---------- Elementos fijos (se crean una vez y se actualizan en sitio) ---------- */
+trucks.forEach(t => {
+  const p = document.createElement('div');
+  p.className = 'pin'; p.dataset.id = t.id; p.innerHTML = '<svg viewBox="0 0 512 512"><use href="#trk"/></svg>';
+  world.appendChild(p); t.pin = p;
+  const li = document.createElement('li');
+  li.innerHTML = '<button type="button"><span class="dot"></span><b class="nm"></b><span class="sp"></span><span class="sb"></span><span class="fu"></span></button>';
+  li.querySelector('.nm').textContent = t.plate;
+  li.firstChild.onclick = () => openDetail(t.id);
+  $('#list').appendChild(li); t.li = li;
+});
+const bars = $('#bars');
+bars.innerHTML = `<div class="lim"><span>Límite ${LIMIT} km/h</span></div>`;
+trucks.forEach(t => {
+  const b = document.createElement('button');
+  b.className = 'bar'; b.type = 'button'; b.setAttribute('aria-label', t.plate);
+  const p = t.plate.replace(/ /g, '');
+  b.innerHTML = `<i></i><b>${p.slice(0,2)}${p.slice(-2)}</b>`;
+  b.onclick = () => openDetail(t.id);
+  bars.appendChild(b); t.bar = b;
+});
+const BAR_H = 150 - 18, BAR_MAX = 120;
+bars.querySelector('.lim').style.bottom = (18 + BAR_H*LIMIT/BAR_MAX) + 'px';
+
+/* ---------- Filtros de la lista ---------- */
+const st = {f:'all', q:'', view:'all'};
+const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function visible(t){
+  const s = status(t);
+  return (st.view === 'all' || t.al.length > 0) &&
+    (st.f === 'all' || st.f === s || (st.f === 'move' && s === 'alert')) &&
+    (!st.q || norm(t.plate + ' ' + t.driver).includes(norm(st.q)));
+}
+function setChip(f){ st.f = f; document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c.dataset.s === f)); }
+function setView(v){ st.view = v; document.querySelectorAll('#seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v)); }
+$('#chips').onclick = e => { const b = e.target.closest('.chip'); if (b){ setChip(b.dataset.s); refresh(); } };
+$('#seg').onclick = e => { const b = e.target.closest('button'); if (b){ setView(b.dataset.v); refresh(); } };
+$('#q').oninput = e => { st.q = e.target.value; refresh(); };
+$('#q').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); };
+$('#tiles').onclick = e => {
+  const b = e.target.closest('.tile'); if (!b) return;
+  if (b.dataset.v){ setView('alert'); setChip('all'); } else { setView('all'); setChip(b.dataset.s); }
+  refresh(); setTab('fleet');
+};
+
+/* ---------- Alertas en el panel (con actualización por claves) ---------- */
+const alEls = new Map();
+function syncAlerts(list){
+  const box = $('#alerts');
+  const keys = new Set(list.map(a => a.key));
+  alEls.forEach((el, k) => { if (!keys.has(k)){ el.remove(); alEls.delete(k); } });
+  list.forEach((a, i) => {
+    let el = alEls.get(a.key);
+    if (!el){
+      el = document.createElement('button');
+      el.type = 'button'; el.className = 'al'; el.style.setProperty('--c', AL_COLOR[a.type]);
+      el.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24">${ICONS[a.type]}</svg></span><b></b><span class="ago"></span><small></small><em></em>`;
+      el.querySelector('b').textContent = a.title;
+      el.querySelector('small').textContent = `${a.t.plate} · ${a.t.driver}`;
+      el.onclick = () => openDetail(a.t.id);
+      alEls.set(a.key, el);
+    }
+    el.querySelector('em').textContent = a.detail;
+    el.querySelector('.ago').textContent = ago(Date.now() - a.since);
+    if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
+  });
+  let ok = $('#noal');
+  if (!list.length && !ok){
+    ok = document.createElement('div');
+    ok.id = 'noal'; ok.className = 'card ok';
+    ok.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></svg><div><b>Todo en orden</b>No hay alertas activas.</div>';
+    box.appendChild(ok);
+  } else if (list.length && ok) ok.remove();
+}
+
+/* ---------- Refresco general ---------- */
+function refresh(){
+  let n = 0, mv = 0, idle = 0, stop = 0, withAl = 0, sum = 0, sumN = 0;
+  const all = [];
+  trucks.forEach(t => {
+    t.al = alertsOf(t); all.push(...t.al);
+    const s = status(t), v = visible(t);
+    if (s === 'move' || s === 'alert') mv++; else if (s === 'idle') idle++; else stop++;
+    if (t.al.length) withAl++;
+    if (t.base >= 0){ sum += t.kmh; sumN++; }
+    if (v) n++;
+    t.li.hidden = !v;
+    t.li.querySelector('.dot').style.setProperty('--c', ST[s][1]);
+    t.li.querySelector('.sp').innerHTML = `${Math.round(Math.max(0, t.kmh))} <small>km/h</small>`;
+    t.li.querySelector('.sb').textContent = `${t.driver} · ${s === 'alert' ? 'Alerta' : ST[s][0]}`;
+    const fu = t.li.querySelector('.fu'); fu.textContent = `${t.fuel}% comb.`; fu.classList.toggle('low', t.fuel < LOW_FUEL);
+    t.pin.style.setProperty('--c', ST[s][1]);
+    const bi = t.bar.querySelector('i');
+    bi.style.height = Math.max(4, BAR_H*Math.max(0, t.kmh)/BAR_MAX) + 'px';
+    t.bar.classList.toggle('over', s === 'alert');
+  });
+  $('#tot').textContent = trucks.length;
+  $('#nMove').textContent = mv; $('#nIdle').textContent = idle; $('#nStop').textContent = stop; $('#nAlert').textContent = withAl;
+  $('#avg').textContent = `Media ${sumN ? Math.round(sum/sumN) : 0} km/h`;
+  $('#count').textContent = `${n} de ${trucks.length} camiones`;
+  $('#empty').hidden = n > 0;
+  const tg = $('#alTag'); tg.textContent = all.length; tg.classList.toggle('red', all.length > 0);
+  const bd = $('#badge'); bd.hidden = !all.length; bd.textContent = all.length;
+  all.sort((a, b) => RANK[a.type] - RANK[b.type] || a.since - b.since);
+  syncAlerts(all);
+  if (mapSel !== null) updateMini();
+  if (detailId !== null) updateDetail();
+}
+
+/* ---------- Detalle de camión ---------- */
+let detailId = null;
+const heading = t => Math.round((Math.atan2(t.dx, -t.dy)*180/Math.PI + 360) % 360);
+function openDetail(id){
+  const t = trucks[id]; detailId = id;
+  $('#dPlate').textContent = t.plate;
+  $('#dSub').textContent = `${t.driver} · Ruta ${t.id + 1}`;
+  $('#dbody').innerHTML = `
+  <div class="card"><div class="hero"><div><b id="dSp"></b> <small>km/h</small></div><span id="dSt" style="font-weight:600;font-size:13px"></span></div>
+    <div class="st3"><div><b>${t.fuel}%</b><span>Combustible</span></div><div><b id="dHd"></b><span>Rumbo</span></div><div><b id="dAgo"></b><span>Señal</span></div></div></div>
+  <div class="sec"><h2>Alertas del camión</h2></div>
+  <div class="card" id="dAl"></div>
+  <div class="sec"><h2>Velocidad reciente</h2></div>
+  <div class="card"><svg class="spark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-label="Velocidad reciente"><line id="dLim" x1="0" x2="300" stroke="#eeb04a" stroke-dasharray="4 4" stroke-width="1"/><path id="dPath" fill="none" stroke="#5a7ee6" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></div>
+  <div class="sec"><h2>Información</h2></div>
+  <div class="card"><dl><dt>Chofer</dt><dd>${t.driver}</dd><dt>Ruta</dt><dd>Ruta ${t.id + 1}</dd><dt>Posición</dt><dd id="dPos"></dd></dl></div>
+  <button class="btn" id="dMap" type="button" style="margin-top:16px">Ver en el mapa</button>`;
+  $('#dMap').onclick = () => { closeDetail(); setTab('map'); mapSelect(id); };
+  $('#detail').scrollTop = 0;
+  document.body.classList.add('dopen'); $('#detail').inert = false;
+  updateDetail();
+}
+function closeDetail(){ detailId = null; document.body.classList.remove('dopen'); $('#detail').inert = true; }
+function updateDetail(){
+  const t = trucks[detailId]; if (!t) return;
+  const s = status(t);
+  $('#dSp').textContent = Math.round(Math.max(0, t.kmh));
+  $('#dSt').textContent = ST[s][0]; $('#dSt').style.color = ST[s][1];
+  $('#dHd').textContent = heading(t) + '°';
+  $('#dAgo').textContent = t.base < 0 ? 'Sin señal' : 'Activa';
+  $('#dPos').textContent = `${(-31.9 - (t.y - 1200)/20000).toFixed(3)}, ${(-64 + (t.x - 1200)/20000).toFixed(3)}`;
+  $('#dAl').innerHTML = t.al.length
+    ? t.al.map(a => `<div class="dal" style="--c:${AL_COLOR[a.type]}"><i></i><span><b style="font-weight:600">${a.title}</b> · ${a.detail}</span></div>`).join('')
+    : '<span style="color:var(--muted)">Sin alertas activas.</span>';
+  const h = t.hist; if (h.length < 2) return;
+  const w = 300, ht = 64, max = Math.max(120, ...h), y = v => ht - 4 - (ht - 10)*v/max;
+  let d = `M0,${y(h[0])}`;
+  for (let i = 1; i < h.length; i++){ const x0 = (i-1)*w/(h.length-1), x1 = i*w/(h.length-1), cx = (x0+x1)/2; d += ` C${cx},${y(h[i-1])} ${cx},${y(h[i])} ${x1},${y(h[i])}`; }
+  $('#dPath').setAttribute('d', d); $('#dLim').setAttribute('y1', y(LIMIT)); $('#dLim').setAttribute('y2', y(LIMIT));
+}
+$('#dback').onclick = closeDetail;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+/* ---------- Pestañas ---------- */
+function setTab(t){
+  document.body.dataset.tab = t;
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t));
+}
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if (b){ closeDetail(); setTab(b.dataset.t); } };
+
+/* ---------- Simulación ---------- */
+let last = performance.now(), tick = 0;
+(function loop(now){
+  const dt = Math.min(.1, (now - last)/1000); last = now; tick += dt;
+  trucks.forEach(t => {
+    if (t.base >= 0){
+      t.kmh = t.base === 0 ? 0 : Math.max(5, t.base + Math.sin(tick*.6 + t.ph)*8);
+      let step = t.kmh*.5*dt;
+      while (step > 0){
+        const dist = Math.hypot(t.tx - t.x, t.ty - t.y);
+        if (dist <= step){ step -= dist; t.x = t.tx; t.y = t.ty; nextTarget(t); }
+        else { t.x += (t.tx - t.x)/dist*step; t.y += (t.ty - t.y)/dist*step; step = 0; }
+      }
+    } else t.kmh = 0;
+    t.pin.style.transform = `translate(${t.x}px,${t.y}px) translate(-50%,-50%) scale(${1/Math.max(.6, view.k)})`;
+  });
+  requestAnimationFrame(loop);
+})(last);
+setInterval(refresh, 500);
+setInterval(() => trucks.forEach(t => { t.hist.push(Math.round(t.kmh)); if (t.hist.length > 18) t.hist.shift(); }), 1000);
+refresh();
+</script>
+</body>
+</html>

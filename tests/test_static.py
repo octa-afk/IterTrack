@@ -140,19 +140,17 @@ def test_pages_use_scaled_ui_scale(client):
 def test_map_page_renders_truck_marker_design(client):
     response = client.get("/map")
     assert response.status_code == 200
-    # The arrow pointer is replaced by the supplied vertical truck SVG.
-    assert 'viewBox="-36 -76 72 152"' in response.text
-    assert 'fill="#F26B1D"' in response.text
-    assert ".pin svg{width:18px;height:38px}" in response.text
+    # The marker uses the supplied circular blue truck SVG.
+    assert 'viewBox="0 0 512 512"' in response.text
+    assert 'fill="#1F4E8C"' in response.text
+    assert ".pin svg{width:48px;height:48px}" in response.text
     assert "const arrow" not in response.text
     assert "${truckSvg(t.color)}" in response.text
     # divIcon box matches .pin and the anchor stays exactly half of iconSize
-    assert "iconSize:[40,40]" in response.text
-    assert "iconAnchor:[20,20]" in response.text
-    # The supplied truck is rendered directly, without a circular badge or halo.
+    assert "iconSize:[48,48]" in response.text
+    assert "iconAnchor:[24,24]" in response.text
+    # The supplied truck is rendered directly, without a separate halo.
     assert "const truckSvg" in response.text
-    assert 'replaceAll(\'#F26B1D\', color)' in response.text
-    assert "replaceAll('#F9955A', '#FFFFFF')" in response.text
     assert 'class="truck-svg"' in response.text
     assert 'class="halo"' not in response.text
     assert 'class="badge"' not in response.text
