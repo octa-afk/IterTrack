@@ -161,6 +161,25 @@ def test_map_page_switches_dark_cartography_with_theme(client):
     assert "sincronizarCapaMapa();" in response.text
 
 
+def test_map_page_has_blue_night_dark_cartography_overrides(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    html = response.text
+    for color in (
+        "land: '#121a31'",
+        "road: '#49658f'",
+        "boundary: '#6d8fc4'",
+        "text: '#b7c7e3'",
+        "halo: '#0d1426'",
+    ):
+        assert color in html
+    assert "theme === 'dark' && layer.type === 'fill'" in html
+    assert "theme === 'dark' && layer.type === 'line'" in html
+    assert "theme === 'dark' && layer.type === 'symbol'" in html
+    assert "layer.paint && property in layer.paint" in html
+    assert "layer.layout && layer.layout['text-field']" in html
+
+
 def test_map_page_has_logout_button(client):
     response = client.get("/map")
     assert response.status_code == 200
