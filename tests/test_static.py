@@ -118,6 +118,19 @@ def test_map_page_recolors_maplibre_background_layers(client):
     assert "background-color', colors.background" in response.text
 
 
+def test_map_page_veils_maplibre_style_transitions(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert ".map-style-loading::before" in response.text
+    assert "background:var(--map-bg,#f4f6fb)" in response.text
+    assert "pointer-events:none" in response.text
+    assert "classList.add('map-style-loading')" in response.text
+    assert "mapLibreMap.on('styledataloading'" in response.text
+    assert "mapLibreMap.on('style.load'" in response.text
+    assert "classList.remove('map-style-loading')" in response.text
+    assert "mapLibreMap.on('error', ocultarCargaEstilo)" in response.text
+
+
 def test_map_page_uses_moderately_opaque_dark_glass(client):
     response = client.get("/map")
     assert response.status_code == 200
