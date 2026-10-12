@@ -291,6 +291,9 @@ def test_map_page_uses_mobile_glass_surfaces_and_floating_controls(client):
     assert "body{background:#f4f6fb" in mobile_styles
     assert 'body[data-mobile-view="panel"] .mapbox,body[data-mobile-view="fleet"] .mapbox{display:none}' in mobile_styles
     assert 'body[data-mobile-view="map"] .mapbox{display:block}' in mobile_styles
+    assert "flex-wrap:nowrap" in mobile_styles
+    assert ".search{flex:1 1 0%" in mobile_styles
+    assert ".pill{flex:0 0 auto" in mobile_styles
     assert ".card:not(.mapcard),.side,.top{background:var(--g-bg)" in mobile_styles
     assert "-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
     assert ".mobile-tabs{" in mobile_styles
