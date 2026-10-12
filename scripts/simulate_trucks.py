@@ -203,6 +203,7 @@ def simular_ruta(
     headers=None,
     stop_event: Event | None = None,
     phase_offset: int = 0,
+    clear_history_on_start: bool = False,
 ):
     ruta = rotate_route(cargar_ruta(), phase_offset)
     total_puntos = len(ruta)
@@ -217,11 +218,12 @@ def simular_ruta(
     # Registrar el camión en su punto inicial
     lat_inicial, lon_inicial = ruta[0]
     registrar_camion(truck_id, lat_inicial, lon_inicial, plate, headers=headers)
+    if clear_history_on_start:
+        limpiar_recorrido(truck_id, headers=headers)
 
     vuelta = 1
     while not stop_event.is_set():
         print(f"\n--- 🔄 Iniciando Vuelta #{vuelta} del circuito ---")
-        limpiar_recorrido(truck_id, headers=headers)
         for i, (lat, lon) in enumerate(ruta):
             if stop_event.is_set():
                 break
@@ -254,7 +256,13 @@ def simular_ruta(
         vuelta += 1
 
 
-def ejecutar_simulaciones(base_id: int, base_plate: str, intervalo: float, count: int):
+def ejecutar_simulaciones(
+    base_id: int,
+    base_plate: str,
+    intervalo: float,
+    count: int,
+    clear_history_on_start: bool = False,
+):
     """Authenticate once and run all configured truck workers until interrupted."""
     route_length = len(cargar_ruta())
     configs = build_truck_configs(base_id, base_plate, count, route_length)
@@ -270,6 +278,7 @@ def ejecutar_simulaciones(base_id: int, base_plate: str, intervalo: float, count
             headers,
             stop_event,
             config.route_offset,
+            clear_history_on_start=clear_history_on_start,
         )
         for config in configs
     ]
@@ -289,6 +298,11 @@ if __name__ == "__main__":
     parser.add_argument("--plate", type=str, default="ABC123", help="Patente del camión (default: ABC123)")
     parser.add_argument("-i", "--interval", type=float, default=2.0, help="Intervalo en segundos entre pings (default: 2.0)")
     parser.add_argument("-n", "--count", type=int, default=1, help="Cantidad de camiones (default: 1)")
+    parser.add_argument(
+        "--clear-history-on-start",
+        action="store_true",
+        help="Borra el historial existente de cada camión una sola vez al iniciar (opción destructiva)",
+    )
 
     args = parser.parse_args()
     ejecutar_simulaciones(
@@ -296,4 +310,5 @@ if __name__ == "__main__":
         base_plate=args.plate,
         intervalo=args.interval,
         count=args.count,
+        clear_history_on_start=args.clear_history_on_start,
     )
