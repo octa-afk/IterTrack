@@ -53,7 +53,7 @@ Use the user-provided mobile skeleton as the phone layout for `/map`, while keep
   - Forecast: approximately 100 authored changed lines; delivery strategy remains `ask-on-risk`.
   - Verification: focused mobile tests passed (2 passed, 23 deselected); `make check` passed; `make test` passed (62 passed, one deprecation warning); parent focused spot check passed (2 passed, 23 deselected). Native assessment: medium, `review_due: false`, reason `under_budget`; RDD is disabled for this clone.
   - Result: restored mobile-only glass surfaces and floating controls, Panel/Flota/Mapa controls, a visible mobile logout action, and Leaflet size invalidation after showing the map. Existing authenticated data and one Leaflet instance are reused. Static marker label rendering remains via `textContent`.
-  - Commit: pending work-unit commit.
+  - Commit: `fca8623` (`feat(map): restore mobile views`).
 
 ## Next step
-Record the work-unit commit identity in this document and synchronize the Engram mirror. Keep unrelated ROADMAP changes out of the commit.
+MOB-3 is complete. The unrelated ROADMAP changes remain outside the mobile-map work-unit commit.
