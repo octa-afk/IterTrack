@@ -145,13 +145,14 @@ def test_map_page_renders_truck_marker_design(client):
     assert 'fill="#1F4E8C"' in response.text
     assert ".pin svg{width:48px;height:48px}" in response.text
     assert "const arrow" not in response.text
-    assert "${truckSvg(t.color)}" in response.text
-    # divIcon box matches .pin and the anchor stays exactly half of iconSize
+    # The marker SVG is static; plate text is added separately with textContent.
+    assert "vehicle.innerHTML = truckSvg(t.color)" in response.text
+    # Preserve the marker dimensions and anchor from the live map implementation.
     assert "iconSize:[48,48]" in response.text
-    assert "iconAnchor:[24,24]" in response.text
+    assert "iconAnchor:[5,5]" in response.text
     # The supplied truck is rendered directly, without a separate halo.
     assert "const truckSvg" in response.text
-    assert 'class="truck-svg"' in response.text
+    assert "vehicle.className = 'truck-svg'" in response.text
     assert 'class="halo"' not in response.text
     assert 'class="badge"' not in response.text
     assert ".pin .lbl" in response.text
@@ -231,7 +232,7 @@ def test_map_page_has_collapsible_sidebar_and_solid_topbar(client):
 def test_map_page_has_v10_glass_fullscreen_layer(client):
     response = client.get("/map")
     assert response.status_code == 200
-    assert "--g-bg:rgba(255,255,255,.64)" in response.text
+    assert "--g-bg:rgba(255,255,255,.78)" in response.text
     assert ".content,.grid,.grid>.col:first-child,.mapcard{display:contents}" in response.text
     assert ".mapbox{position:absolute;inset:0;z-index:0" in response.text
     assert ".side,.top,.card,.mapcard .card-h,.leaflet-bar,.leaflet-control-attribution" in response.text
@@ -293,5 +294,6 @@ def test_map_page_uses_mobile_glass_surfaces_and_floating_controls(client):
     assert ".mobile-tabs{" in mobile_styles
     assert "background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
     assert "body[data-mobile-view=\"map\"] .mapcard .card-h{position:absolute" in mobile_styles
+    assert ".side .logout{position:fixed" in mobile_styles
     assert ".leaflet-bar,.leaflet-control-attribution{background:var(--g-bg)" in mobile_styles
     assert ".leaflet-top.leaflet-left{left:auto;right:10px;top:10px}" in mobile_styles

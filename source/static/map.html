@@ -340,6 +340,7 @@
   .app.nav-off{--lx:16px}
   .app.nav-off .top,.app.nav-off .mapcard .card-h,.app.nav-off .bottom,
   .app.nav-off .leaflet-top.leaflet-left,.app.nav-off .leaflet-bottom.leaflet-right{transition:left .3s ease}
+  .mobile-tabs{display:none}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
   @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
   @media (max-width:1265px){
@@ -354,63 +355,43 @@
   @media (max-width:943px){
     .app{padding:0}.side-in{width:100%}.top{padding:0 14px}.grid{padding:14px}.mapbox{height:56vh}
   }
-  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom{transition:none!important}}
-
-  /* Mobile views reuse the live dashboard, fleet list, and the one Leaflet map. */
-  .mobile-tabs{display:none}
-  @media (max-width:943px){
-    .app{min-height:100dvh;height:auto;padding:0}
-    .side{margin:0!important;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;box-shadow:none!important}
-    .side-in{height:auto;min-height:64px;padding:10px 16px;flex-direction:row;align-items:center}
-    .logo{margin:0}
-    .side .logout{display:flex;margin:0 0 0 auto;padding:8px 14px;width:auto}
-    .top{position:relative;left:auto;right:auto;top:auto;height:auto;min-height:58px;padding:8px 14px;border-radius:0;box-shadow:none}
-    .top .tl{width:100%;flex:1 1 100%}
-    .top .search{display:none}
-    .top .pill{margin-left:auto}
-    .grid{display:block;position:relative;padding:14px 14px calc(94px + env(safe-area-inset-bottom));overflow:visible}
-    .grid>.col:first-child,.grid>.col:last-child{display:none}
-    .bottom{position:relative;display:grid;grid-template-columns:1fr;height:auto;margin:0;gap:14px}
-    .bottom .card{height:219px}
-    .mobile-tabs{position:fixed;z-index:1100;left:14px;right:14px;bottom:calc(10px + env(safe-area-inset-bottom));height:64px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;border:1px solid rgba(255,255,255,.85);border-radius:32px;background:rgba(255,255,255,.9);box-shadow:0 8px 28px rgba(25,45,95,.18);backdrop-filter:blur(18px)}
-    .mobile-tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;border-radius:25px;background:transparent;color:var(--muted);font:500 11px Poppins;cursor:pointer}
-    .mobile-tabs button[aria-selected="true"]{background:rgba(31,42,61,.09);color:var(--ink);font-weight:600}
-    .mobile-tabs svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-
-    body[data-mobile-view="panel"] .top .pill{display:flex}
-    body[data-mobile-view="panel"] .grid>.col:first-child{display:block}
-    body[data-mobile-view="panel"] .mapcard{display:none}
-
-    body[data-mobile-view="fleet"] .top .search{display:flex;flex:1 1 100%;height:42px;padding:0 14px}
-    body[data-mobile-view="fleet"] .top .pill{display:none}
-    body[data-mobile-view="fleet"] .grid>.col:last-child{display:flex;min-height:calc(100dvh - 190px)}
-    body[data-mobile-view="fleet"] .grid>.col:last-child .listcard{min-height:calc(100dvh - 200px)}
-
-    body[data-mobile-view="map"] .top{display:none}
-    body[data-mobile-view="map"] .grid{height:calc(100dvh - 128px);min-height:350px;padding:0;overflow:hidden}
-    body[data-mobile-view="map"] .grid>.col:first-child{display:block;height:100%}
-    body[data-mobile-view="map"] .mapcard{position:relative;display:flex;height:100%;min-height:0;padding:0;border-radius:0;overflow:visible}
-    body[data-mobile-view="map"] .mapcard .card-h{position:absolute;z-index:1001;top:10px;left:10px;display:inline-flex;margin:0;padding:7px 12px;border-radius:20px;background:rgba(255,255,255,.92);box-shadow:0 2px 10px rgba(25,45,95,.16)}
-    body[data-mobile-view="map"] .mapbox{position:absolute;inset:0;width:100%;height:100%;min-height:0;margin:0;border-radius:0}
-  }
-
   /* Mobile surfaces follow the supplied glass treatment without changing desktop. */
   @media (max-width:943px){
-    body{background:radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 100%),radial-gradient(713px 483px at 78% -6%,rgba(165,210,245,.55),transparent 70%),radial-gradient(598px 483px at 10% 100%,rgba(185,180,240,.28),transparent 70%),linear-gradient(135deg,#dbe7f8,#cbdcf3)}
-    .app{background:transparent}
-    .grid{background:transparent}
-    .card:not(.mapcard),.side,.top{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-color:var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)}
-    .search{background:var(--g-bg);border:1px solid var(--g-bd);box-shadow:var(--g-hi)}
-    .chip,select{background:rgba(255,255,255,.55);border-color:var(--g-bd)}
-    .mobile-tabs{position:fixed;z-index:1100;left:14px;right:14px;bottom:calc(10px + env(safe-area-inset-bottom));height:64px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;border:1px solid var(--g-bd);border-radius:32px;background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:var(--g-hi),var(--g-sh)}
-    .mobile-tabs button[aria-selected="true"]{background:var(--g-fill2)}
-    body[data-mobile-view="map"] .mapcard .card-h{position:absolute;z-index:1001;top:10px;left:10px;display:inline-flex;margin:0;padding:7px 12px;border-radius:20px;background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)}
-    .leaflet-bar,.leaflet-control-attribution{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-color:var(--g-bd)}
+    :root{--g-bg:rgba(255,255,255,.78);--lx:12px;--rp:calc(100vw - 24px)}
+    body{background:radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 100%),linear-gradient(135deg,#dbe7f8,#cbdcf3);min-height:100%;overflow:hidden}
+    .app{height:100dvh;min-height:0;overflow:hidden;background:transparent}
+    .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
+    .card:not(.mapcard),.side,.top{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)}
+    .mapcard .card-h{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)}
+    .side{display:contents}.side .logo,.side nav{display:none}
+    .side .logout{position:fixed;z-index:8;top:78px;right:12px;width:auto;margin:0;padding:8px 12px;background:var(--g-bg);border:1px solid var(--g-bd);box-shadow:var(--g-sh);color:var(--ink)}
+    .top{position:absolute;z-index:7;left:12px;right:12px;top:12px;height:58px;padding:0 12px;border-radius:22px}
+    .tl{gap:8px}.search{height:40px;min-width:0;padding:0 12px}.pill{gap:7px}.pill .bell,.avatar{display:none}
+    .mobile-tabs{position:fixed;z-index:20;left:12px;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:7px;border:1px solid var(--g-bd);border-radius:22px;background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:var(--g-hi),var(--g-sh)}
+    .mobile-tabs button{border:0;border-radius:15px;padding:10px 5px;background:transparent;color:var(--ink);font:500 13px Poppins;cursor:pointer}
+    .mobile-tabs button[aria-pressed="true"]{background:var(--g-on);box-shadow:0 2px 8px rgba(25,45,95,.12);font-weight:600}
+    .mapbox{position:absolute;inset:0 0 0;height:auto;margin:0;border-radius:0;z-index:0}
+    .mapcard .card-h{position:absolute;z-index:6;left:12px;right:12px;top:82px;width:max-content;max-width:calc(100% - 24px);margin:0;padding:8px 12px;border-radius:18px;gap:10px}
+    .leaflet-bar,.leaflet-control-attribution{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
     .leaflet-top.leaflet-left{left:auto;right:10px;top:10px}
+    .leaflet-bottom.leaflet-right{left:auto;right:0;bottom:0}
+    .bottom,.grid>.col:last-child{display:none}
+    body[data-mobile-view="panel"] .bottom{display:grid;position:absolute;z-index:5;left:12px;right:12px;top:154px;bottom:82px;height:auto;overflow:auto;align-content:start;grid-template-columns:1fr;gap:12px}
+    body[data-mobile-view="panel"] .bottom .card{height:205px;padding:14px;border-radius:22px}
+    body[data-mobile-view="panel"] .grid>.col:last-child{display:block;position:absolute;z-index:5;left:12px;right:12px;top:calc(154px + 430px);bottom:82px;width:auto;overflow:auto}
+    body[data-mobile-view="panel"] .listcard{display:none}
+    body[data-mobile-view="panel"] .grid>.col:last-child>.card{border-radius:22px}
+    body[data-mobile-view="fleet"] .grid>.col:last-child{display:block;position:absolute;z-index:5;left:12px;right:12px;top:82px;bottom:82px;width:auto;overflow:auto}
+    body[data-mobile-view="fleet"] .listcard{min-height:0;height:100%;border-radius:22px;overflow:hidden}
+    body[data-mobile-view="fleet"] .grid>.col:last-child>.card:not(.listcard){display:none}
+    body[data-mobile-view="fleet"] .bottom{display:none}
+    body[data-mobile-view="map"] .mapcard .card-h{position:absolute;left:12px;top:82px}
+    body[data-mobile-view="map"] .bottom,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
   }
+  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom{transition:none!important}}
 </style>
 </head>
-<body data-mobile-view="panel">
+<body>
 <div class="app">
   <aside class="side" id="sidebar"><div class="side-in">
     <div class="logo">
@@ -495,11 +476,10 @@
     </div>
   </div>
 </div>
-
-<nav class="mobile-tabs" id="mobile-tabs" role="tablist" aria-label="Vistas móviles">
-  <button type="button" role="tab" data-mobile-view="panel" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>Panel</button>
-  <button type="button" role="tab" data-mobile-view="fleet" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/></svg>Camiones</button>
-  <button type="button" role="tab" data-mobile-view="map" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Mapa</button>
+<nav class="mobile-tabs" id="mobile-tabs" aria-label="Vistas móviles">
+  <button type="button" data-mobile-view="panel" aria-pressed="false">Panel</button>
+  <button type="button" data-mobile-view="fleet" aria-pressed="false">Flota</button>
+  <button type="button" data-mobile-view="map" aria-pressed="true">Mapa</button>
 </nav>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -573,6 +553,20 @@ let trucks = [];
 let selectedId = null;
 const state = {q:'', status:'all', view:'all', sort:'plate', dir:'asc'};
 
+function setMobileView(view){
+  if (!['panel','fleet','map'].includes(view)) return;
+  document.body.dataset.mobileView = view;
+  document.querySelectorAll('#mobile-tabs [data-mobile-view]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.mobileView === view));
+  });
+  if (view === 'map') requestAnimationFrame(() => map.invalidateSize());
+}
+document.getElementById('mobile-tabs').addEventListener('click', event => {
+  const button = event.target.closest('[data-mobile-view]');
+  if (button) setMobileView(button.dataset.mobileView);
+});
+setMobileView('map');
+
 /* ---------- Map ---------- */
 const map = L.map('map').setView([-31.9,-64.0], 7);
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/bright';
@@ -640,17 +634,16 @@ const truckSvg = () => truck;
 const pinIcon = (t, sel) => {
   const pin = document.createElement('div');
   pin.className = `pin ${t.status} ${sel?'sel':''}`;
-  const truckElement = document.createElement('span');
-  truckElement.className = 'truck-svg';
-  truckElement.style.transform = `rotate(${t.heading}deg)`;
-  // Only the locally generated SVG is markup; the API-provided plate uses textContent.
-  truckElement.innerHTML = `${truckSvg(t.color)}`;
+  const vehicle = document.createElement('span');
+  vehicle.className = 'truck-svg';
+  vehicle.style.transform = `rotate(${t.heading}deg)`;
+  vehicle.innerHTML = truckSvg(t.color); // Static, locally defined SVG; API values are never markup.
   const label = document.createElement('em');
   label.className = 'lbl';
   label.style.fontStyle = 'normal';
   label.textContent = t.plate;
-  pin.append(truckElement, label);
-  return L.divIcon({className:'', iconSize:[10,10], iconAnchor:[5,5], html:pin});
+  pin.append(vehicle, label);
+  return L.divIcon({className:'', iconSize:[48,48], iconAnchor:[5,5], html:pin});
 };
 
 /* ---------- Smooth movement ----------
@@ -1077,19 +1070,6 @@ function setView(v){
   document.querySelectorAll('#seg button').forEach(c => c.setAttribute('aria-pressed', c.dataset.v===v));
   render();
 }
-function setMobileView(view){
-  document.body.dataset.mobileView = view;
-  document.querySelectorAll('#mobile-tabs [data-mobile-view]').forEach(button => {
-    button.setAttribute('aria-selected', button.dataset.mobileView === view);
-  });
-  if (view === 'map' && window.matchMedia('(max-width: 943px)').matches){
-    requestAnimationFrame(() => map.invalidateSize());
-  }
-}
-document.getElementById('mobile-tabs').addEventListener('click', e => {
-  const button = e.target.closest('[data-mobile-view]');
-  if (button) setMobileView(button.dataset.mobileView);
-});
 document.getElementById('seg').addEventListener('click', e => {
   const b = e.target.closest('button'); if (b) setView(b.dataset.v);
 });
