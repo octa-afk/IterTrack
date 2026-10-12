@@ -54,8 +54,8 @@ Use the user-provided mobile skeleton as the phone layout for `/map`, while keep
   - Verification: focused mobile tests passed (2 passed, 23 deselected); `make check` passed; `make test` passed (62 passed, one deprecation warning); parent focused spot check passed (2 passed, 23 deselected). The screenshot-driven RED reproduced the background-map visibility and glass-token mismatch; GREEN confirmed map hiding outside Mapa plus restored `.78` desktop and `.96` mobile surfaces. RDD is disabled for this clone.
   - Result: restored mobile-only glass surfaces and floating controls, Panel/Flota/Mapa controls, a visible mobile logout action, and Leaflet size invalidation after showing the map. Map tiles are now hidden in Panel/Flota, those screens use a neutral canvas, and only Mapa displays the live map. Existing authenticated data and one Leaflet instance are reused. Static marker label rendering remains via `textContent`.
   - Commit: `fca8623` (`feat(map): restore mobile views`).
-  - Follow-up commit: pending work-unit commit.
+  - Follow-up commit: `4ee224d` (`fix(map): hide map outside mobile map view`).
   - Feedback: user screenshot showed live map tiles behind the Panel view, reducing legibility; updated behavior keeps the map out of the background outside the Mapa tab.
 
 ## Next step
-Record the screenshot-driven correction commit. Keep the unrelated ROADMAP and gradient edits outside the mobile-map work-unit commits.
+MOB-3 is complete. The unrelated ROADMAP and gradient edits remain outside the mobile-map work-unit commits.
