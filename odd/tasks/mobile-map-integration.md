@@ -56,8 +56,8 @@ Use the user-provided mobile skeleton as the phone layout for `/map`, while keep
   - Commit: `fca8623` (`feat(map): restore mobile views`).
   - Follow-up commit: `4ee224d` (`fix(map): hide map outside mobile map view`).
   - Feedback: user screenshot showed live map tiles behind the Panel view, reducing legibility; updated behavior keeps the map out of the background outside the Mapa tab.
-  - Follow-up commit: pending work-unit commit.
+  - Follow-up commit: `723c81a` (`fix(map): prevent mobile header overlap`).
   - Feedback: screenshot showed the search occupying a full row and the alert pill wrapping beneath it into the floating map header; mobile flex rules now keep both controls together.
 
 ## Next step
-Record the topbar correction commit. Keep unrelated ROADMAP and gradient edits out of the mobile-map work-unit commits.
+MOB-3 is complete. Unrelated ROADMAP and gradient edits remain outside the mobile-map work-unit commits.
