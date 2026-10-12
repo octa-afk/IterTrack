@@ -296,7 +296,7 @@
      in the project markup and scripts below. Dimensions retain the C1 15%
      scale used by this page (example --rp/--lx: 360/236 -> 414/271). */
   :root{
-    --g-bg:rgba(255,255,255,.64);--g-solid:rgba(248,250,254,.97);
+    --g-bg:rgba(255,255,255,.78);--g-solid:rgba(248,250,254,.97);
     --g-bd:rgba(255,255,255,.78);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);
     --g-sh:0 12px 39px rgba(25,45,95,.16);--g-fill:rgba(31,42,61,.06);
     --g-fill2:rgba(31,42,61,.11);--g-on:rgba(255,255,255,.95);
@@ -357,8 +357,8 @@
   }
   /* Mobile surfaces follow the supplied glass treatment without changing desktop. */
   @media (max-width:943px){
-    :root{--g-bg:rgba(255,255,255,.78);--lx:12px;--rp:calc(100vw - 24px)}
-    body{background:radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 100%),linear-gradient(135deg,#dbe7f8,#cbdcf3);min-height:100%;overflow:hidden}
+    :root{--g-bg:rgba(255,255,255,.96);--lx:12px;--rp:calc(100vw - 24px)}
+    body{background:#f4f6fb;min-height:100%;overflow:hidden}
     .app{height:100dvh;min-height:0;overflow:hidden;background:transparent}
     .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
     .card:not(.mapcard),.side,.top{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)}
@@ -371,6 +371,8 @@
     .mobile-tabs button{border:0;border-radius:15px;padding:10px 5px;background:transparent;color:var(--ink);font:500 13px Poppins;cursor:pointer}
     .mobile-tabs button[aria-pressed="true"]{background:var(--g-on);box-shadow:0 2px 8px rgba(25,45,95,.12);font-weight:600}
     .mapbox{position:absolute;inset:0 0 0;height:auto;margin:0;border-radius:0;z-index:0}
+    body[data-mobile-view="panel"] .mapbox,body[data-mobile-view="fleet"] .mapbox{display:none}
+    body[data-mobile-view="map"] .mapbox{display:block}
     .mapcard .card-h{position:absolute;z-index:6;left:12px;right:12px;top:82px;width:max-content;max-width:calc(100% - 24px);margin:0;padding:8px 12px;border-radius:18px;gap:10px}
     .leaflet-bar,.leaflet-control-attribution{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
     .leaflet-top.leaflet-left{left:auto;right:10px;top:10px}
