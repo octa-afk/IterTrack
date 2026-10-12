@@ -58,3 +58,4 @@ Motor de alertas con reglas configurables por cliente:
 ## Principios
 - Todo dato de ubicación es **sensible**: proteger con auth, no exponer endpoints públicos de escritura.
 - Las alertas deben ser explicables (por qué disparó, qué dato lo provocó).
+- **Registro de contraseñas:** mínimo 12 caracteres, al menos una letra y un número (`UserCreate`). Se valida al registrarse; el login verifica contra el hash y no rechaza claves existentes por no cumplir la política. Casos en `tests/test_auth.py`.

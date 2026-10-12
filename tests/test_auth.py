@@ -9,7 +9,7 @@ REGISTER_PAYLOAD = {
     "username": "chofer1",
     "email": "chofer1@example.com",
     "full_name": "Chofer Uno",
-    "password": "secreto123",
+    "password": "SeguraABC1234",
     "invitation_code": "TEST-CODE",
 }
 
@@ -34,7 +34,7 @@ def register(client, payload=REGISTER_PAYLOAD):
     return client.post("/auth/register", json=payload)
 
 
-def login(client, username="chofer1", password="secreto123"):
+def login(client, username="chofer1", password="SeguraABC1234"):
     return client.post("/auth/login", data={"username": username, "password": password})
 
 
@@ -85,6 +85,26 @@ def test_register_duplicate_email_returns_400(auth_client):
 def test_register_invalid_email_returns_422(auth_client):
     response = register(auth_client, {**REGISTER_PAYLOAD, "email": "no-es-email"})
     assert response.status_code == 422
+
+
+def test_register_rejects_password_shorter_than_eight_characters(auth_client):
+    response = register(auth_client, {**REGISTER_PAYLOAD, "password": "Abc123!"})
+    assert response.status_code == 422
+
+
+def test_register_rejects_password_with_letters_only(auth_client):
+    response = register(auth_client, {**REGISTER_PAYLOAD, "password": "abcdefghijkl"})
+    assert response.status_code == 422
+
+
+def test_register_rejects_password_with_numbers_only(auth_client):
+    response = register(auth_client, {**REGISTER_PAYLOAD, "password": "123456789012"})
+    assert response.status_code == 422
+
+
+def test_register_accepts_valid_password(auth_client):
+    response = register(auth_client, {**REGISTER_PAYLOAD, "password": "SeguraABC1234"})
+    assert response.status_code == 201
 
 
 def test_login_returns_token(auth_client):
