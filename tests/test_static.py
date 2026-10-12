@@ -298,6 +298,7 @@ def test_map_page_uses_mobile_glass_surfaces_and_floating_controls(client):
     assert "-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
     assert ".mobile-tabs{" in mobile_styles
     assert "background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
+    assert 'body[data-mobile-view="panel"] .mapcard .card-h,body[data-mobile-view="fleet"] .mapcard .card-h{display:none}' in mobile_styles
     assert "body[data-mobile-view=\"map\"] .mapcard .card-h{position:absolute" in mobile_styles
     assert ".side .logout{position:fixed" in mobile_styles
     assert ".leaflet-bar,.leaflet-control-attribution{background:var(--g-bg)" in mobile_styles
