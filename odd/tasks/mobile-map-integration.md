@@ -58,8 +58,8 @@ Use the user-provided mobile skeleton as the phone layout for `/map`, while keep
   - Feedback: user screenshot showed live map tiles behind the Panel view, reducing legibility; updated behavior keeps the map out of the background outside the Mapa tab.
   - Follow-up commit: `723c81a` (`fix(map): prevent mobile header overlap`).
   - Feedback: screenshot showed the search occupying a full row and the alert pill wrapping beneath it into the floating map header; mobile flex rules now keep both controls together.
-  - Follow-up commit: pending work-unit commit.
+  - Follow-up commit: `12b28c3` (`fix(map): hide map title outside map view`).
   - Feedback: user confirmed the screenshot was taken in Flota; the floating `Mapa en vivo` header appeared over the fleet filter card, so it is now hidden in Panel/Flota and retained in Mapa.
 
 ## Next step
-Record the Flota-header correction commit. Unrelated ROADMAP and gradient edits remain untouched.
+MOB-3 is complete. Unrelated ROADMAP and gradient edits remain untouched.
