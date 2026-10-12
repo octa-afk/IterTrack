@@ -45,17 +45,19 @@ Use the user-provided mobile skeleton as the phone layout for `/map`, while keep
 
 - [x] MOB-3 — Restore the mobile views and glass treatment in the current map page.
   - Authorized scope: `source/static/map.html`, `tests/test_static.py`.
-  - Acceptance: restore the tested Panel/Camiones/Mapa tabs and responsive glass surfaces; keep logout reachable on mobile; show map tiles only in the Mapa view; use a simple opaque neutral surface behind Panel/Flota for legibility; use the existing authenticated fleet data and one Leaflet map; invalidate map size after revealing it; preserve desktop behavior and unrelated worktree changes.
+  - Acceptance: restore the tested Panel/Camiones/Mapa tabs and responsive glass surfaces; keep logout reachable on mobile; keep the search bar and alert control on one row without overlapping the view header; show map tiles only in the Mapa view; use a simple opaque neutral surface behind Panel/Flota for legibility; use the existing authenticated fleet data and one Leaflet map; invalidate map size after revealing it; preserve desktop behavior and unrelated worktree changes.
   - Checks: `env/bin/python -m pytest tests/test_static.py -k 'mobile_tabs or mobile_glass_surfaces'`, `make check`, and `make test`.
   - Route: delegated direct; two non-trivial files and existing mobile behavior requires reading alongside implementation.
   - RDD status: disabled for this clone; ordinary functional verification only.
   - Test-first evidence: focused RED observed — 2 failed, 23 deselected. Failures confirm missing `mobile-tabs` and missing mobile glass CSS block.
   - Forecast: approximately 100 authored changed lines; delivery strategy remains `ask-on-risk`.
-  - Verification: focused mobile tests passed (2 passed, 23 deselected); `make check` passed; `make test` passed (62 passed, one deprecation warning); parent focused spot check passed (2 passed, 23 deselected). The screenshot-driven RED reproduced the background-map visibility and glass-token mismatch; GREEN confirmed map hiding outside Mapa plus restored `.78` desktop and `.96` mobile surfaces. RDD is disabled for this clone.
-  - Result: restored mobile-only glass surfaces and floating controls, Panel/Flota/Mapa controls, a visible mobile logout action, and Leaflet size invalidation after showing the map. Map tiles are now hidden in Panel/Flota, those screens use a neutral canvas, and only Mapa displays the live map. Existing authenticated data and one Leaflet instance are reused. Static marker label rendering remains via `textContent`.
+  - Verification: focused mobile tests passed (2 passed, 23 deselected); `make check` passed; `make test` passed (62 passed, one deprecation warning); parent focused spot check passed (2 passed, 23 deselected). The screenshot-driven backdrop and header-overlap follow-ups each passed focused tests; final `make check` passed and `make test` passed (62 passed). RDD is disabled for this clone.
+  - Result: restored mobile-only glass surfaces and floating controls, Panel/Flota/Mapa controls, a visible mobile logout action, and Leaflet size invalidation after showing the map. Map tiles are hidden outside Mapa and those views use a neutral background with opaque panels. The search and alert controls now stay on one mobile row; the overlap was caused by inherited `flex-wrap:wrap` and full-row search sizing. Existing authenticated data and one Leaflet instance are reused. Static marker label rendering remains via `textContent`.
   - Commit: `fca8623` (`feat(map): restore mobile views`).
   - Follow-up commit: `4ee224d` (`fix(map): hide map outside mobile map view`).
   - Feedback: user screenshot showed live map tiles behind the Panel view, reducing legibility; updated behavior keeps the map out of the background outside the Mapa tab.
+  - Follow-up commit: pending work-unit commit.
+  - Feedback: screenshot showed the search occupying a full row and the alert pill wrapping beneath it into the floating map header; mobile flex rules now keep both controls together.
 
 ## Next step
-MOB-3 is complete. The unrelated ROADMAP and gradient edits remain outside the mobile-map work-unit commits.
+Record the topbar correction commit. Keep unrelated ROADMAP and gradient edits out of the mobile-map work-unit commits.
