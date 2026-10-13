@@ -87,6 +87,17 @@ def test_post_truck_assigns_organization(tracking_client, db_session, test_user)
     assert point.heading == 180
 
 
+def test_post_truck_defaults_to_active(tracking_client, db_session):
+    response = tracking_client.post(
+        "/trucks",
+        json={"truck": {"id": 2, "plate": "ACTIVE1"}, "location": {"lat": -31.42, "long": -64.18}},
+    )
+
+    assert response.status_code == 200
+    truck = db_session.query(Truck).filter(Truck.id == 2).one()
+    assert truck.active is True
+
+
 def test_put_location_other_org_truck_returns_404(tracking_client, other_truck):
     """PUT /{truck_id}/location con camión de otra organización → 404."""
     response = tracking_client.put(
@@ -132,6 +143,18 @@ def test_put_location_own_truck_succeeds(tracking_client, test_truck):
     )
     assert response.status_code == 200
     assert response.json()["mensaje"] == "Ubicación actualizada correctamente"
+
+
+def test_put_location_inactive_truck_returns_409(tracking_client, db_session, test_truck):
+    test_truck.active = False
+    db_session.commit()
+
+    response = tracking_client.put(
+        f"/trucks/{test_truck.id}/location",
+        json={"lat": -31.42, "long": -64.18, "speed": 12.25, "heading": 359.5},
+    )
+
+    assert response.status_code == 409
 
 
 def test_location_responses_include_telemetry(tracking_client, db_session, test_truck):

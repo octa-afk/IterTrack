@@ -44,6 +44,11 @@ def update_location(truck_id: int, location: schemas.Location, db: Session = Dep
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="camión no encontrado"
             )
+    if not truck.active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El camión está inactivo",
+        )
     db_point = models.TrackingPoint(
         truck_id=truck_id,
         lat=location.lat,

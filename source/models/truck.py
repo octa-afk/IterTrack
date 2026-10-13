@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import DateTime, ForeignKey
+from sqlalchemy import Boolean, DateTime, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from source.database.database import Base
@@ -10,6 +10,9 @@ class Truck(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     plate: Mapped[str] = mapped_column(unique=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"))
+    active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
     organization: Mapped["Organization"] = relationship(back_populates="trucks")
 
     tracking_points: Mapped[list["TrackingPoint"]] = relationship(back_populates="truck")
