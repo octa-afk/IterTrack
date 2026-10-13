@@ -136,6 +136,14 @@ def test_me_without_token_returns_401(auth_client):
     assert response.status_code == 401
 
 
+def test_me_with_random_token_returns_401(auth_client):
+    response = auth_client.get(
+        "/auth/me",
+        headers={"Authorization": "Bearer random-invalid-token"},
+    )
+    assert response.status_code == 401
+
+
 def test_protected_endpoint_without_token_returns_401(auth_client):
     response = auth_client.post(
         "/trucks",
