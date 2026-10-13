@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from scripts.simulate_trucks import (
     actualizar_ubicacion,
     build_truck_configs,
@@ -21,13 +23,51 @@ def test_actualizar_ubicacion_sends_telemetry(monkeypatch):
 
     monkeypatch.setattr("scripts.simulate_trucks.requests.put", fake_put)
 
-    assert actualizar_ubicacion(7, -31.42, -64.18, speed=35.5, heading=123.4, headers={"X-Test": "yes"})
+    measured_at = datetime(2026, 10, 13, 12, 0, tzinfo=timezone.utc)
+
+    assert actualizar_ubicacion(
+        7, -31.42, -64.18, speed=35.5, heading=123.4, recorded_at=measured_at, headers={"X-Test": "yes"}
+    )
     assert captured["json"] == {
         "lat": -31.42,
         "long": -64.18,
         "speed": 35.5,
         "heading": 123.4,
+        "recorded_at": "2026-10-13T12:00:00+00:00",
     }
+
+
+def test_simular_ruta_captures_measurement_time_for_each_ping(monkeypatch):
+    route = [[-31.42, -64.18], [-31.43, -64.19]]
+    measurements = []
+
+    class StopAfterRoute:
+        def __init__(self):
+            self.waits = 0
+            self.stopped = False
+
+        def is_set(self):
+            return self.stopped
+
+        def wait(self, _interval):
+            self.waits += 1
+            if self.waits == len(route):
+                self.stopped = True
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: {})
+    monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.actualizar_ubicacion",
+        lambda truck_id, lat, long, speed, heading, recorded_at, headers=None: measurements.append(recorded_at) or True,
+    )
+
+    before = datetime.now(timezone.utc)
+    simular_ruta(7, "ABC123", 1, stop_event=StopAfterRoute())
+
+    assert len(measurements) == len(route)
+    assert all(m.tzinfo is not None for m in measurements)
+    assert all(before <= m <= datetime.now(timezone.utc) + timedelta(seconds=1) for m in measurements)
 
 
 def test_build_truck_configs_preserves_base_identity_for_single_truck():

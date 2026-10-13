@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 
@@ -195,3 +195,43 @@ def test_tracking_point_received_at_defaults_to_now(db_session, test_truck):
     assert point.recorded_at is not None
     assert point.received_at is not None
     assert point.received_at >= before
+
+
+def test_put_location_stores_measurement_time_from_client(tracking_client, db_session, test_truck):
+    measured_at = "2026-10-13T12:00:00+00:00"
+    response = tracking_client.put(
+        f"/trucks/{test_truck.id}/location",
+        json={"lat": -31.42, "long": -64.18, "speed": 10, "heading": 90, "recorded_at": measured_at},
+    )
+    assert response.status_code == 200
+
+    point = db_session.query(TrackingPoint).filter(TrackingPoint.truck_id == test_truck.id).one()
+    assert point.recorded_at.replace(tzinfo=None) == datetime(2026, 10, 13, 12, 0)
+    assert point.received_at is not None
+
+
+def test_put_location_without_recorded_at_uses_server_time(tracking_client, db_session, test_truck):
+    response = tracking_client.put(
+        f"/trucks/{test_truck.id}/location",
+        json={"lat": -31.42, "long": -64.18},
+    )
+    assert response.status_code == 200
+    point = db_session.query(TrackingPoint).filter(TrackingPoint.truck_id == test_truck.id).one()
+    assert point.recorded_at is not None
+
+
+def test_put_location_rejects_naive_recorded_at(tracking_client, test_truck):
+    response = tracking_client.put(
+        f"/trucks/{test_truck.id}/location",
+        json={"lat": -31.42, "long": -64.18, "recorded_at": "2026-10-13T12:00:00"},
+    )
+    assert response.status_code == 422
+
+
+def test_put_location_rejects_future_recorded_at(tracking_client, test_truck):
+    future = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    response = tracking_client.put(
+        f"/trucks/{test_truck.id}/location",
+        json={"lat": -31.42, "long": -64.18, "recorded_at": future},
+    )
+    assert response.status_code == 422

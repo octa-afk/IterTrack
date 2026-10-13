@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 #camion con id
 class Truck(BaseModel):
@@ -12,6 +14,20 @@ class Location(BaseModel):
         long: float = Field(ge=-180, le=180)
         speed: float = Field(default=0, ge=0)
         heading: float = Field(default=0, ge=0, le=360)
+        # Momento de medición informado por el emisor. Si no se envía, el servidor usa su hora.
+        recorded_at: Optional[datetime] = None
+
+        @field_validator("recorded_at")
+        @classmethod
+        def validate_recorded_at(cls, value: Optional[datetime]) -> Optional[datetime]:
+            if value is None:
+                return value
+            if value.tzinfo is None or value.utcoffset() is None:
+                raise ValueError("recorded_at debe incluir zona horaria")
+            # Tolerancia pequeña por desfasaje de relojes entre emisor y servidor.
+            if value > datetime.now(timezone.utc) + timedelta(seconds=60):
+                raise ValueError("recorded_at no puede estar en el futuro")
+            return value
 #historial con Truck e historial de ubicaciones
 class TrackingPoint(BaseModel):
         truck_id: int

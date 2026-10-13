@@ -4,6 +4,7 @@ import json
 import math
 import time
 import argparse
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from threading import Event
@@ -181,13 +182,20 @@ def actualizar_ubicacion(
     long: float,
     speed: float,
     heading: float,
+    recorded_at: datetime,
     headers=None,
 ) -> bool:
-    """Envía la nueva coordenada del camión al endpoint PUT /trucks/{id}/location."""
+    """Envía la coordenada y su hora de medición al endpoint PUT /trucks/{id}/location."""
     try:
         response = requests.put(
             f"{BASE_URL}/{truck_id}/location",
-            json={"lat": lat, "long": long, "speed": speed, "heading": heading},
+            json={
+                "lat": lat,
+                "long": long,
+                "speed": speed,
+                "heading": heading,
+                "recorded_at": recorded_at.isoformat(),
+            },
             headers=HEADERS if headers is None else headers,
             timeout=5
         )
@@ -240,12 +248,15 @@ def simular_ruta(
                 velocidad_kmh = 0
                 telemetria_str = "| Punto de partida"
 
+            # Hora de medición: el instante en que el simulador toma la lectura, no el envío.
+            medido_en = datetime.now(timezone.utc)
             ok = actualizar_ubicacion(
                 truck_id,
                 lat,
                 lon,
                 speed=velocidad_kmh,
                 heading=rumbo,
+                recorded_at=medido_en,
                 headers=headers,
             )
             status = "🟢 OK" if ok else "🔴 FAIL"

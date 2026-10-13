@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -23,6 +25,7 @@ def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = De
         long=location.long,
         speed=location.speed,
         heading=location.heading,
+        recorded_at=location.recorded_at or datetime.now(timezone.utc),
     )
     db.add(db_tracking_point)
 
@@ -47,6 +50,7 @@ def update_location(truck_id: int, location: schemas.Location, db: Session = Dep
         long=location.long,
         speed=location.speed,
         heading=location.heading,
+        recorded_at=location.recorded_at or datetime.now(timezone.utc),
     )
     #Cada actualización se agrega como un nuevo punto de tracking.
     db.add(db_point)
