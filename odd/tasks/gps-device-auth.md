@@ -20,6 +20,7 @@ Done:
 - Slice 1 (`b3280ee`): models `Device` and `DeviceAssignment`, migration `3e8f1a6b9c2d`, token helpers, provisioning service and CLI, tests (87 passing with the rest of the suite).
 - Time split (`95d5f13`): `recorded_at` and `received_at` on `tracking_points`, migration `7c3d9e1f2a4b`.
 - Simulator measurement time (`678b343`): `recorded_at` sent with each ping; `PUT` accepts and validates it.
+- Truck activation state: `Truck.active` defaults to true, migration `d4a7c9e2b6f1`, and human location writes reject inactive trucks.
 
 Pending:
 - Slice 2: batch ingest endpoint for devices. Authenticate by token hash, resolve the truck by assignment at `recorded_at`, idempotent on `(device_id, sequence)`, reject inactive devices and trucks, and return a per-point result.
@@ -45,6 +46,8 @@ Pending:
 - [x] DEV-5 Tests: hash, provisioning, duplicate identifier, double open assignment per device and per truck
 - [x] TIME-1 `recorded_at` / `received_at` split and migration
 - [x] TIME-2 Simulator sends measurement time; API validates it
+- [x] TRUCK-1 Add non-null `Truck.active` with a true default and migration
+- [x] TRUCK-2 Reject human location writes for inactive trucks
 - [ ] INGEST-1 Device batch ingest endpoint
 - [ ] INGEST-2 Attribution by `recorded_at` and idempotency
 - [ ] REASSIGN-1 Close and open assignment in one transaction
@@ -61,7 +64,7 @@ Pending:
 - Migrations verified upgrade/downgrade on PostgreSQL in a temporary schema (done for `7c3d9e1f2a4b` and `3e8f1a6b9c2d`).
 
 ## Progress
-- Session closed with slice 1 and the time split complete. Slice 2 is the next step.
+- Session closed with slice 1, the time split, and truck activation state complete. Slice 2 is the next step.
 - Open decision for slice 2: device identifier at provisioning (MAC address proposed, not yet confirmed).
 
 ## Route
