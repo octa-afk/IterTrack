@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
@@ -162,3 +163,35 @@ def test_location_rejects_invalid_telemetry(tracking_client, test_truck, field, 
     response = tracking_client.put(f"/trucks/{test_truck.id}/location", json=payload)
 
     assert response.status_code == 422
+
+
+def test_tracking_point_distinguishes_recorded_and_received_time(db_session, test_truck):
+    """recorded_at es la medición; received_at es la recepción en el servidor."""
+    measured_at = datetime(2026, 10, 1, 8, 30, 0)
+    point = TrackingPoint(
+        truck_id=test_truck.id,
+        lat=-31.42,
+        long=-64.18,
+        speed=10,
+        heading=90,
+        recorded_at=measured_at,
+    )
+    db_session.add(point)
+    db_session.commit()
+    db_session.refresh(point)
+
+    assert point.recorded_at == measured_at
+    assert point.received_at is not None
+    assert point.received_at > point.recorded_at
+
+
+def test_tracking_point_received_at_defaults_to_now(db_session, test_truck):
+    before = datetime.now(timezone.utc).replace(tzinfo=None)
+    point = TrackingPoint(truck_id=test_truck.id, lat=-31.42, long=-64.18, speed=0, heading=0)
+    db_session.add(point)
+    db_session.commit()
+    db_session.refresh(point)
+
+    assert point.recorded_at is not None
+    assert point.received_at is not None
+    assert point.received_at >= before
