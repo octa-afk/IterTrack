@@ -43,7 +43,7 @@ Use the user-provided mobile skeleton as the phone layout for `/map`, while keep
   - Route evidence: delegated because mobile styling interacts with the existing layout and test contract.
   - Commit: `d6411fc5e5d6c07f549f7d7f03396028069282e7`.
 
-- [x] MOB-3 — Restore the mobile views and glass treatment in the current map page.
+- [ ] MOB-3 — Restore the mobile views and glass treatment in the current map page.
   - Authorized scope: `source/static/map.html`, `tests/test_static.py`.
   - Acceptance: restore the tested Panel/Camiones/Mapa tabs and responsive glass surfaces; keep logout reachable on mobile; keep the search bar and alert control on one row without overlap; show the map title and tiles only in Mapa; use a simple opaque neutral surface behind Panel/Flota for legibility; use the existing authenticated fleet data and one Leaflet map; invalidate map size after revealing it; preserve desktop behavior and unrelated worktree changes.
   - Checks: `env/bin/python -m pytest tests/test_static.py -k 'mobile_tabs or mobile_glass_surfaces'`, `make check`, and `make test`.
@@ -60,6 +60,8 @@ Use the user-provided mobile skeleton as the phone layout for `/map`, while keep
   - Feedback: screenshot showed the search occupying a full row and the alert pill wrapping beneath it into the floating map header; mobile flex rules now keep both controls together.
   - Follow-up commit: `12b28c3` (`fix(map): hide map title outside map view`).
   - Feedback: user confirmed the screenshot was taken in Flota; the floating `Mapa en vivo` header appeared over the fleet filter card, so it is now hidden in Panel/Flota and retained in Mapa.
+  - User decision: the mobile frontend is still not acceptable; the user will code the mobile front manually later. This remaining rewrite is user-owned; do not continue frontend edits unless asked.
+  - Browser setup: abandoned at the user's request. `npx --yes playwright@1.64.0 install chrome` stopped when system dependency installation required interactive sudo; Chrome's final install state was not checked. Do not retry or change browser setup without a new request.
 
 ## Next step
-MOB-3 is complete. Unrelated ROADMAP and gradient edits remain untouched.
+User will implement the mobile frontend manually later. No more agent frontend edits or Playwright setup unless explicitly requested. Unrelated ROADMAP and gradient edits remain untouched.

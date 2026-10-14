@@ -65,7 +65,7 @@
   .pin .truck-svg{display:grid;transition:transform .2s,filter .2s}
   .pin svg{width:48px;height:48px}
   .pin.sel .truck-svg{transform:scale(1.15);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
-  .pin .lbl{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .pin .lbl{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;background:var(--g-solid);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
   .pin.sel .lbl{display:block}
 
   /* Fila inferior */
@@ -195,7 +195,7 @@
   /* ===== Versión celeste suave (glass claro) ===== */
   .app{
     background:
-      radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 100%),
+      radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 70%),
       radial-gradient(713px 483px at 78% -6%,rgba(165,210,245,.55),transparent 70%),
       radial-gradient(598px 483px at 10% 100%,rgba(185,180,240,.28),transparent 70%),
       linear-gradient(135deg,#dbe7f8,#cbdcf3);
@@ -296,10 +296,11 @@
      in the project markup and scripts below. Dimensions retain the C1 15%
      scale used by this page (example --rp/--lx: 360/236 -> 414/271). */
   :root{
-    --g-bg:rgba(255,255,255,.78);--g-solid:rgba(248,250,254,.97);
-    --g-bd:rgba(255,255,255,.78);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);
-    --g-sh:0 12px 39px rgba(25,45,95,.16);--g-fill:rgba(31,42,61,.06);
-    --g-fill2:rgba(31,42,61,.11);--g-on:rgba(255,255,255,.95);
+    --g-bg:rgba(23,54,116,.72);--g-solid:rgba(23,54,116,.97);
+    --g-bd:rgba(255,255,255,.32);--g-hi:inset 0 1px 0 rgba(255,255,255,.28);
+    --g-sh:0 12px 39px rgba(25,45,95,.22);--g-fill:rgba(255,255,255,.13);
+    --g-fill2:rgba(255,255,255,.2);--g-on:rgba(255,255,255,.18);
+    --ink:#f8fbff;--muted:#d4e1f5;--line:rgba(255,255,255,.23);
     --ac:#5a7ee6;--blur:blur(28px) saturate(180%);--rp:414px;--lx:271px;
   }
   .app{position:relative;background:var(--mint)}
@@ -310,6 +311,10 @@
     border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)
   }
   .side{position:absolute;z-index:5;left:16px;top:16px;bottom:16px;width:235px;border-radius:30px;padding:0;transition:width .3s ease,opacity .2s ease}
+  .side nav a{color:rgba(255,255,255,.9)}
+  .side nav a.on{color:#fff}
+  .side nav a:hover{background:rgba(255,255,255,.12)}
+  .side .logout{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff}
   .side-in{width:100%;height:100%;padding:40px 0 23px}
   .logo{margin-bottom:39px}
   .top{position:absolute;z-index:5;left:var(--lx);right:16px;top:16px;height:64px;padding:0 10px 0 9px;border-radius:32px}
@@ -357,7 +362,7 @@
   }
   /* Mobile surfaces follow the supplied glass treatment without changing desktop. */
   @media (max-width:943px){
-    :root{--g-bg:rgba(255,255,255,.96);--lx:12px;--rp:calc(100vw - 24px)}
+    :root{--lx:12px;--rp:calc(100vw - 24px)}
     body{background:#f4f6fb;min-height:100%;overflow:hidden}
     .app{height:100dvh;min-height:0;overflow:hidden;background:transparent}
     .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
@@ -392,6 +397,19 @@
     body[data-mobile-view="map"] .bottom,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
   }
   @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom{transition:none!important}}
+  @media (min-width:944px){
+    :root{
+      --g-bg:rgba(255,255,255,.90);--g-solid:rgba(248,250,254,.97);
+      --g-bd:rgba(255,255,255,.78);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);
+      --g-sh:0 12px 39px rgba(25,45,95,.16);--g-fill:rgba(31,42,61,.06);
+      --g-fill2:rgba(31,42,61,.11);--g-on:rgba(255,255,255,.95);
+      --ink:#1f2a3d;--muted:#6b778c;--line:#e6eaf2;
+    }
+    .side nav a{color:#3b4862}
+    .side nav a.on{color:var(--ink)}
+    .side nav a:hover{background:rgba(31,42,61,.05)}
+    .side .logout{background:rgba(255,255,255,.85);border:0;color:var(--ink)}
+  }
 </style>
 </head>
 <body>
@@ -580,6 +598,27 @@ const base = L.maplibreGL({
   attribution:'<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 const mapLibreMap = base.getMaplibreMap();
+const originalRoadLineColors = new Map();
+let showColoredRoads = false;
+function applyRoadColorMode(){
+  if (!mapLibreMap.isStyleLoaded()) return;
+  mapLibreMap.getStyle().layers.forEach(layer => {
+    const sourceLayer = layer['source-layer'] || '';
+    const isRoadLine = layer.type === 'line' &&
+      sourceLayer === 'transportation' &&
+      /^(highway|bridge|tunnel)-/.test(layer.id);
+    if (!isRoadLine) return;
+    if (!originalRoadLineColors.has(layer.id)) {
+      originalRoadLineColors.set(layer.id, layer.paint?.['line-color']);
+    }
+    const originalColor = originalRoadLineColors.get(layer.id);
+    if (originalColor === undefined) return;
+    const color = showColoredRoads
+      ? originalColor
+      : (layer.id.endsWith('-casing') ? '#b9c1cc' : '#e2e6ec');
+    mapLibreMap.setPaintProperty(layer.id, 'line-color', color);
+  });
+}
 function neutralizeBuildings(){
   if (!mapLibreMap.isStyleLoaded()) return;
   mapLibreMap.getStyle().layers.forEach(layer => {
@@ -590,6 +629,7 @@ function neutralizeBuildings(){
       mapLibreMap.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0);
     }
   });
+  applyRoadColorMode();
 }
 function mostrarCargaEstilo(){
   mapContainer.classList.add('map-style-loading');
@@ -605,9 +645,21 @@ mapLibreMap.on('styledataloading', mostrarCargaEstilo);
 mapLibreMap.on('load', mapaListo);
 mapLibreMap.on('style.load', neutralizeBuildings);
 mapLibreMap.on('error', ocultarCargaEstilo);
+document.addEventListener('keydown', event => {
+  const target = event.target;
+  const isEditing = target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT','TEXTAREA','SELECT'].includes(target.tagName));
+  if (!window.matchMedia('(min-width: 944px)').matches || isEditing ||
+      event.repeat || event.ctrlKey || event.metaKey ||
+      !event.altKey || !event.shiftKey || event.code !== 'KeyR') return;
+  event.preventDefault();
+  showColoredRoads = !showColoredRoads;
+  applyRoadColorMode();
+});
 new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('map'));
 
 const markers = new Map();
+// SVG del marcador del camión: reemplazar este bloque para cambiar el ícono del mapa.
 const truck = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">
   <circle cx="256" cy="256" r="232" fill="#1F4E8C" stroke="#FFFFFF" stroke-width="24"/>
   <g transform="translate(256 256) scale(0.74) translate(-256 -258)">
