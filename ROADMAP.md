@@ -22,8 +22,29 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 ### Fase 2 — Identidad y acceso
 - Auth OAuth2 + JWT — completado.
 - **Login y registro en el navegador: completados** (`/` y `/register`). La membresía de usuarios y el alcance de camiones por organización están implementados; los permisos por rol siguen pendientes.
-- Roles por cliente (dueño de flota, operador, solo lectura) — pendiente.
+- **Validación de contraseña en el registro:** mínimo 12 caracteres, al menos una letra y un número (`UserCreate`). Esta política se valida al registrar; el login autentica contra el hash existente y no rechaza cuentas por no cumplirla. Casos cubiertos en `tests/test_auth.py`.
+- Permisos objetivo — clientes solo lectura; cada administrador interno tendrá las mismas facultades. Aún pendiente de implementación.
 - Los camiones nuevos se asignan a la organización del usuario autenticado; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia — implementado.
+
+### Decisiones confirmadas — administración de vehículos
+- La empresa instala el hardware GPS y es responsable de registrar y retirar los vehículos; el cliente no crea ni elimina vehículos.
+- Cada integrante autorizado de la empresa tendrá su propia cuenta con permisos de administrador. No se usará una cuenta compartida, para conservar la trazabilidad de quién realizó cada cambio.
+- Cada unidad GPS tendrá una credencial propia, separada de las cuentas humanas. Los equipos se instalan por largo tiempo, pero pueden reutilizarse en otro camión; el mecanismo de autenticación y el proceso de reasignación siguen pendientes.
+- Un vehículo se conserva en el sistema y cambia entre activo e inactivo; desactivarlo no elimina su historial de tracking.
+- Los usuarios del cliente se darán de alta mediante un código de invitación; no crearán organizaciones ni vehículos por cuenta propia.
+- Un vehículo dado de baja queda inactivo y deja de transmitir. El backend debe rechazar nuevas ubicaciones para hacer cumplir ese estado, conservando los datos históricos.
+- Estas decisiones definen el objetivo futuro: todavía no están implementadas en el backend. El modelo `Truck` aún no tiene estado activo/inactivo y los endpoints actuales permiten a usuarios autenticados crear camiones y borrar historiales.
+
+### Próximo frente backend — ciclo de vida y acceso
+- Agregar estado activo/inactivo al vehículo y operaciones administrativas para alta, asignación a una organización y cambio de estado.
+- Limitar el alta y la desactivación a cuentas individuales de administrador de la empresa; los usuarios cliente solo podrán consultar.
+- Registrar usuarios cliente mediante invitaciones emitidas para su organización.
+- Mantener el historial al desactivar un vehículo y rechazar nuevos reportes GPS para ese vehículo.
+- **Autenticación GPS (en curso):** credencial individual por equipo, independiente del login humano. Decidido: alta por CLI local (`scripts/provision_device.py`) mientras no existan roles; token aleatorio mostrado una sola vez y guardado solo como hash SHA-256; asignación a camiones en `device_assignments` con historial; una asignación abierta por equipo y por camión. Hecho: modelos, migración y alta por CLI. Pendiente: endpoint de ingesta por lotes, reasignación (cerrar y abrir asignación), revocación/rotación.
+- **Tiempo de medición:** cada punto guarda `recorded_at` (medición) y `received_at` (recepción). El simulador envía `recorded_at`; el backend lo acepta opcional y valida zona horaria y que no esté en el futuro. Pendiente: que el dispositivo lo informe desde su GPS y que las lecturas ordenen por `recorded_at`.
+- La ESP32 no usa el JWT de una cuenta humana. El token va sobre HTTPS con validación de certificado en el firmware.
+- **Almacenamiento sin conexión (pendiente de diseño):** la ESP32 guarda lecturas cuando no hay conexión y las envía al volver. Implica identificador de secuencia por equipo, envío por lotes idempotente, atribución del camión por `recorded_at` y una política de descarte del buffer.
+- Incluir migración y pruebas para permisos, aislamiento entre organizaciones, historial retenido y comportamiento de dispositivos inactivos.
 
 ### Fase 3 — Dashboard web
 - Frontend web para seguir la flota en tiempo real.
@@ -53,9 +74,9 @@ Motor de alertas con reglas configurables por cliente:
 - Qué cuenta exactamente como "desvío" (km fuera de ruta, tiempo, destino).
 - Umbral de "nafta baja / caída" (nivel absoluto vs. caída brusca).
 - Frecuencia de reporte esperada de los dispositivos GPS.
-- Roles y permisos necesarios.
+- Cómo emitir, expirar, revocar y rotar códigos de invitación.
+- Cómo emitir, aprovisionar, revocar y rotar la credencial individual de cada GPS, y registrar sus reasignaciones entre camiones.
 
 ## Principios
 - Todo dato de ubicación es **sensible**: proteger con auth, no exponer endpoints públicos de escritura.
 - Las alertas deben ser explicables (por qué disparó, qué dato lo provocó).
-- **Registro de contraseñas:** mínimo 12 caracteres, al menos una letra y un número (`UserCreate`). Se valida al registrarse; el login verifica contra el hash y no rechaza claves existentes por no cumplir la política. Casos en `tests/test_auth.py`.

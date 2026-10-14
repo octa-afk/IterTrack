@@ -100,6 +100,11 @@ def test_map_page_uses_light_cartography_only(client):
     assert "tiles.openfreemap.org/styles/bright" in response.text
     assert "tiles.openfreemap.org/styles/dark" not in response.text
     assert "function neutralizeBuildings" in response.text
+    assert "sourceLayer === 'transportation'" in response.text
+    assert "setPaintProperty(layer.id, 'line-color'" in response.text
+    assert "originalRoadLineColors" in response.text
+    assert "event.code !== 'KeyR'" in response.text
+    assert "window.matchMedia('(min-width: 944px)').matches" in response.text
     assert "sourceLayer === 'building'" in response.text
     assert "fill-extrusion-opacity', 0" in response.text
     assert "mapLibreMap.on('style.load', neutralizeBuildings)" in response.text
@@ -232,7 +237,9 @@ def test_map_page_has_collapsible_sidebar_and_solid_topbar(client):
 def test_map_page_has_v10_glass_fullscreen_layer(client):
     response = client.get("/map")
     assert response.status_code == 200
-    assert "--g-bg:rgba(255,255,255,.78)" in response.text
+    assert "--g-bg:rgba(23,54,116,.72)" in response.text
+    desktop_surfaces = response.text.split("@media (min-width:944px){", 1)[1].split("</style>", 1)[0]
+    assert "--g-bg:rgba(255,255,255,.90)" in desktop_surfaces
     assert ".content,.grid,.grid>.col:first-child,.mapcard{display:contents}" in response.text
     assert ".mapbox{position:absolute;inset:0;z-index:0" in response.text
     assert ".side,.top,.card,.mapcard .card-h,.leaflet-bar,.leaflet-control-attribution" in response.text
