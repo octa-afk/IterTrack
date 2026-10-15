@@ -27,7 +27,7 @@ Done:
 - Truck activation state: `Truck.active` defaults to true, migration `d4a7c9e2b6f1`, and human location writes reject inactive trucks.
 
 Pending:
-- Slice 2: batch ingest endpoint for devices. Authenticate by token hash, resolve the truck by assignment at `recorded_at`, apply assignment-scoped idempotency, reject inactive devices and trucks, retain rejected payloads and return a per-point result.
+- Slice 2: batch ingest endpoint for devices. Authenticate by token hash, resolve the truck by assignment at `recorded_at`, apply assignment-scoped idempotency, reject inactive devices and trucks, retain rejected payloads and return a per-point result. The endpoint accepts a batch of up to 100 points; a batch may contain one point, and the device uses a new UUID `batch_id` for each logical batch so a rebooted sequence counter does not collide with a previous batch.
 - Reassignment: manually close the open assignment and create the new truck/history assignment; the device token remains unchanged.
 - Token rotation and revocation.
 - Device sends its GPS `recorded_at` from firmware; firmware offline buffer and discard policy (needs the expected outage duration).
@@ -52,8 +52,8 @@ Pending:
 - [x] TIME-2 Simulator sends measurement time; API validates it
 - [x] TRUCK-1 Add non-null `Truck.active` with a true default and migration
 - [x] TRUCK-2 Reject human location writes for inactive trucks
-- [ ] INGEST-1 Device batch ingest endpoint
-- [ ] INGEST-2 Attribution by `recorded_at` and assignment-scoped idempotency
+- [x] INGEST-1 Device batch ingest endpoint
+- [x] INGEST-2 Attribution by `recorded_at` and assignment-scoped idempotency (`batch_id` + `sequence`)
 - [ ] INGEST-3 Retain rejected raw points and create grouped client-facing alerts
 - [ ] REASSIGN-1 Manually close assignment and create a new truck/history assignment
 - [ ] REVOKE-1 Device deactivation and token rotation
@@ -73,7 +73,9 @@ Pending:
 - Session closed with slice 1, the time split, and truck activation state complete. Slice 2 is the next step.
 - Open decision for slice 2: device identifier at provisioning (MAC address proposed, not yet confirmed).
 - Open decision for slice 2: exact retention policy for ordinary GPS points versus alert evidence.
+- Contract confirmed for implementation: `POST /devices/ingest` accepts a device Bearer token and a JSON batch of up to 100 points; `batch_id` is a UUID per logical batch, `sequence` identifies a point within that batch, and retries are idempotent by assignment plus batch and sequence.
 
 ## Route
 - Slice 1: delegated direct writer, verified by parent (tests, PostgreSQL migration check, diff review).
 - Time split and simulator: direct inline with TDD.
+- Slice 2 ingestion core: delegated direct writer; `tests/test_device_ingest.py` and the full suite pass. Alert persistence and grouping remain the next ingestion task because the repository had no alert schema.
