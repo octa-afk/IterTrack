@@ -81,12 +81,13 @@
   .bar b{font-size:10px;font-weight:500;color:var(--muted);margin-top:4.6px;white-space:nowrap}
   .bar.sel b{color:var(--green);font-weight:600}
   .bar:focus-visible{outline:2.3px solid var(--green)}
-  .donuts{display:flex;justify-content:space-around;align-items:center;gap:8px;height:calc(100% - 32px);min-width:0}
-  .dn{display:flex;align-items:center;gap:8px;min-width:0}
-  .dn svg{width:56px;height:56px;transform:rotate(-90deg);flex:none}
+  .donuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:10px;height:calc(100% - 32px)}
+  .dn{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center}
+  .dn > div:first-child{position:relative;flex:none}
+  .dn svg{width:54px;height:54px;transform:rotate(-90deg);flex:none}
   .dn circle{fill:none;stroke-width:9}
-  .dn .t{font-size:11px;color:var(--muted);line-height:1.3;min-width:0}
-  .dn .t b{display:block;color:var(--ink);font-size:15px;font-weight:600}
+  .dn .t{font-size:11px;color:var(--muted);line-height:1.25;min-width:0;max-width:100%;overflow-wrap:break-word}
+  .dn .t b{display:block;color:var(--ink);font-size:14px;font-weight:600;white-space:normal}
   .dn .pc{position:absolute;inset:0;display:grid;place-items:center;font-weight:600;font-size:13px}
 
   /* Columna derecha */
@@ -328,7 +329,7 @@
   .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:97px;bottom:39px;width:var(--rp);gap:14px}
   .card{border-radius:28px}
   .bottom{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;height:202px;gap:14px}
-  .dn{gap:7px}.dn svg{width:54px;height:54px}.dn .t{font-size:11px}.dn .t b{white-space:nowrap;font-size:14px}.dn .pc{font-size:12px}
+  .dn{gap:6px}.dn svg{width:52px;height:52px}.dn .t{font-size:10.5px}.dn .t b{font-size:13px}.dn .pc{font-size:12px}
   .detail,.detail .st{background:var(--g-fill)}
   .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
   .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
