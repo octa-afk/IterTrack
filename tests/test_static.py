@@ -148,7 +148,7 @@ def test_map_page_renders_truck_marker_design(client):
     # The marker uses the supplied articulated-truck SVG, with the cab pointing up.
     assert 'viewBox="0 0 48 72"' in response.text
     assert 'fill="#2563EB"' in response.text
-    assert ".pin svg{width:32px;height:48px}" in response.text
+    assert ".pin svg{width:36px;height:54px}" in response.text
     assert "const arrow" not in response.text
     # The marker SVG is static; plate text is added separately with textContent.
     assert "vehicle.innerHTML = truckSvg(t.color)" in response.text
