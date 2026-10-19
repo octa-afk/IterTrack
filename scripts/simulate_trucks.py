@@ -68,12 +68,24 @@ def rotate_route(route: list, offset: int) -> list:
     offset %= len(route)
     return route[offset:] + route[:offset]
 
+def _cargar_env_local() -> None:
+    """Carga el .env junto al script si existe. No pisa variables ya definidas."""
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    candidate = Path(__file__).resolve().parent / ".env"
+    if candidate.is_file():
+        load_dotenv(candidate)
+
+
 def autenticar() -> dict:
     """Hace login y devuelve los headers con el Bearer token JWT."""
+    _cargar_env_local()
     username = os.getenv("API_USER")
     password = os.getenv("API_PASSWORD")
     if not username or not password:
-        print("⚠️ Faltan credenciales: definí API_USER y API_PASSWORD en el entorno.")
+        print("⚠️ Faltan credenciales: definí API_USER y API_PASSWORD en el entorno o en .env.")
         return {}
     try:
         response = requests.post(

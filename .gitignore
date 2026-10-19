@@ -12,6 +12,7 @@ env/
 .env
 .env.*
 !.env.example
+!scripts/.env.example
 
 # Alembic con credenciales o conexiones locales
 alembic.ini

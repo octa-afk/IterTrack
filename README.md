@@ -235,7 +235,11 @@ Una vez iniciado el servidor, puedes interactuar directamente con los endpoints 
 El repositorio incluye un simulador para verificar la recepción y visualización continua de telemetría en tiempo real. Antes de ejecutarlo, inicia el backend y registra una cuenta asociada a una organización. Configura `API_USER` y `API_PASSWORD` con las credenciales válidas de esa cuenta; el simulador inicia sesión en `/auth/login` y usa el token Bearer para enviar datos. Los camiones que registra quedan asociados a la organización de esa cuenta.
 
 ```bash
-# Credenciales de una cuenta demo local (el simulador las lee del entorno, no de .env)
+# El simulador lee API_USER y API_PASSWORD desde scripts/.env.
+# Copiá la plantilla y completá con una cuenta demo local:
+cp scripts/.env.example scripts/.env
+
+# También podés pasarlas por entorno, con prioridad sobre el archivo:
 export API_USER=demo
 export API_PASSWORD=tu_clave_local
 
@@ -249,7 +253,7 @@ python scripts/simulate_trucks.py -i 1.0
 python scripts/simulate_trucks.py --id 1 --plate "ABC123" -i 1.5
 ```
 
-Si `API_USER` o `API_PASSWORD` no están definidas, el simulador aborta con un mensaje explícito en lugar de enviar telemetría sin autenticar.
+Si `API_USER` o `API_PASSWORD` no están definidas ni en el entorno ni en `.env`, el simulador aborta con un mensaje explícito en lugar de enviar telemetría sin autenticar.
 
 ### Características de la simulación:
 1. **Ruta Urbana Realista:** Recorre un circuito cerrado de 13 km por avenidas de Córdoba Capital (Av. Colón, Costanera, Plaza España, Patio Olmos, etc.) cargado desde [`scripts/cordoba_route.json`](./scripts/cordoba_route.json) (425 puntos georreferenciados).
