@@ -21,3 +21,4 @@ httpx==0.28.1                      # Starlette TestClient backend (tests/)
 httpx2==2.10.0                     # Starlette TestClient backend without deprecated httpx fallback
 pytest==9.1.1                      # test runner (Makefile, CI)
 requests==2.34.2                   # simulator HTTP calls (scripts/simulate_trucks.py)
+python-dotenv==1.2.2               # .env loading for the simulator credentials
