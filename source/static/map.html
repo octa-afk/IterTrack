@@ -62,9 +62,9 @@
   .map-style-loading::before{content:'';position:absolute;inset:0;z-index:500;background:var(--map-bg,#f4f6fb);pointer-events:none}
   .leaflet-container{font-family:Poppins,sans-serif}
   .pin{width:48px;height:48px;display:grid;place-items:center;position:relative}
-  .pin .truck-svg{display:grid;transition:transform .2s,filter .2s}
-  .pin svg{width:48px;height:48px}
-  .pin.sel .truck-svg{transform:scale(1.15);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+  .pin .truck-svg{display:grid;transform:rotate(var(--heading,0deg));transition:transform .2s,filter .2s}
+  .pin svg{width:32px;height:48px}
+  .pin.sel .truck-svg{transform:rotate(var(--heading,0deg)) scale(1.15);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
   .pin .lbl{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;background:var(--g-solid);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
   .pin.sel .lbl{display:block}
 
@@ -660,28 +660,40 @@ new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('
 
 const markers = new Map();
 // SVG del marcador del camión: reemplazar este bloque para cambiar el ícono del mapa.
-const truck = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">
-  <circle cx="256" cy="256" r="232" fill="#1F4E8C" stroke="#FFFFFF" stroke-width="24"/>
-  <g transform="translate(256 256) scale(0.74) translate(-256 -258)">
-    <g fill="#FFFFFF">
-      <path d="M96 120 Q96 38 170 34 Q256 28 342 34 Q416 38 416 120 V300 Q416 308 408 308 H104 Q96 308 96 300 Z"/>
-      <rect x="92" y="310" width="328" height="142" rx="18"/>
-      <rect x="100" y="446" width="52" height="36" rx="9"/>
-      <rect x="360" y="446" width="52" height="36" rx="9"/>
-    </g>
-    <g fill="#FFFFFF" stroke="#1F4E8C" stroke-width="12" paint-order="stroke">
-      <rect x="58" y="108" width="42" height="98" rx="16"/>
-      <rect x="412" y="108" width="42" height="98" rx="16"/>
-    </g>
-    <g fill="#1F4E8C">
-      <rect x="106" y="90" width="300" height="120" rx="18"/>
-      <rect x="126" y="312" width="34" height="74" rx="7"/>
-      <rect x="352" y="312" width="34" height="74" rx="7"/>
-      <rect x="172" y="322" width="168" height="8" rx="4"/>
-      <rect x="172" y="340" width="168" height="8" rx="4"/>
-      <rect x="172" y="358" width="168" height="8" rx="4"/>
-      <rect x="172" y="376" width="168" height="8" rx="4"/>
-    </g>
+const truck = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 72" aria-hidden="true">
+  <defs>
+    <!-- Sombra más oscura y con menos difuminado para un efecto "sticker" que resalte -->
+    <filter id="map-shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- La cabina apunta hacia arriba: 0° en el viewBox equivale al norte -->
+  <g filter="url(#map-shadow)" transform="translate(0, 4)">
+    <!-- Acoplado / Remolque -->
+    <rect x="8" y="30" width="32" height="36" rx="3" fill="#FFFFFF" stroke="#334155" stroke-width="2" />
+    <rect x="12" y="34" width="24" height="28" rx="1" fill="#E2E8F0" />
+
+    <!-- Eje de articulación (Hitch) -->
+    <rect x="22" y="26" width="4" height="6" fill="#1E293B" />
+
+    <!-- Cabina -->
+    <rect x="10" y="6" width="28" height="22" rx="4" fill="#2563EB" stroke="#1E3A8A" stroke-width="2" />
+
+    <!-- Parabrisas -->
+    <rect x="12" y="16" width="24" height="8" rx="2" fill="#020617" />
+
+    <!-- Ventanillas laterales -->
+    <rect x="10" y="10" width="2" height="6" fill="#020617" />
+    <rect x="36" y="10" width="2" height="6" fill="#020617" />
+
+    <!-- Espejos retrovisores -->
+    <rect x="5" y="12" width="3" height="5" rx="1" fill="#020617" />
+    <rect x="40" y="12" width="3" height="5" rx="1" fill="#020617" />
+
+    <!-- Luces delanteras -->
+    <rect x="12" y="4" width="6" height="3" rx="1" fill="#F8FAFC" />
+    <rect x="30" y="4" width="6" height="3" rx="1" fill="#F8FAFC" />
   </g>
 </svg>`;
 
@@ -691,14 +703,16 @@ const pinIcon = (t, sel) => {
   pin.className = `pin ${t.status} ${sel?'sel':''}`;
   const vehicle = document.createElement('span');
   vehicle.className = 'truck-svg';
-  vehicle.style.transform = `rotate(${t.heading}deg)`;
+  // El SVG apunta al norte con heading 0; la rotación va por variable CSS para no
+  // pisar el escalado del estado seleccionado.
+  vehicle.style.setProperty('--heading', `${t.heading}deg`);
   vehicle.innerHTML = truckSvg(t.color); // Static, locally defined SVG; API values are never markup.
   const label = document.createElement('em');
   label.className = 'lbl';
   label.style.fontStyle = 'normal';
   label.textContent = t.plate;
   pin.append(vehicle, label);
-  return L.divIcon({className:'', iconSize:[48,48], iconAnchor:[5,5], html:pin});
+  return L.divIcon({className:'', iconSize:[48,48], iconAnchor:[24,24], html:pin});
 };
 
 /* ---------- Smooth movement ----------

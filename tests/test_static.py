@@ -145,16 +145,16 @@ def test_pages_use_scaled_ui_scale(client):
 def test_map_page_renders_truck_marker_design(client):
     response = client.get("/map")
     assert response.status_code == 200
-    # The marker uses the supplied circular blue truck SVG.
-    assert 'viewBox="0 0 512 512"' in response.text
-    assert 'fill="#1F4E8C"' in response.text
-    assert ".pin svg{width:48px;height:48px}" in response.text
+    # The marker uses the supplied articulated-truck SVG, with the cab pointing up.
+    assert 'viewBox="0 0 48 72"' in response.text
+    assert 'fill="#2563EB"' in response.text
+    assert ".pin svg{width:32px;height:48px}" in response.text
     assert "const arrow" not in response.text
     # The marker SVG is static; plate text is added separately with textContent.
     assert "vehicle.innerHTML = truckSvg(t.color)" in response.text
-    # Preserve the marker dimensions and anchor from the live map implementation.
+    # The icon is anchored at its center so the truck sits on its real coordinate.
     assert "iconSize:[48,48]" in response.text
-    assert "iconAnchor:[5,5]" in response.text
+    assert "iconAnchor:[24,24]" in response.text
     # The supplied truck is rendered directly, without a separate halo.
     assert "const truckSvg" in response.text
     assert "vehicle.className = 'truck-svg'" in response.text
@@ -162,6 +162,10 @@ def test_map_page_renders_truck_marker_design(client):
     assert 'class="badge"' not in response.text
     assert ".pin .lbl" in response.text
     assert ".pin.sel .truck-svg" in response.text
+    # Heading travels through a CSS variable; an inline transform would override
+    # the selection scale declared in the stylesheet.
+    assert ".pin .truck-svg{display:grid;transform:rotate(var(--heading,0deg))" in response.text
+    assert "vehicle.style.setProperty('--heading', `${t.heading}deg`)" in response.text
 
 
 # --- login-map-ui (C2c): truck moves between samples instead of teleporting ---
