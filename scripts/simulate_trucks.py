@@ -70,8 +70,11 @@ def rotate_route(route: list, offset: int) -> list:
 
 def autenticar() -> dict:
     """Hace login y devuelve los headers con el Bearer token JWT."""
-    username = os.getenv("API_USER", "octa")
-    password = os.getenv("API_PASSWORD", "secreto123")
+    username = os.getenv("API_USER")
+    password = os.getenv("API_PASSWORD")
+    if not username or not password:
+        print("⚠️ Faltan credenciales: definí API_USER y API_PASSWORD en el entorno.")
+        return {}
     try:
         response = requests.post(
             AUTH_URL,
@@ -278,6 +281,9 @@ def ejecutar_simulaciones(
     route_length = len(cargar_ruta())
     configs = build_truck_configs(base_id, base_plate, count, route_length)
     headers = dict(autenticar())
+    if not headers:
+        print("⛔ Sin token no se puede enviar telemetría. Abortando.")
+        return
     stop_event = Event()
     executor = ThreadPoolExecutor(max_workers=count)
     futures = [
