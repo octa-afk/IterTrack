@@ -174,7 +174,7 @@ def test_ejecutar_simulaciones_clears_history_once_per_truck_when_requested(monk
             pass
 
     monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
-    monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: {})
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: {"Authorization": "Bearer test"})
     monkeypatch.setattr("scripts.simulate_trucks.Event", StopAfterFirstUpdate)
     monkeypatch.setattr("scripts.simulate_trucks.ThreadPoolExecutor", SynchronousExecutor)
     monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
@@ -196,3 +196,20 @@ def test_ejecutar_simulaciones_clears_history_once_per_truck_when_requested(monk
     )
 
     assert deleted_trucks == [7, 8, 9]
+
+
+def test_ejecutar_simulaciones_aborts_without_token(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: [(0, 0), (1, 1)])
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: {})
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: calls.append("registrar")
+    )
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.actualizar_ubicacion", lambda *args, **kwargs: calls.append("actualizar")
+    )
+
+    ejecutar_simulaciones(base_id=1, base_plate="ABC123", intervalo=1, count=1)
+
+    assert calls == []
