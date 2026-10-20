@@ -56,8 +56,8 @@ El registro requiere exactamente uno de `org_name` (crear una organización) o `
 |---|---|---|---|
 | `POST` | `/trucks` | `{ truck: Truck, location: Location }` | Registra un nuevo camión y su primera posición en BD. |
 | `PUT` | `/trucks/{truck_id}/location` | `location: Location` | Agrega un nuevo punto de tracking al recorrido del camión. |
-| `GET` | `/trucks/{truck_id}/location` | `truck_id: int` | Retorna el punto más reciente, ordenado por timestamp descendente. |
-| `GET` | `/trucks/{truck_id}/iter` | `truck_id: int` | Retorna hasta 100 puntos, del más nuevo al más antiguo. |
+| `GET` | `/trucks/{truck_id}/location` | `truck_id: int` | Retorna el punto más reciente, ordenado por `recorded_at` descendente. |
+| `GET` | `/trucks/{truck_id}/iter` | `truck_id: int` | Retorna hasta 100 puntos, del más nuevo al más antiguo según `recorded_at`. |
 | `DELETE` | `/trucks/{truck_id}/iter` | `truck_id: int` | Elimina los puntos de tracking; conserva el camión. |
 | `GET` | `/trucks` | — | Lista los camiones de la organización del usuario autenticado. |
 | `GET` | `/trucks/ids` | — | Lista IDs y patentes de los camiones de esa organización. |

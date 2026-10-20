@@ -31,7 +31,6 @@ Pending:
 - Reassignment: manually close the open assignment and create the new truck/history assignment; the device token remains unchanged.
 - Token rotation and revocation.
 - Device sends its GPS `recorded_at` from firmware; firmware offline buffer and discard policy (needs the expected outage duration).
-- Read endpoints ordering by `recorded_at` instead of `timestamp`.
 - Simulator `registrar_camion` still sends no `recorded_at` for the first point.
 - Restrict the existing human `PUT /location` once devices use their own endpoint, so human accounts cannot forge measurement times.
 
@@ -50,6 +49,7 @@ Pending:
 - [x] DEV-5 Tests: hash, provisioning, duplicate identifier, double open assignment per device and per truck
 - [x] TIME-1 `recorded_at` / `received_at` split and migration
 - [x] TIME-2 Simulator sends measurement time; API validates it
+- [x] TIME-3 Read endpoints order by `recorded_at`; map speed history uses `recorded_at`
 - [x] TRUCK-1 Add non-null `Truck.active` with a true default and migration
 - [x] TRUCK-2 Reject human location writes for inactive trucks
 - [x] INGEST-1 Device batch ingest endpoint
