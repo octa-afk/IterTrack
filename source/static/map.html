@@ -1114,7 +1114,8 @@ async function cargarHistorial(t){
     const chrono = pts.slice().reverse();  // oldest first
     const hist = [];
     for (let i = 1; i < chrono.length; i++){
-      const dtSeg = (Date.parse(chrono[i].timestamp) - Date.parse(chrono[i-1].timestamp)) / 1000;
+      // /iter is ordered by recorded_at: the time delta must use the same clock
+      const dtSeg = (Date.parse(chrono[i].recorded_at) - Date.parse(chrono[i-1].recorded_at)) / 1000;
       const dist = haversineM(chrono[i-1].lat, chrono[i-1].long, chrono[i].lat, chrono[i].long);
       hist.push(dtSeg > 0 ? Math.max(0, Math.min(200, Math.round((dist/dtSeg)*3.6))) : 0);
     }

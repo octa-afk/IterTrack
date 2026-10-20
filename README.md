@@ -291,8 +291,8 @@ git checkout IterTrack-Hardware
 | `GET` | `/auth/me` | Datos del usuario autenticado | — | 🔒 Bearer |
 | `POST` | `/trucks` | Registra un nuevo camión y su punto inicial | Ver JSON abajo | 🔒 Bearer |
 | `PUT` | `/trucks/{truck_id}/location` | Agrega un punto de ubicación al historial del camión | `{"lat": -31.416, "long": -64.183, "speed": 0, "heading": 0}` | 🔒 Bearer |
-| `GET` | `/trucks/{truck_id}/location` | Obtiene el punto de tracking más reciente | — | 🔒 Bearer |
-| `GET` | `/trucks/{truck_id}/iter` | Obtiene hasta 100 puntos, del más nuevo al más antiguo | — | 🔒 Bearer |
+| `GET` | `/trucks/{truck_id}/location` | Obtiene el punto de tracking más reciente (por `recorded_at`) | — | 🔒 Bearer |
+| `GET` | `/trucks/{truck_id}/iter` | Obtiene hasta 100 puntos, del más nuevo al más antiguo (por `recorded_at`) | — | 🔒 Bearer |
 | `DELETE` | `/trucks/{truck_id}/iter` | Elimina los puntos de tracking del camión, no el camión | — | 🔒 Bearer |
 | `GET` | `/trucks` | Lista los camiones de la organización del usuario autenticado | — | 🔒 Bearer |
 | `GET` | `/trucks/ids` | Lista IDs y patentes de los camiones de la organización del usuario autenticado | — | 🔒 Bearer |

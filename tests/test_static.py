@@ -186,6 +186,16 @@ def test_map_page_animates_truck_movement(client):
     assert "Math.cos(toRad(bLng - aLng))" in response.text
 
 
+# --- read endpoints order by recorded_at: the speed history uses the same time base ---
+
+def test_map_page_history_delta_uses_recorded_at_field(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # /iter pairs come ordered by recorded_at, so their time delta must use recorded_at too
+    assert "Date.parse(chrono[i].recorded_at) - Date.parse(chrono[i-1].recorded_at)" in response.text
+    assert "Date.parse(chrono[i].timestamp)" not in response.text
+
+
 # --- login-map-ui (C2d): one stable identity color per truck + map opens on a truck ---
 
 def test_map_page_gives_truck_a_stable_color(client):

@@ -175,6 +175,72 @@ def test_location_responses_include_telemetry(tracking_client, db_session, test_
     assert {point["heading"] for point in history.json()} == {90, 270}
 
 
+# Orden de lectura: hora de medición (recorded_at), no hora de llegada al servidor (timestamp)
+MEASURED_BASE = datetime(2026, 10, 13, 12, 0, 0, tzinfo=timezone.utc)
+
+
+def _store_point(db_session, truck_id, *, speed, measured_at, server_timestamp):
+    """Punto con su medición (recorded_at, UTC) y su llegada al servidor (timestamp, naive)."""
+    db_session.add(TrackingPoint(
+        truck_id=truck_id,
+        lat=-31.42,
+        long=-64.18,
+        speed=speed,
+        heading=0,
+        recorded_at=measured_at,
+        timestamp=server_timestamp,
+    ))
+    db_session.commit()
+
+
+def test_get_location_orders_by_measurement_time_not_arrival(tracking_client, db_session, test_truck):
+    """Un lote atrasado llega después pero se midió antes: no es la ubicación más reciente."""
+    _store_point(db_session, test_truck.id, speed=10,
+                 measured_at=MEASURED_BASE + timedelta(seconds=10),
+                 server_timestamp=datetime(2026, 10, 13, 12, 0, 11))
+    _store_point(db_session, test_truck.id, speed=20,
+                 measured_at=MEASURED_BASE + timedelta(seconds=1),
+                 server_timestamp=datetime(2026, 10, 13, 12, 0, 12))
+
+    response = tracking_client.get(f"/trucks/{test_truck.id}/location")
+
+    assert response.status_code == 200
+    assert response.json()["speed"] == 10
+
+
+def test_get_iter_orders_newest_first_by_measurement_time(tracking_client, db_session, test_truck):
+    """El historial va del más nuevo al más antiguo según la medición, no según la llegada."""
+    _store_point(db_session, test_truck.id, speed=10,
+                 measured_at=MEASURED_BASE + timedelta(seconds=10),
+                 server_timestamp=datetime(2026, 10, 13, 12, 0, 11))
+    _store_point(db_session, test_truck.id, speed=20,
+                 measured_at=MEASURED_BASE + timedelta(seconds=1),
+                 server_timestamp=datetime(2026, 10, 13, 12, 0, 12))
+    _store_point(db_session, test_truck.id, speed=30,
+                 measured_at=MEASURED_BASE + timedelta(seconds=2),
+                 server_timestamp=datetime(2026, 10, 13, 12, 0, 13))
+
+    response = tracking_client.get(f"/trucks/{test_truck.id}/iter")
+
+    assert response.status_code == 200
+    assert [point["speed"] for point in response.json()] == [10, 30, 20]
+    assert all("recorded_at" in point for point in response.json())
+
+
+def test_reads_break_measurement_ties_by_newest_insert(tracking_client, db_session, test_truck):
+    """Dos puntos con la misma medición: gana el insertado último, en ambas lecturas."""
+    _store_point(db_session, test_truck.id, speed=10, measured_at=MEASURED_BASE,
+                 server_timestamp=datetime(2026, 10, 13, 12, 0, 11))
+    _store_point(db_session, test_truck.id, speed=20, measured_at=MEASURED_BASE,
+                 server_timestamp=datetime(2026, 10, 13, 12, 0, 12))
+
+    latest = tracking_client.get(f"/trucks/{test_truck.id}/location")
+    history = tracking_client.get(f"/trucks/{test_truck.id}/iter")
+
+    assert latest.json()["speed"] == 20
+    assert [point["speed"] for point in history.json()] == [20, 10]
+
+
 @pytest.mark.parametrize(
     "field,value",
     [("speed", -0.1), ("heading", -0.1), ("heading", 360.1)],

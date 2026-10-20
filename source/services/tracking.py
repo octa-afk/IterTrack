@@ -9,6 +9,9 @@ from source.services.auth import get_current_user
 
 router = APIRouter(prefix="/trucks", tags=["trucks"])
 
+# Lectura ordenada por hora de medición (recorded_at), más nuevo primero; id desempata mediciones iguales.
+MEASUREMENT_ORDER = (models.TrackingPoint.recorded_at.desc(), models.TrackingPoint.id.desc())
+
 #agrega un camión a la base de datos
 @router.post("")
 def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -62,7 +65,7 @@ def update_location(truck_id: int, location: schemas.Location, db: Session = Dep
     db.commit()
     return{"mensaje": "Ubicación actualizada correctamente"}
 
-#Devuelve el punto de tracking más reciente del camión
+#Devuelve el punto de tracking más reciente del camión, según recorded_at (hora de medición)
 @router.get("/{truck_id}/location")
 def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
@@ -71,7 +74,7 @@ def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db), curren
                  status_code=status.HTTP_404_NOT_FOUND,
                  detail="camión no encontrado"
             )
-    latest_point = (db.query(models.TrackingPoint).filter(models.TrackingPoint.truck_id==truck_id).order_by(models.TrackingPoint.timestamp.desc()).first()
+    latest_point = (db.query(models.TrackingPoint).filter(models.TrackingPoint.truck_id==truck_id).order_by(*MEASUREMENT_ORDER).first()
     )
     
     if not latest_point:
@@ -82,7 +85,7 @@ def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db), curren
 
     return latest_point
 
-#Devuelve hasta 100 puntos de tracking, del más nuevo al más antiguo
+#Devuelve hasta 100 puntos de tracking, del más nuevo al más antiguo según recorded_at
 @router.get("/{truck_id}/iter")
 def get_history_truck(truck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck=db.query(models.Truck).filter(models.Truck.id==truck_id).first()
@@ -94,7 +97,7 @@ def get_history_truck(truck_id: int, db: Session = Depends(get_db), current_user
     locations = (
          db.query(models.TrackingPoint)
          .filter(models.TrackingPoint.truck_id==truck_id)
-         .order_by(models.TrackingPoint.timestamp.desc())
+         .order_by(*MEASUREMENT_ORDER)
          .limit(100)
          .all()
     )
