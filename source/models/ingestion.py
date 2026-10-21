@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from source.database.database import Base
@@ -11,6 +11,7 @@ class IngestedPoint(Base):
     __tablename__ = "ingested_points"
     __table_args__ = (
         UniqueConstraint("assignment_id", "batch_id", "sequence", name="uq_ingested_assignment_batch_sequence"),
+        Index("ix_ingested_points_truck_recorded_at_id", "truck_id", text("recorded_at DESC"), text("id DESC")),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

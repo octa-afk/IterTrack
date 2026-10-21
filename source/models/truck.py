@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, DateTime, ForeignKey, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from source.database.database import Base
@@ -19,6 +19,9 @@ class Truck(Base):
 
 class TrackingPoint(Base):
     __tablename__ = "tracking_points"
+    __table_args__ = (
+        Index("ix_tracking_points_truck_recorded_at_id", "truck_id", text("recorded_at DESC"), text("id DESC")),
+    )
     
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     truck_id: Mapped[int] = mapped_column(ForeignKey("trucks.id"))
