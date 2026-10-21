@@ -8,8 +8,12 @@ app = FastAPI()
 app.include_router(tracking_router)
 app.include_router(auth_router)
 app.include_router(devices_router)
- 
- 
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/")
 async def root():
     return FileResponse("source/static/login.html")

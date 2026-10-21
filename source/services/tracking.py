@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from source import models, schemas
@@ -87,7 +87,7 @@ def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db), curren
 
 #Devuelve hasta 100 puntos de tracking, del más nuevo al más antiguo según recorded_at
 @router.get("/{truck_id}/iter")
-def get_history_truck(truck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_history_truck(truck_id: int, limit: int = Query(100, ge=1, le=1000), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     truck=db.query(models.Truck).filter(models.Truck.id==truck_id).first()
     if not truck or truck.organization_id != current_user.organization_id:
          raise HTTPException(
@@ -98,7 +98,7 @@ def get_history_truck(truck_id: int, db: Session = Depends(get_db), current_user
          db.query(models.TrackingPoint)
          .filter(models.TrackingPoint.truck_id==truck_id)
          .order_by(*MEASUREMENT_ORDER)
-         .limit(100)
+         .limit(limit)
          .all()
     )
 
