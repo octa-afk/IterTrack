@@ -14,9 +14,9 @@ Test runner: `make test && make check`
 
 ## Tasks
 
-- T1 [S1-S2] inline — contrato Pydantic y tests — pending
-- T2 [S3-S5] inline — health, índices, migración, conexión y límite — pending
-- T3 [S6] inline — documentación y compatibilidad — pending
+- T1 [S1-S2] inline — contrato Pydantic y tests — complete (`7e956bd`)
+- T2 [S3-S5] inline — health, índices, migración, conexión y límite — complete (`692e510`, `c134a00`)
+- T3 [S6] inline — documentación y compatibilidad — complete (`b83c836`)
 
 ## Log
 
@@ -25,3 +25,7 @@ Test runner: `make test && make check`
 # Tarea: portar a IterTrack las buenas ideas de Trazia (sin reescribir IterTrack)
 
 El repositorio `/home/octa/proyectos/trazia` es solo referencia de lectura. No copiar ni modificarlo. Implementar los cambios solicitados conservando la arquitectura madura de IterTrack, la deduplicación existente y la compatibilidad con firmware y simulador.
+
+### L2
+
+Implementación completada en cuatro commits chicos. `make test`, `make check` y `env/bin/python -m pytest tests/ -q` quedan en verde (105 tests). La verificación de migración sobre SQLite falla antes de alcanzar la migración nueva por incompatibilidades preexistentes de `f08375e32888` (`NOW()` y `ALTER COLUMN`); la migración nueva sí se valida estructuralmente mediante `Base.metadata.create_all` durante la suite.
