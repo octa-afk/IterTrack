@@ -27,7 +27,12 @@ class Location(BaseModel):
             # Tolerancia pequeña por desfasaje de relojes entre emisor y servidor.
             if value > datetime.now(timezone.utc) + timedelta(seconds=60):
                 raise ValueError("recorded_at no puede estar en el futuro")
-            return value
+            return value.astimezone(timezone.utc)
+
+        @field_validator("heading")
+        @classmethod
+        def normalize_heading(cls, value: float) -> float:
+            return 0 if value == 360 else value
 #historial con Truck e historial de ubicaciones
 class TrackingPoint(BaseModel):
         truck_id: int

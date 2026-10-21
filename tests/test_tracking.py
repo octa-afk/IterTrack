@@ -175,6 +175,21 @@ def test_location_responses_include_telemetry(tracking_client, db_session, test_
     assert {point["heading"] for point in history.json()} == {90, 270}
 
 
+def test_location_normalizes_utc_and_heading(tracking_client, test_truck, db_session):
+    response = tracking_client.put(
+        f"/trucks/{test_truck.id}/location",
+        json={
+            "lat": -31.42, "long": -64.18, "speed": 1, "heading": 360,
+            "recorded_at": "2026-10-13T12:00:00-03:00",
+        },
+    )
+    assert response.status_code == 200
+    point = db_session.query(TrackingPoint).filter_by(truck_id=test_truck.id).one()
+    assert point.heading == 0
+    # SQLite drops timezone metadata; the normalized UTC wall-clock value remains intact.
+    assert point.recorded_at.replace(tzinfo=timezone.utc).isoformat() == "2026-10-13T15:00:00+00:00"
+
+
 # Orden de lectura: hora de medición (recorded_at), no hora de llegada al servidor (timestamp)
 MEASURED_BASE = datetime(2026, 10, 13, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -225,6 +240,19 @@ def test_get_iter_orders_newest_first_by_measurement_time(tracking_client, db_se
     assert response.status_code == 200
     assert [point["speed"] for point in response.json()] == [10, 30, 20]
     assert all("recorded_at" in point for point in response.json())
+
+
+def test_get_iter_limit_is_validated_and_applied(tracking_client, db_session, test_truck):
+    for index in range(6):
+        db_session.add(TrackingPoint(
+            truck_id=test_truck.id, lat=-31.42, long=-64.18, speed=index, heading=0,
+            recorded_at=datetime.now(timezone.utc) - timedelta(minutes=index),
+        ))
+    db_session.commit()
+    assert len(tracking_client.get(f"/trucks/{test_truck.id}/iter").json()) == 6
+    assert len(tracking_client.get(f"/trucks/{test_truck.id}/iter?limit=5").json()) == 5
+    assert tracking_client.get(f"/trucks/{test_truck.id}/iter?limit=0").status_code == 422
+    assert tracking_client.get(f"/trucks/{test_truck.id}/iter?limit=1001").status_code == 422
 
 
 def test_reads_break_measurement_ties_by_newest_insert(tracking_client, db_session, test_truck):

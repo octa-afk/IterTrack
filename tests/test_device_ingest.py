@@ -5,6 +5,7 @@ from source.models.device import Device, DeviceAssignment
 from source.models.ingestion import IngestedPoint, RejectedIngestPoint
 from source.models.truck import TrackingPoint, Truck
 from source.services.devices import hash_device_token, provision_device
+from source.schemas.ingestion import DeviceIngestBatch, DeviceIngestPoint
 
 
 def payload(batch_id=None, points=None):
@@ -21,6 +22,35 @@ def test_missing_and_invalid_device_auth(client):
     body = payload()
     assert client.post("/devices/ingest", json=body).status_code == 401
     assert client.post("/devices/ingest", json=body, headers={"Authorization": "Bearer wrong"}).status_code == 401
+
+
+def test_ingest_contract_version_defaults_and_rejects_unknown_version():
+    point = payload()["points"][0]
+    assert DeviceIngestBatch.model_validate({"batch_id": str(uuid4()), "points": [point]}).v == 1
+    assert DeviceIngestBatch.model_validate({"v": 1, "batch_id": str(uuid4()), "points": [point]}).v == 1
+    from pydantic import ValidationError
+    import pytest
+    with pytest.raises(ValidationError):
+        DeviceIngestBatch.model_validate({"v": 2, "batch_id": str(uuid4()), "points": [point]})
+
+
+def test_ingest_point_normalizes_utc_and_heading():
+    point = DeviceIngestPoint.model_validate({
+        "sequence": 1, "lat": -31.4, "long": -64.2, "speed": 20,
+        "heading": 360, "recorded_at": "2026-10-13T12:00:00-03:00",
+    })
+    assert point.recorded_at.isoformat() == "2026-10-13T15:00:00+00:00"
+    assert point.heading == 0
+
+
+def test_ingest_point_rejects_timestamp_without_timezone():
+    from pydantic import ValidationError
+    import pytest
+    with pytest.raises(ValidationError):
+        DeviceIngestPoint.model_validate({
+            "sequence": 1, "lat": -31.4, "long": -64.2, "speed": 20,
+            "heading": 90, "recorded_at": "2026-10-13T12:00:00",
+        })
 
 
 def test_batch_size_is_one_to_one_hundred(client, test_truck, db_session):
