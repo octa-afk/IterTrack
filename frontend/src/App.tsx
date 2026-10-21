@@ -1,5 +1,10 @@
-import { FormEvent, type ReactNode, useState } from 'react'
-import { login, register } from './api'
+import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { login, register, TOKEN_KEY } from './api'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+
+type Truck = { id: number; plate: string; lat?: number; long?: number; speed: number; heading: number; recorded_at?: string; status: 'move' | 'idle' | 'stop' | 'alert' }
+const apiHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) ?? ''}` })
 
 function Field({ label, name, type = 'text', value, onChange, error }: {
   label: string; name: string; type?: string; value: string;
@@ -70,4 +75,50 @@ function Register() {
   </Shell>
 }
 
-export function App() { return window.location.pathname === '/register' ? <Register /> : <Login /> }
+function MapDashboard() {
+  const mapElement = useRef<HTMLDivElement>(null); const mapRef = useRef<L.Map | undefined>(undefined);
+  const [trucks, setTrucks] = useState<Truck[]>([]); const [selected, setSelected] = useState<number>(); const [query, setQuery] = useState(''); const [error, setError] = useState('')
+  useEffect(() => {
+    if (!mapElement.current) return
+    const map = L.map(mapElement.current).setView([-31.9, -64], 7); mapRef.current = map
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map)
+    return () => { map.remove(); mapRef.current = undefined }
+  }, [])
+  useEffect(() => {
+    let active = true
+    async function refresh() {
+      try {
+        const listResponse = await fetch('/trucks', { headers: apiHeaders() })
+        if (listResponse.status === 401) { localStorage.removeItem(TOKEN_KEY); window.location.replace('/'); return }
+        if (!listResponse.ok) throw new Error('No se pudo cargar la flota.')
+        const list = await listResponse.json() as Array<{ id: number; plate: string }>
+        const next = await Promise.all(list.map(async truck => {
+          const response = await fetch(`/trucks/${truck.id}/location`, { headers: apiHeaders() })
+          if (!response.ok) return { ...truck, speed: 0, heading: 0, status: 'stop' as const }
+          const point = await response.json() as { lat: number; long: number; speed: number; heading: number; recorded_at?: string }
+          const status: Truck['status'] = point.speed > 90 ? 'alert' : point.speed < 3 ? 'idle' : 'move'
+          return { ...truck, ...point, status }
+        }))
+        if (active) setTrucks(next)
+      } catch (reason) { if (active) setError(reason instanceof Error ? reason.message : 'Error de conexión.') }
+    }
+    refresh(); const timer = window.setInterval(refresh, 3000); return () => { active = false; window.clearInterval(timer) }
+  }, [])
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return
+    const markers = new Map<number, L.Marker>()
+    trucks.forEach(truck => {
+      if (truck.lat === undefined || truck.long === undefined) return
+      const safePlate = truck.plate.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character)
+      const icon = L.divIcon({ className: 'truck-marker', html: `<span style="--heading:${truck.heading}deg">▲</span><b>${safePlate}</b>`, iconSize: [42, 42], iconAnchor: [21, 21] })
+      const marker = markers.get(truck.id) ?? L.marker([truck.lat, truck.long]).addTo(map)
+      marker.setLatLng([truck.lat, truck.long]).setIcon(icon).off('click').on('click', () => setSelected(truck.id)); markers.set(truck.id, marker)
+    })
+    return () => { markers.forEach(marker => marker.remove()) }
+  }, [trucks])
+  const visible = useMemo(() => trucks.filter(truck => truck.plate.toLowerCase().includes(query.toLowerCase())), [trucks, query])
+  function logout() { localStorage.removeItem(TOKEN_KEY); window.location.replace('/') }
+  return <div className="dashboard"><header><strong>IterTrack</strong><input aria-label="Buscar camiones" placeholder="Buscar patente" value={query} onChange={event => setQuery(event.target.value)} /><button onClick={logout}>Salir</button></header><main className="dashboard-main"><section className="map-panel"><h1>Mapa en vivo</h1><div ref={mapElement} className="map" /></section><aside className="fleet-panel"><h2>Flota ({visible.length})</h2>{error && <p className="error">{error}</p>}<ul>{visible.map(truck => <li key={truck.id} className={truck.id === selected ? 'selected' : ''}><button onClick={() => { setSelected(truck.id); if (truck.lat !== undefined && truck.long !== undefined) mapRef.current?.flyTo([truck.lat, truck.long], 12) }}><span>{truck.plate}</span><small>{truck.speed} km/h · {truck.status}</small></button></li>)}</ul></aside></main></div>
+}
+
+export function App() { if (window.location.pathname === '/register') return <Register />; if (window.location.pathname === '/map') return <MapDashboard />; return <Login /> }
