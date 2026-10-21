@@ -12,6 +12,7 @@
     "@vitejs/plugin-react": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/leaflet": "latest",
     "leaflet": "1.9.4",
     "react": "latest",
     "react-dom": "latest",
