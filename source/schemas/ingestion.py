@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -19,10 +19,18 @@ class DeviceIngestPoint(BaseModel):
     def require_timezone(cls, value: datetime) -> datetime:
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("recorded_at must include timezone")
-        return value
+        if value > datetime.now(timezone.utc) + timedelta(seconds=60):
+            raise ValueError("recorded_at cannot be in the future")
+        return value.astimezone(timezone.utc)
+
+    @field_validator("heading")
+    @classmethod
+    def normalize_heading(cls, value: float) -> float:
+        return 0 if value == 360 else value
 
 
 class DeviceIngestBatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    v: Literal[1] = 1
     batch_id: UUID
     points: list[Any] = Field(min_length=1, max_length=100)
