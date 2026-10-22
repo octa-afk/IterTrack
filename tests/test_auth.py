@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from source.database.database import get_db
 from source.main import app
-from source.database.database import Base, get_db
 from source.models.organization import Organization
 
 REGISTER_PAYLOAD = {
@@ -56,13 +56,13 @@ def test_register_invalid_invitation_code_returns_400(auth_client):
 def test_register_valid_invitation_code_assigns_organization(auth_client, db_session):
     response = register(auth_client)
     assert response.status_code == 201
-    
+
     # Verificar que el usuario quedó asignado a la organización correcta
     from source.models.user import User
     user = db_session.query(User).filter(User.username == "chofer1").first()
     assert user is not None
     assert user.organization_id is not None
-    
+
     org = db_session.query(Organization).filter(Organization.id == user.organization_id).first()
     assert org is not None
     assert org.invitation_code == "TEST-CODE"

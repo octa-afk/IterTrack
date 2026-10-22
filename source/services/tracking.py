@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -28,7 +28,7 @@ def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = De
         long=location.long,
         speed=location.speed,
         heading=location.heading,
-        recorded_at=location.recorded_at or datetime.now(timezone.utc),
+        recorded_at=location.recorded_at or datetime.now(UTC),
     )
     db.add(db_tracking_point)
 
@@ -58,7 +58,7 @@ def update_location(truck_id: int, location: schemas.Location, db: Session = Dep
         long=location.long,
         speed=location.speed,
         heading=location.heading,
-        recorded_at=location.recorded_at or datetime.now(timezone.utc),
+        recorded_at=location.recorded_at or datetime.now(UTC),
     )
     #Cada actualización se agrega como un nuevo punto de tracking.
     db.add(db_point)
@@ -76,7 +76,7 @@ def get_latest_truck_location(truck_id: int, db: Session=Depends(get_db), curren
             )
     latest_point = (db.query(models.TrackingPoint).filter(models.TrackingPoint.truck_id==truck_id).order_by(*MEASUREMENT_ORDER).first()
     )
-    
+
     if not latest_point:
          raise HTTPException(
               status_code=status.HTTP_404_NOT_FOUND,

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 from uuid import UUID
 
@@ -19,9 +19,9 @@ class DeviceIngestPoint(BaseModel):
     def require_timezone(cls, value: datetime) -> datetime:
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("recorded_at must include timezone")
-        if value > datetime.now(timezone.utc) + timedelta(seconds=60):
+        if value > datetime.now(UTC) + timedelta(seconds=60):
             raise ValueError("recorded_at cannot be in the future")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)
 
     @field_validator("heading")
     @classmethod

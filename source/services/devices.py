@@ -1,7 +1,7 @@
 import hashlib
 import json
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Security, status
@@ -10,12 +10,11 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from source.database.database import get_db
 from source.models.device import Device, DeviceAssignment
 from source.models.ingestion import IngestedPoint, RejectedIngestPoint
 from source.models.truck import TrackingPoint, Truck
 from source.schemas.ingestion import DeviceIngestBatch, DeviceIngestPoint
-from source.database.database import get_db
-
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 device_bearer = HTTPBearer(auto_error=False)
@@ -56,7 +55,7 @@ def provision_device(db: Session, identifier: str, truck_id: int) -> str:
         DeviceAssignment(
             device_id=device.id,
             truck_id=truck_id,
-            valid_from=datetime.now(timezone.utc),
+            valid_from=datetime.now(UTC),
         )
     )
     db.commit()

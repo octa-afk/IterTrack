@@ -1,8 +1,14 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from source.database.database import Base
+
+if TYPE_CHECKING:
+    from source.models.organization import Organization
+
 
 class Truck(Base):
     __tablename__ = "trucks"
@@ -22,7 +28,7 @@ class TrackingPoint(Base):
     __table_args__ = (
         Index("ix_tracking_points_truck_recorded_at_id", "truck_id", text("recorded_at DESC"), text("id DESC")),
     )
-    
+
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     truck_id: Mapped[int] = mapped_column(ForeignKey("trucks.id"))
     lat: Mapped[float]
@@ -34,10 +40,10 @@ class TrackingPoint(Base):
     # received_at: momento en que el servidor recibió el punto. Son tiempos distintos: un punto
     # almacenado sin conexión puede llegar mucho después de medirse.
     recorded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     received_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     truck: Mapped["Truck"] = relationship(back_populates="tracking_points")

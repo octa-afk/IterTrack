@@ -155,7 +155,9 @@ IterTrack/
 * **Validación de Datos:** [Pydantic v2](https://docs.pydantic.dev/) & [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
 * **Frontend:** [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vite.dev/).
 * **Mapa:** [Leaflet 1.9](https://leafletjs.com/) + [MapLibre GL](https://maplibre.org/) con mosaicos de OpenFreeMap.
-* **Lint del frontend:** [oxlint](https://oxc.rs/docs/guide/usage/linter).
+* **Testing:** [pytest](https://docs.pytest.org/) con la base de datos de prueba anulada a SQLite en memoria.
+* **Lint:** [ruff](https://docs.astral.sh/ruff/) en Python y [oxlint](https://oxc.rs/docs/guide/usage/linter) en el frontend.
+* **Typecheck:** [mypy](https://mypy-lang.org/) con el plugin de pydantic en Python, y `tsc` en el frontend.
 * **Cliente HTTP de pruebas:** [Requests](https://requests.readthedocs.io/).
 * **Autenticación:** [python-jose](https://python-jose.readthedocs.io/) (JWT), [passlib](https://passlib.readthedocs.io/) + bcrypt.
 * **Hardware:** [PlatformIO](https://platformio.org/) / C++ / ESP32 (Arduino framework).
@@ -272,12 +274,12 @@ Vite proxya `/auth`, `/trucks`, `/devices` y `/health` a `http://localhost:8000`
 ### 🧪 Pruebas
 
 ```bash
-make frontend && make check && make test   # backend + tests de la SPA servida
+make frontend && make check && make test   # build + ruff/mypy + pytest
 npm --prefix frontend run lint             # oxlint
 npm --prefix frontend run build            # typecheck (tsc) + build
 ```
 
-Los tests de pytest usan SQLite en memoria y no requieren PostgreSQL. Los tests que verifican el servido de la SPA y las regresiones de CSS se saltean si `frontend/dist` no existe.
+`make check` corre `ruff` e `mypy` sobre `source`, `scripts` y `tests`; su configuración vive en `pyproject.toml`. Los tests de pytest usan SQLite en memoria y no requieren PostgreSQL. Los tests que verifican el servido de la SPA y las regresiones de CSS se saltean si `frontend/dist` no existe.
 
 ---
 

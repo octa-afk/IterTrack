@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from sqlalchemy import DateTime, ForeignKey, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,7 +14,7 @@ class Device(Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -40,6 +41,6 @@ class DeviceAssignment(Base):
     device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"))
     truck_id: Mapped[int] = mapped_column(ForeignKey("trucks.id"))
     valid_from: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

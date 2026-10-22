@@ -141,8 +141,9 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * Eliminados `fastar`, `rignore`, `detect-installer` y `fastapi-cloud-cli` (sin referencias en `source/`, `scripts/` ni `tests/`).
 * **Sentry removido (Resuelto):**
   * Se eliminó `sentry-sdk` de `requirements.txt` y del venv: estaba instalado pero nunca se integraba. Si en el futuro se necesita monitoreo, se agrega la integración completa, no solo el paquete.
-* **Sin lint ni typechecking en Python (Pendiente):**
-  * No hay `ruff`, `mypy`, `black` ni `pyproject.toml`. `make check` sólo ejecuta `py_compile` sobre 4 archivos, lo que valida sintaxis pero ni tipos ni estilo.
+* **Lint y typechecking en Python (Completado):**
+  * `make check` corre `ruff` e `mypy` sobre `source`, `scripts` y `tests`; la configuración vive en `pyproject.toml` (`check_untyped_defs`, `warn_unused_ignores` y el plugin `pydantic.mypy`).
+  * Ignorados a propósito: `E501` (no se reflowea código legado) y `B008` (`Depends(...)` en defaults es el idiom de FastAPI). `alembic/versions/` está excluido por ser código generado y `scripts/selfcheck.py` ignora `E402` porque inserta `ROOT` en `sys.path` antes de importar la app.
   * El frontend sí tiene typechecking y lint: `npm --prefix frontend run build` corre `tsc` y `npm --prefix frontend run lint` corre `oxlint`.
 * **Cobertura de tests de autenticación (Resuelto):**
   * `tests/test_auth.py` cubre registro, login, `/auth/me` y protección de endpoints, incluidos casos de validación y credenciales no autorizadas.
@@ -157,12 +158,14 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
 
 ## 8. Comandos Útiles para Agentes
 
-* **Verificar sintaxis e importaciones:**
+* **Lint y typecheck de Python (ruff + mypy):**
   ```bash
-  env/bin/python -m py_compile source/main.py
-  env/bin/python -m py_compile source/services/tracking.py
-  env/bin/python -m py_compile source/services/auth.py
-  env/bin/python -m py_compile source/models/user.py
+  make check        # ruff check + mypy sobre source, scripts y tests
+  ```
+  Equivalente directo:
+  ```bash
+  env/bin/python -m ruff check source scripts tests
+  env/bin/mypy source scripts tests
   ```
 * **Compilar el frontend (necesario para servir `/`, `/register` y `/map`):**
   ```bash

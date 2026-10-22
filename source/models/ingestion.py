@@ -1,5 +1,4 @@
-from datetime import datetime, timezone
-from uuid import UUID
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -26,7 +25,7 @@ class IngestedPoint(Base):
     heading: Mapped[float]
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     received_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -46,5 +45,5 @@ class RejectedIngestPoint(Base):
     reason: Mapped[str] = mapped_column(String(120))
     raw_payload: Mapped[str] = mapped_column(Text)
     rejected_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

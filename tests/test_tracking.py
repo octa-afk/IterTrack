@@ -1,14 +1,13 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
+from source.database.database import get_db
 from source.main import app
-from source.database.database import Base, get_db
-from source.services.auth import get_current_user
 from source.models.organization import Organization
-from source.models.user import User
-from source.models.truck import Truck, TrackingPoint
-from source.services.auth import hash_password
+from source.models.truck import TrackingPoint, Truck
+from source.services.auth import get_current_user
 
 
 @pytest.fixture()
@@ -77,7 +76,7 @@ def test_post_truck_assigns_organization(tracking_client, db_session, test_user)
         json={"truck": {"id": 2, "plate": "NEW123"}, "location": {"lat": -31.42, "long": -64.18, "speed": 42.5, "heading": 180}},
     )
     assert response.status_code == 200
-    
+
     # Verificar que el camión tiene la organización correcta
     truck = db_session.query(Truck).filter(Truck.plate == "NEW123").first()
     assert truck is not None
@@ -187,11 +186,11 @@ def test_location_normalizes_utc_and_heading(tracking_client, test_truck, db_ses
     point = db_session.query(TrackingPoint).filter_by(truck_id=test_truck.id).one()
     assert point.heading == 0
     # SQLite drops timezone metadata; the normalized UTC wall-clock value remains intact.
-    assert point.recorded_at.replace(tzinfo=timezone.utc).isoformat() == "2026-10-13T15:00:00+00:00"
+    assert point.recorded_at.replace(tzinfo=UTC).isoformat() == "2026-10-13T15:00:00+00:00"
 
 
 # Orden de lectura: hora de medición (recorded_at), no hora de llegada al servidor (timestamp)
-MEASURED_BASE = datetime(2026, 10, 13, 12, 0, 0, tzinfo=timezone.utc)
+MEASURED_BASE = datetime(2026, 10, 13, 12, 0, 0, tzinfo=UTC)
 
 
 def _store_point(db_session, truck_id, *, speed, measured_at, server_timestamp):
@@ -246,7 +245,7 @@ def test_get_iter_limit_is_validated_and_applied(tracking_client, db_session, te
     for index in range(6):
         db_session.add(TrackingPoint(
             truck_id=test_truck.id, lat=-31.42, long=-64.18, speed=index, heading=0,
-            recorded_at=datetime.now(timezone.utc) - timedelta(minutes=index),
+            recorded_at=datetime.now(UTC) - timedelta(minutes=index),
         ))
     db_session.commit()
     assert len(tracking_client.get(f"/trucks/{test_truck.id}/iter").json()) == 6
@@ -303,7 +302,7 @@ def test_tracking_point_distinguishes_recorded_and_received_time(db_session, tes
 
 
 def test_tracking_point_received_at_defaults_to_now(db_session, test_truck):
-    before = datetime.now(timezone.utc).replace(tzinfo=None)
+    before = datetime.now(UTC).replace(tzinfo=None)
     point = TrackingPoint(truck_id=test_truck.id, lat=-31.42, long=-64.18, speed=0, heading=0)
     db_session.add(point)
     db_session.commit()
@@ -346,7 +345,7 @@ def test_put_location_rejects_naive_recorded_at(tracking_client, test_truck):
 
 
 def test_put_location_rejects_future_recorded_at(tracking_client, test_truck):
-    future = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
     response = tracking_client.put(
         f"/trucks/{test_truck.id}/location",
         json={"lat": -31.42, "long": -64.18, "recorded_at": future},

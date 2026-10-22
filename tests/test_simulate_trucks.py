@@ -1,11 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from scripts.simulate_trucks import (
     actualizar_ubicacion,
     build_truck_configs,
     ejecutar_simulaciones,
-    route_offset,
     rotate_route,
+    route_offset,
     simular_ruta,
 )
 
@@ -23,7 +23,7 @@ def test_actualizar_ubicacion_sends_telemetry(monkeypatch):
 
     monkeypatch.setattr("scripts.simulate_trucks.requests.put", fake_put)
 
-    measured_at = datetime(2026, 10, 13, 12, 0, tzinfo=timezone.utc)
+    measured_at = datetime(2026, 10, 13, 12, 0, tzinfo=UTC)
 
     assert actualizar_ubicacion(
         7, -31.42, -64.18, speed=35.5, heading=123.4, recorded_at=measured_at, headers={"X-Test": "yes"}
@@ -49,25 +49,27 @@ def test_simular_ruta_captures_measurement_time_for_each_ping(monkeypatch):
         def is_set(self):
             return self.stopped
 
-        def wait(self, _interval):
+        def wait(self, timeout: float | None = None) -> bool:
             self.waits += 1
             if self.waits == len(route):
                 self.stopped = True
+            return self.stopped
+
+    def record_measurement(truck_id, lat, long, speed, heading, recorded_at, headers=None):
+        measurements.append(recorded_at)
+        return True
 
     monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
-    monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: {})
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar", dict)
     monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
-    monkeypatch.setattr(
-        "scripts.simulate_trucks.actualizar_ubicacion",
-        lambda truck_id, lat, long, speed, heading, recorded_at, headers=None: measurements.append(recorded_at) or True,
-    )
+    monkeypatch.setattr("scripts.simulate_trucks.actualizar_ubicacion", record_measurement)
 
-    before = datetime.now(timezone.utc)
+    before = datetime.now(UTC)
     simular_ruta(7, "ABC123", 1, stop_event=StopAfterRoute())
 
     assert len(measurements) == len(route)
     assert all(m.tzinfo is not None for m in measurements)
-    assert all(before <= m <= datetime.now(timezone.utc) + timedelta(seconds=1) for m in measurements)
+    assert all(before <= m <= datetime.now(UTC) + timedelta(seconds=1) for m in measurements)
 
 
 def test_build_truck_configs_preserves_base_identity_for_single_truck():
@@ -118,22 +120,24 @@ def test_simular_ruta_preserves_history_across_route_laps_by_default(monkeypatch
         def is_set(self):
             return self.stopped
 
-        def wait(self, _interval):
+        def wait(self, timeout: float | None = None) -> bool:
             self.waits += 1
             if self.waits == len(route) * 2:
                 self.stopped = True
+            return self.stopped
+
+    def record_update(truck_id, *args, **kwargs):
+        updates.append(truck_id)
+        return True
 
     monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
-    monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: {})
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar", dict)
     monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
     monkeypatch.setattr(
         "scripts.simulate_trucks.limpiar_recorrido",
         lambda truck_id, headers=None: deleted_trucks.append(truck_id),
     )
-    monkeypatch.setattr(
-        "scripts.simulate_trucks.actualizar_ubicacion",
-        lambda truck_id, *args, **kwargs: updates.append(truck_id) or True,
-    )
+    monkeypatch.setattr("scripts.simulate_trucks.actualizar_ubicacion", record_update)
 
     simular_ruta(7, "ABC123", 1, stop_event=StopAfterRouteLaps())
 
@@ -202,7 +206,7 @@ def test_ejecutar_simulaciones_aborts_without_token(monkeypatch):
     calls = []
 
     monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: [(0, 0), (1, 1)])
-    monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: {})
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar", dict)
     monkeypatch.setattr(
         "scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: calls.append("registrar")
     )
