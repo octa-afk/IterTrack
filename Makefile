@@ -1,4 +1,4 @@
-.PHONY: test dev migrate check simulation
+.PHONY: test dev migrate check simulation frontend
 
 SIMULATION_COUNT ?= 3
 SIMULATION_INTERVAL ?= 2
@@ -7,6 +7,11 @@ SIMULATION_PLATE ?= ABC123
 
 test:
 	env/bin/python -m pytest tests/ -v
+
+# Builds the React app that FastAPI serves. Run it before `make test` when you
+# want the SPA-serving tests to run instead of being skipped.
+frontend:
+	cd frontend && npm ci && npm run build
 
 dev:
 	env/bin/uvicorn source.main:app --reload --port 8000

@@ -1,14 +1,10 @@
 """Autoverificación sin dependencias extra:
-- Lógica JS de source/static/map.html ejecutada con node (ya instalado).
+- Build del frontend React que sirve FastAPI.
 - API FastAPI con el TestClient interno + httpx (ya instalados), sin abrir puertos.
 Uso: env/bin/python scripts/selfcheck.py
 """
-import json
 import random
-import re
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,61 +20,13 @@ def check(nombre, ok, detalle=""):
     print(f"[{marca}] {nombre}" + (f"  ({detalle})" if detalle else ""))
 
 
-# ---------- 1) Lógica JS real extraída de map.html, ejecutada con node ----------
-html = (ROOT / "source/static/map.html").read_text(encoding="utf-8")
-bloque_js = re.search(r"<script>(.*?)</script>\s*</body>", html, re.S).group(1)
-
-# Extraer las funciones puras por nombre (sin DOM ni Leaflet)
-def extraer_funcion(src, nombre):
-    i = src.find(f"function {nombre}(")
-    if i < 0:
-        return ""
-    j = src.find("{", i)
-    depth = 0
-    for k in range(j, len(src)):
-        if src[k] == "{":
-            depth += 1
-        elif src[k] == "}":
-            depth -= 1
-            if depth == 0:
-                return src[i:k + 1]
-    return ""
-
-fns = "\n\n".join(extraer_funcion(bloque_js, n) for n in
-                  ("calcularRumbo", "calcularDistanciaMetros", "obtenerPuntoCardinal"))
-assert "function calcularRumbo" in fns and "function obtenerPuntoCardinal" in fns
-
-harness = fns + r"""
-const checks = [];
-// Rumbos conocidos
-const rN = calcularRumbo(-31.0, -64.0, -30.5, -64.0);
-const rE = calcularRumbo(-31.0, -64.0, -31.0, -63.5);
-const rS = calcularRumbo(-31.0, -64.0, -31.5, -64.0);
-const rO = calcularRumbo(-31.0, -64.0, -31.0, -64.5);
-checks.push(["rumbo ~N ≈0°", Math.abs(rN - 0) < 1.5, rN.toFixed(2)]);
-checks.push(["rumbo ~E ≈90°", Math.abs(rE - 90) < 1.5, rE.toFixed(2)]);
-checks.push(["rumbo ~S ≈180°", Math.abs(rS - 180) < 1.5, rS.toFixed(2)]);
-checks.push(["rumbo ~O ≈270°", Math.abs(rO - 270) < 1.5, rO.toFixed(2)]);
-checks.push(["cardinales", obtenerPuntoCardinal(0) === 'N' && obtenerPuntoCardinal(90) === 'E'
-             && obtenerPuntoCardinal(180) === 'S' && obtenerPuntoCardinal(270) === 'O' &&
-             obtenerPuntoCardinal(45) === 'NE' && obtenerPuntoCardinal(315) === 'NO',
-             [0,45,90,180,270,315].map(obtenerPuntoCardinal).join(',')]);
-const d = calcularDistanciaMetros(-31.4167, -64.1834, -31.4267, -64.1834);
-checks.push(["distancia ~1115m (0.01° lat)", Math.abs(d - 1112) < 40, d.toFixed(1) + 'm']);
-console.log(JSON.stringify(checks));
-"""
-with tempfile.NamedTemporaryFile("w", suffix=".mjs", delete=False, dir="/tmp/opencode") as f:
-    f.write(harness)
-    tmp = f.name
-try:
-    out = subprocess.run(["node", tmp], capture_output=True, text=True, timeout=30)
-    js_checks = json.loads(out.stdout.strip() or "[]")
-    for nombre, ok, detalle in js_checks:
-        check(f"[JS] {nombre}", bool(ok), str(detalle))
-    if not js_checks:
-        check("[JS] ejecución node", False, out.stderr.strip()[:120])
-finally:
-    Path(tmp).unlink(missing_ok=True)
+# ---------- 1) Build del frontend servido por FastAPI ----------
+dist_index = ROOT / "frontend" / "dist" / "index.html"
+check(
+    "[UI] build del frontend presente",
+    dist_index.is_file(),
+    "ejecutá: npm --prefix frontend run build",
+)
 
 # ---------- 2) API con TestClient en memoria ----------
 import warnings

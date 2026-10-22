@@ -1,19 +1,39 @@
-from fastapi import FastAPI
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from source.services.tracking import router as tracking_router
 from source.services.auth import router as auth_router
 from source.services.devices import router as devices_router
- 
+
+# Built React app (Vite). Build it with: npm --prefix frontend run build
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+FAVICON = Path(__file__).resolve().parent / "static" / "isologo.png"
+
 app = FastAPI()
 app.include_router(tracking_router)
 app.include_router(auth_router)
 app.include_router(devices_router)
 
-# Only the asset directories are exposed; the HTML routes stay as explicit
-# FileResponse endpoints so the source pages are never served as raw files.
-app.mount("/static/css", StaticFiles(directory="source/static/css"), name="css")
-app.mount("/static/js", StaticFiles(directory="source/static/js"), name="js")
+# Only the hashed build assets are exposed as files; every route is answered
+# with index.html so React Router owns the client-side routing.
+app.mount(
+    "/assets",
+    StaticFiles(directory=FRONTEND_DIST / "assets", check_dir=False),
+    name="assets",
+)
+
+
+def _index() -> FileResponse:
+    target = FRONTEND_DIST / "index.html"
+    if not target.is_file():
+        raise HTTPException(
+            status_code=503,
+            detail="Frontend build not found. Run: npm --prefix frontend run build",
+        )
+    return FileResponse(target)
+
 
 @app.get("/health")
 def health():
@@ -21,17 +41,20 @@ def health():
 
 
 @app.get("/")
-async def root():
-    return FileResponse("source/static/login.html")
+def root():
+    return _index()
+
 
 @app.get("/map")
 def view_map():
-    return FileResponse("source/static/map.html")
+    return _index()
+
 
 @app.get("/register")
 def view_register():
-    return FileResponse("source/static/register.html")
+    return _index()
+
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
-    return FileResponse("source/static/isologo.png")
+    return FileResponse(FAVICON)
