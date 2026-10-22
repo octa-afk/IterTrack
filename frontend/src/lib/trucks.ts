@@ -51,6 +51,7 @@ export const STATUS: Record<TruckStatus, { label: string; color: string }> = {
 
 export const SPEED_LIMIT = 90;
 export const STALE_MS = 10 * 60e3;
+export const FRESH_MS = 5 * 60e3;
 export const HISTORY_MAX = 18;
 export const POLL_MS = 3000;
 
@@ -74,6 +75,11 @@ export function ago(ms: number): string {
   if (s < 60) return `hace ${s} s`;
   if (s < 3600) return `hace ${Math.round(s / 60)} min`;
   return `hace ${Math.round(s / 3600)} h`;
+}
+
+/** True when the truck reported within the last five minutes ("Con señal"). */
+export function isFresh(updated: number, now: number = Date.now()): boolean {
+  return updated > 0 && now - updated < FRESH_MS;
 }
 
 export function estadoDe(t: Pick<TruckState, 'updated' | 'speed'>): TruckStatus {
