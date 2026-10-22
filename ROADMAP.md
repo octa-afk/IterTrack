@@ -33,7 +33,7 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 - Un vehículo se conserva en el sistema y cambia entre activo e inactivo; desactivarlo no elimina su historial de tracking.
 - Los usuarios del cliente se darán de alta mediante un código de invitación; no crearán organizaciones ni vehículos por cuenta propia.
 - Un vehículo dado de baja queda inactivo y deja de transmitir. El backend debe rechazar nuevas ubicaciones para hacer cumplir ese estado, conservando los datos históricos.
-- Estas decisiones definen el objetivo futuro: todavía no están implementadas en el backend. El modelo `Truck` aún no tiene estado activo/inactivo y los endpoints actuales permiten a usuarios autenticados crear camiones y borrar historiales.
+- Estas decisiones definen el objetivo futuro y están implementadas solo en parte: el modelo `Truck` ya tiene estado `active` y tanto `PUT /trucks/{id}/location` (responde `409`) como `/devices/ingest` rechazan camiones inactivos. Todavía no existen endpoints administrativos para dar de alta, desactivar o reasignar vehículos, y los usuarios autenticados aún pueden crear camiones y borrar historiales.
 
 ### Próximo frente backend — ciclo de vida y acceso
 - Agregar estado activo/inactivo al vehículo y operaciones administrativas para alta, asignación a una organización y cambio de estado.
@@ -49,15 +49,11 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 - **Almacenamiento sin conexión (pendiente de diseño):** la ESP32 guarda lecturas cuando no hay conexión y las envía al volver. Implica identificador de secuencia por equipo, envío por lotes idempotente, atribución del camión por `recorded_at` y una política de descarte del buffer.
 - Incluir migración y pruebas para permisos, aislamiento entre organizaciones, historial retenido y comportamiento de dispositivos inactivos.
 
-### Fase 3 — Dashboard web
+### Fase 3 — Dashboard web (SPA entregada) ✅
 - Frontend web para seguir la flota en tiempo real.
-- **Stack decidido: vanilla ahora, SPA después.** Seguimos con HTML/JS estático sin build tooling: el flujo JWT queda a la vista y no agregamos herramientas sin necesidad.
-- **Entradas del frontend vanilla entregadas:** `/` (login), `/register` (registro) y `/map` (guard de token).
-- **Migrar a SPA (Vite + React o Vue) SOLO cuando se cumpla al menos uno de estos criterios:**
-  - (a) el dashboard necesita rutas propias con varias vistas,
-  - (b) el estado se comparte entre 3 o más vistas independientes, o
-  - (c) el cliente valida el MVP y empiezan las estadísticas de la Fase 4.
-- Fichas por camión: ubicación, estado, historial de viajes.
+- **SPA React entregada:** React 19 + TypeScript + Vite (`frontend/`), compilada a `frontend/dist` y servida por FastAPI. Rutas `/` (login), `/register` (registro) y `/map` (panel con guard de token).
+- **Estrategia revisada:** el plan original era vanilla primero y SPA solo al cumplirse ciertos criterios. Se cumplieron (a) rutas propias con varias vistas y (b) estado compartido entre vistas, así que la migración se ejecutó completa y la UI vanilla se retiró. Detalle en `odd/tasks/react-frontend-migration.md`.
+- **Pendiente de esta fase:** mostrar el estado activo/inactivo del camión en la UI e historial de viajes por camión.
 
 ### Fase 4 — Estadísticas logísticas
 - Km recorridos por período, consumo estimado, tiempos de viaje, paradas.

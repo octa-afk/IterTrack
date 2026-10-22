@@ -122,7 +122,7 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * `source/schemas/auth.py` y `source/services/auth.py` implementados: registro, login (OAuth2PasswordRequestForm), `/auth/me`, hashing bcrypt y tokens JWT HS256.
   * Configuración JWT centralizada en `source/database/config.py`: `SECRET_KEY`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES` (60).
   * `auth_router` incluido en `source/main.py`.
-  * Todos los endpoints de `tracking.py` (`POST`, `PUT`, `GET` y `DELETE` bajo `/trucks`) requieren `Depends(get_current_user)` y Bearer JWT. Las páginas estáticas se sirven sin autenticación HTTP; el frontend de `/map` valida el token y envía el Bearer en las llamadas a la API.
+  * Todos los endpoints de `tracking.py` (`POST`, `PUT`, `GET` y `DELETE` bajo `/trucks`) requieren `Depends(get_current_user)` y Bearer JWT. La SPA se sirve sin autenticación HTTP; el frontend de `/map` valida el token y envía el Bearer en las llamadas a la API.
   * Cada usuario pertenece a una organización y los camiones nuevos se asignan a ella; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia. Los permisos basados en roles siguen pendientes.
   * `bcrypt` fijado en `4.0.1` en `requirements.txt` por incompatibilidad de passlib 1.7.4 con bcrypt 5.x.
 * **Manejo de Errores Semántico (Completado):**
@@ -131,7 +131,7 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * `source/schemas/truck.py` valida `lat` entre `-90` y `90` y `long` entre `-180` y `180` con `Field(ge=..., le=...)`.
 * **CI/CD con GitHub Actions (Completada):**
   * Workflow en `.github/workflows/ci.yml`. Se ejecuta en `push` y `pull_request` sobre `main` y `develop`, y también manualmente (`workflow_dispatch`).
-  * Steps: creación del virtualenv `env/`, `pip install -r requirements.txt`, `make check` y `make test`.
+  * Steps: creación del virtualenv `env/`, `pip install -r requirements.txt`, setup de Node 22, `make frontend`, `make check` y `make test`.
   * **Los targets del `Makefile` invocan `env/bin/python`**, por eso el workflow crea el venv antes de ejecutarlos; sin ese paso falla en el primer step.
   * No requiere servicio de PostgreSQL: `tests/conftest.py` usa SQLite en memoria con `dependency_overrides`.
   * La rama `IterTrack-Hardware` queda fuera de los triggers a propósito: no contiene tests Python.
@@ -141,14 +141,17 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * Eliminados `fastar`, `rignore`, `detect-installer` y `fastapi-cloud-cli` (sin referencias en `source/`, `scripts/` ni `tests/`).
 * **Sentry removido (Resuelto):**
   * Se eliminó `sentry-sdk` de `requirements.txt` y del venv: estaba instalado pero nunca se integraba. Si en el futuro se necesita monitoreo, se agrega la integración completa, no solo el paquete.
-* **Sin lint ni typechecking (Pendiente):**
+* **Sin lint ni typechecking en Python (Pendiente):**
   * No hay `ruff`, `mypy`, `black` ni `pyproject.toml`. `make check` sólo ejecuta `py_compile` sobre 4 archivos, lo que valida sintaxis pero ni tipos ni estilo.
+  * El frontend sí tiene typechecking y lint: `npm --prefix frontend run build` corre `tsc` y `npm --prefix frontend run lint` corre `oxlint`.
 * **Cobertura de tests de autenticación (Resuelto):**
   * `tests/test_auth.py` cubre registro, login, `/auth/me` y protección de endpoints, incluidos casos de validación y credenciales no autorizadas.
 * **Telemetría de velocidad y rumbo (Implementada):**
   * `Location` admite `speed` y `heading`; ambos valores se guardan en cada punto de tracking. La integración del hardware puede enviar estos campos cuando estén disponibles.
 * **Registro en el navegador (Completada):**
   * `/register` sirve la SPA; `RegisterPage` hace el registro + auto-login y navega a `/map`. El flujo completo está descrito en la sección 4.6.
+* **Migración a React (Completada):**
+  * Se retiró la UI vanilla (`source/static/js/`, `source/static/css/` y las páginas `login.html`, `register.html`, `map.html`, `map-mobile.html`). La SPA vive en `frontend/` y FastAPI sirve `frontend/dist` (sección 4.6). El historial completo está en `odd/tasks/react-frontend-migration.md`.
 
 ---
 
@@ -193,6 +196,8 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
 * Todo endpoint nuevo o modificado debe incluir tests en `tests/` (pytest).
 * Los tests usan SQLite en memoria con `dependency_overrides` de `get_db` y `get_current_user` (ver `tests/conftest.py`).
 * Correr antes de terminar cualquier tarea: `make test` y `make check`.
+* Cambios en `frontend/`: correr `npm --prefix frontend run lint` y `npm --prefix frontend run build` (typecheck + build).
+* Los tests que verifican el servido de la SPA y las regresiones de CSS necesitan `frontend/dist` (generado con `make frontend`) y se saltean si no existe.
 * Se agradece cubrir: caso feliz + validación inválida (422) + duplicados/no encontrado (400/404).
 
 ## 10. Checklist para Endpoints Nuevos
