@@ -1,0 +1,16 @@
+/*
+ * Application root.
+ *
+ * Both page layouts (dashboard and auth) size themselves against the viewport,
+ * so the React root must fill it. Without this the root shrink-wraps to its
+ * content and the auth card renders narrower than its `max-width`.
+ */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+#root {
+  width: 100%;
+}

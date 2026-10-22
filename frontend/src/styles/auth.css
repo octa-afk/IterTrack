@@ -259,3 +259,45 @@
 @media (prefers-reduced-motion: reduce) {
   .auth-page * { transition: none !important; }
 }
+
+/*
+ * Neutralize dashboard.css leaks.
+ *
+ * dashboard.css is global and defines `.side` (the dashboard sidebar) as an
+ * absolutely-positioned 235px panel, plus `.logo` padding/margin/color and the
+ * `.mark` fills. Those selectors also match the auth markup, which is why the
+ * login form column was being ripped out of the grid and floated over the brand
+ * panel. Only `.side`, `.logo` and `.mark` collide, so reset them here instead
+ * of scoping the whole dashboard stylesheet.
+ */
+.auth-page .side {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition: none;
+}
+
+.auth-page .logo {
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  background: none;
+  box-shadow: none;
+}
+
+.auth-page .logo svg {
+  flex: none;
+  fill: none;
+  stroke: none;
+}
+
