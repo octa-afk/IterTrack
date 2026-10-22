@@ -23,7 +23,7 @@ monolithic `App.tsx`, commits `035d82b`..`fc52895`) was reverted in `8eb1580`.
 - T5 (S2, S3): Extract the `map.html` application script into native ES modules under `source/static/js/`, one module per existing responsibility. Route: inline. Status: complete. Commit: 74a5c18.
 - T6 (S2, S3, S4): Move the sidebar-toggle IIFE into a module, run the full suite, and smoke `/`, `/map`, `/register` in the browser. Route: inline. Status: complete. Commit: 74a5c18.
 - T7 (S1, S2): Scaffold Vite + React + TS, reusing `css/tokens.css`, with router and typed API client. Route: inline. Status: complete. Commit: e6f1d29.
-- T8 (S1): Port the shell (sidebar, topbar, mobile tabs) as components. Route: inline. Status: complete.
+- T8 (S1): Port the shell (sidebar, topbar, mobile tabs) as components. Route: inline. Status: complete. Commit: d92ef6d.
 - T9 (S1): Port fleet list, filters, and detail card. Route: inline. Status: pending.
 - T10 (S1): Port the map view, markers, and history chart. Route: inline. Status: pending.
 - T11 (S1): Port bars and fleet summary. Route: inline. Status: pending.
