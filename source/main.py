@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from source.services.tracking import router as tracking_router
 from source.services.auth import router as auth_router
 from source.services.devices import router as devices_router
@@ -8,6 +9,10 @@ app = FastAPI()
 app.include_router(tracking_router)
 app.include_router(auth_router)
 app.include_router(devices_router)
+
+# Only the asset directories are exposed; the HTML routes stay as explicit
+# FileResponse endpoints so the source pages are never served as raw files.
+app.mount("/static/css", StaticFiles(directory="source/static/css"), name="css")
 
 @app.get("/health")
 def health():
