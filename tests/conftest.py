@@ -15,7 +15,7 @@ from source.main import app
 from source.models.organization import Organization
 from source.models.truck import Truck
 from source.models.user import User
-from source.services.auth import get_current_user
+from source.services.auth import get_current_user, hash_password
 
 engine = create_engine(
     "sqlite:///:memory:",
@@ -99,3 +99,40 @@ def test_truck(db_session, test_org):
     db_session.commit()
     db_session.refresh(truck)
     return truck
+
+
+@pytest.fixture()
+def admin_user(db_session, test_org):
+    """Crea un usuario administrador de prueba."""
+    user = User(
+        username="admin",
+        email="admin@example.com",
+        full_name="Admin User",
+        hashed_password=hash_password("adminpass123"),
+        organization_id=test_org.id,
+        role="admin",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture()
+def admin_client(db_session, admin_user):
+    """Client con usuario administrador autenticado (sobrescribe get_current_user)."""
+
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    def override_current_user():
+        return admin_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_current_user
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()

@@ -69,9 +69,9 @@ def test_get_trucks_excludes_other_org(tracking_client, test_truck, other_truck)
     assert "OTHER99" not in plates
 
 
-def test_post_truck_assigns_organization(tracking_client, db_session, test_user):
+def test_post_truck_assigns_organization(admin_client, db_session, test_user):
     """POST /trucks asigna automáticamente la organización del usuario."""
-    response = tracking_client.post(
+    response = admin_client.post(
         "/trucks",
         json={"truck": {"id": 2, "plate": "NEW123"}, "location": {"lat": -31.42, "long": -64.18, "speed": 42.5, "heading": 180}},
     )
@@ -86,8 +86,8 @@ def test_post_truck_assigns_organization(tracking_client, db_session, test_user)
     assert point.heading == 180
 
 
-def test_post_truck_defaults_to_active(tracking_client, db_session):
-    response = tracking_client.post(
+def test_post_truck_defaults_to_active(admin_client, db_session):
+    response = admin_client.post(
         "/trucks",
         json={"truck": {"id": 2, "plate": "ACTIVE1"}, "location": {"lat": -31.42, "long": -64.18}},
     )
@@ -118,9 +118,9 @@ def test_get_iter_other_org_truck_returns_404(tracking_client, other_truck):
     assert response.status_code == 404
 
 
-def test_delete_iter_other_org_truck_returns_404(tracking_client, other_truck):
+def test_delete_iter_other_org_truck_returns_404(admin_client, other_truck):
     """DELETE /{truck_id}/iter con camión de otra organización → 404."""
-    response = tracking_client.delete(f"/trucks/{other_truck.id}/iter")
+    response = admin_client.delete(f"/trucks/{other_truck.id}/iter")
     assert response.status_code == 404
 
 
