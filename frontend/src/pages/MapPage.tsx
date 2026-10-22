@@ -4,6 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import { MobileTabs } from '../components/MobileTabs';
 import { FleetList } from '../components/FleetList';
+import MapView from '../components/MapView';
 import { TruckDetail } from '../components/TruckDetail';
 import { clearToken } from '../api/client';
 import { DashboardProvider } from '../state/DashboardProvider';
@@ -55,7 +56,7 @@ export default function MapPage() {
                   </span>
                 </div>
                 <div className="mapbox">
-                  <div id="map" />
+                  <MapView />
                 </div>
               </div>
               <div className="bottom">
