@@ -1,13 +1,15 @@
 import { Mark } from './Mark';
+import { useDashboard } from '../state/useDashboard';
 
 interface TopbarProps {
   navOpen: boolean;
   onToggleNav: () => void;
-  avatarText: string;
 }
 
-export function Topbar({ navOpen, onToggleNav, avatarText }: TopbarProps) {
+export function Topbar({ navOpen, onToggleNav }: TopbarProps) {
+  const { trucks, filters, setFilter, userInitials } = useDashboard();
   const toggleLabel = navOpen ? 'Ocultar panel lateral' : 'Mostrar panel lateral';
+  const alertCount = trucks.filter((t) => t.status === 'alert').length;
 
   return (
     <div className="top">
@@ -37,6 +39,8 @@ export function Topbar({ navOpen, onToggleNav, avatarText }: TopbarProps) {
             type="search"
             placeholder="Buscar patente, chofer o ruta"
             aria-label="Buscar camiones"
+            value={filters.q}
+            onChange={(e) => setFilter({ q: e.target.value })}
           />
           <svg viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="7" />
@@ -45,13 +49,18 @@ export function Topbar({ navOpen, onToggleNav, avatarText }: TopbarProps) {
         </label>
       </div>
       <div className="pill">
-        <button className="al" id="alertBtn" type="button">
-          0 alertas
+        <button
+          className="al"
+          id="alertBtn"
+          type="button"
+          onClick={() => setFilter({ view: 'alert' })}
+        >
+          {alertCount} alertas
         </button>
         <svg className="bell" viewBox="0 0 24 24">
           <path d="M12 2a6 6 0 0 0-6 6v4l-2 3v1h16v-1l-2-3V8a6 6 0 0 0-6-6zm-2 18a2 2 0 0 0 4 0z" />
         </svg>
-        <div className="avatar">{avatarText}</div>
+        <div className="avatar">{userInitials}</div>
       </div>
     </div>
   );

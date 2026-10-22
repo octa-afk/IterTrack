@@ -3,15 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import { MobileTabs } from '../components/MobileTabs';
+import { FleetList } from '../components/FleetList';
+import { TruckDetail } from '../components/TruckDetail';
 import { clearToken } from '../api/client';
+import { DashboardProvider } from '../state/DashboardProvider';
 
 const NAV_KEY = 'itertrack-nav';
 
-/*
- * T8: the dashboard shell (sidebar, topbar, mobile tabs) ported 1:1 from the
- * vanilla map.html. The `.grid` content (map, list, detail, charts) is filled
- * in by T9-T11; for now it renders empty so the floating panel layout is visible.
- */
 export default function MapPage() {
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(() => localStorage.getItem(NAV_KEY) !== '0');
@@ -42,18 +40,46 @@ export default function MapPage() {
   };
 
   return (
-    <>
+    <DashboardProvider>
       <div className={navOpen ? 'app' : 'app nav-off'}>
         <Sidebar onLogout={handleLogout} />
         <div className="content">
-          <Topbar navOpen={navOpen} onToggleNav={toggleNav} avatarText="FL" />
+          <Topbar navOpen={navOpen} onToggleNav={toggleNav} />
           <div className="grid">
-            <div className="col" />
-            <div className="col" />
+            <div className="col">
+              <div className="card mapcard">
+                <div className="card-h">
+                  <h3>Mapa en vivo</h3>
+                  <span className="tag" id="liveTag">
+                    Actualizando
+                  </span>
+                </div>
+                <div className="mapbox">
+                  <div id="map" />
+                </div>
+              </div>
+              <div className="bottom">
+                <div className="card">
+                  <div className="card-h">
+                    <h3>Velocidad por camión</h3>
+                    <span className="tag">Ahora</span>
+                  </div>
+                  <div className="bars" id="bars" />
+                </div>
+                <div className="card">
+                  <h3>Resumen de flota</h3>
+                  <div className="donuts" id="donuts" />
+                </div>
+              </div>
+            </div>
+            <div className="col">
+              <FleetList />
+              <TruckDetail />
+            </div>
           </div>
         </div>
       </div>
       <MobileTabs view={mobileView} onChange={setMobileView} />
-    </>
+    </DashboardProvider>
   );
 }
