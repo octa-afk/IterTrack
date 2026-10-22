@@ -1,41 +1,326 @@
-def test_root_serves_react_entrypoint(client):
+def test_root_serves_login_page(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert '<div id="root"></div>' in response.text
-    assert "/src/main.tsx" not in response.text
+    assert 'id="login-form"' in response.text
 
 
-def test_map_serves_react_entrypoint(client):
+def test_map_serves_map_page(client):
     response = client.get("/map")
     assert response.status_code == 200
-    assert '<div id="root"></div>' in response.text
-
-
-def test_register_serves_react_entrypoint(client):
-    response = client.get("/register")
-    assert response.status_code == 200
-    assert '<div id="root"></div>' in response.text
-
-
-def test_react_entrypoint_preserves_auth_and_dashboard_bundle(client):
-    response = client.get("/")
-    assert response.status_code == 200
-    assert "/assets/" in response.text
-
-
-def test_react_bundle_asset_is_served(client):
-    entrypoint = client.get("/")
-    asset_path = next(
-        part.split('"', 1)[0]
-        for part in entrypoint.text.split('src="')
-        if part.startswith("/assets/")
-    )
-    asset = client.get(asset_path)
-    assert asset.status_code == 200
-    assert "javascript" in asset.headers["content-type"]
+    assert 'id="map"' in response.text
 
 
 def test_favicon_serves_image(client):
     response = client.get("/favicon.ico")
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
+
+
+def test_register_serves_register_page(client):
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert 'id="register-form"' in response.text
+
+
+# --- register-ui (T1): v10 register page wiring (create/join + auto-login) ---
+
+def test_register_page_wires_real_auth_flow(client):
+    response = client.get("/register")
+    assert response.status_code == 200
+    # Test hook + real API contract
+    assert 'id="register-form"' in response.text
+    assert 'action="/auth/register"' in response.text
+    assert "/auth/login" in response.text
+    assert "application/x-www-form-urlencoded" in response.text
+    assert "itertrack_token" in response.text
+    assert "REDIRECT = '/map'" in response.text  # redirect target, same style as login.html
+    # Create-organization vs join-with-code mode survives the redesign
+    assert 'id="mode-create"' in response.text
+    assert 'id="mode-join"' in response.text
+    # New v10 form hooks (submit button now carries an id)
+    assert 'id="submit"' in response.text
+
+
+# --- register-ui (T2): v10 reference design markers (same family as login.html) ---
+
+def test_register_page_uses_v10_poppins_design(client):
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert "Poppins" in response.text
+    assert 'class="shell"' in response.text   # two-panel glass shell
+    assert 'class="brand"' in response.text   # brand panel with live fleet card
+    assert 'class="meter"' in response.text   # password strength meter
+    # 15%-scaled tokens: 1020px shell -> 1173px, 860px breakpoint -> 989px
+    assert "max-width:1173px" in response.text
+    assert "max-width:989px" in response.text
+
+
+def test_register_page_links_to_login_route(client):
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert 'href="/"' in response.text
+    assert 'href="login.html"' not in response.text
+
+
+def test_login_page_links_to_register(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert 'href="/register"' in response.text
+
+
+# --- login-map-ui (T1): new behavior ---
+
+def test_login_page_wires_real_auth_flow(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "/auth/login" in response.text
+    assert "itertrack_token" in response.text
+    assert "application/x-www-form-urlencoded" in response.text
+
+
+def test_login_page_uses_v8_poppins_design(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "Poppins" in response.text
+
+
+def test_map_page_guards_with_auth_me(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "/auth/me" in response.text
+    assert "Bearer" in response.text
+
+
+def test_map_page_uses_light_cartography_only(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "maplibre-gl@5.24.0/dist/maplibre-gl.css" in response.text
+    assert "maplibre-gl@5.24.0/dist/maplibre-gl.js" in response.text
+    assert "@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js" in response.text
+    assert "tiles.openfreemap.org/styles/bright" in response.text
+    assert "tiles.openfreemap.org/styles/dark" not in response.text
+    assert "function neutralizeBuildings" in response.text
+    assert "sourceLayer === 'transportation'" in response.text
+    assert "setPaintProperty(layer.id, 'line-color'" in response.text
+    assert "originalRoadLineColors" in response.text
+    assert "event.code !== 'KeyR'" in response.text
+    assert "window.matchMedia('(min-width: 944px)').matches" in response.text
+    assert "sourceLayer === 'building'" in response.text
+    assert "fill-extrusion-opacity', 0" in response.text
+    assert "mapLibreMap.on('style.load', neutralizeBuildings)" in response.text
+    assert "themeBtn" not in response.text
+    assert ":root.dark" not in response.text
+    assert "L.maplibreGL" in response.text
+
+
+def test_map_page_has_logout_button(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert 'id="btn-logout"' in response.text
+
+
+def test_map_page_uses_example_cdn_leaflet(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4" in response.text
+
+
+# --- login-map-ui (C1): whole UI scaled by 15% (px literals x1.15) ---
+
+def test_pages_use_scaled_ui_scale(client):
+    login = client.get("/")
+    page = client.get("/map")
+    assert login.status_code == 200
+    assert page.status_code == 200
+    # Base font sizes: login 14px -> 16px, map 13px -> 15px (with body padding 24px -> 28px)
+    assert "font-size:16px" in login.text
+    assert "font-size:15px;padding:28px" in page.text
+    # Media-query breakpoints: login 860 -> 989, map 820 -> 943
+    assert "max-width:989px" in login.text
+    assert "max-width:943px" in page.text
+
+
+# --- login-map-ui (C2): truck marker redesign (SVG truck, status halo, plate label) ---
+
+def test_map_page_renders_truck_marker_design(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # The marker uses the supplied articulated-truck SVG, with the cab pointing up.
+    assert 'viewBox="0 0 48 72"' in response.text
+    assert 'fill="#2563EB"' in response.text
+    assert ".pin svg{width:36px;height:54px}" in response.text
+    assert "const arrow" not in response.text
+    # The marker SVG is static; plate text is added separately with textContent.
+    assert "vehicle.innerHTML = truckSvg(t.color)" in response.text
+    # The icon is anchored at its center so the truck sits on its real coordinate.
+    assert "iconSize:[48,48]" in response.text
+    assert "iconAnchor:[24,24]" in response.text
+    # The supplied truck is rendered directly, without a separate halo.
+    assert "const truckSvg" in response.text
+    assert "vehicle.className = 'truck-svg'" in response.text
+    assert 'class="halo"' not in response.text
+    assert 'class="badge"' not in response.text
+    assert ".pin .lbl" in response.text
+    assert ".pin.sel .truck-svg" in response.text
+    # Heading travels through a CSS variable; an inline transform would override
+    # the selection scale declared in the stylesheet.
+    assert ".pin .truck-svg{display:grid;transform:rotate(var(--heading,0deg))" in response.text
+    assert "vehicle.style.setProperty('--heading', `${t.heading}deg`)" in response.text
+
+
+# --- login-map-ui (C2c): truck moves between samples instead of teleporting ---
+
+def test_map_page_animates_truck_movement(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # Two received samples are tweened on a rAF loop, clamped to a sane duration
+    assert "requestAnimationFrame" in response.text
+    assert "function programarMovimiento" in response.text
+    assert "function tickMovimiento" in response.text
+    assert "MOVE_MAX_MS" in response.text
+    # render() must not jump the pin straight to the newest sample anymore
+    assert "mk.setLatLng([t.lat,t.lng]).setIcon(" not in response.text
+    # Longitude deltas must be converted to radians before bearing math;
+    # the truck SVG points north at zero degrees and rotates clockwise.
+    assert "Math.sin(toRad(bLng - aLng))" in response.text
+    assert "Math.cos(toRad(bLng - aLng))" in response.text
+
+
+# --- read endpoints order by recorded_at: the speed history uses the same time base ---
+
+def test_map_page_history_delta_uses_recorded_at_field(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # /iter pairs come ordered by recorded_at, so their time delta must use recorded_at too
+    assert "Date.parse(chrono[i].recorded_at) - Date.parse(chrono[i-1].recorded_at)" in response.text
+    assert "Date.parse(chrono[i].timestamp)" not in response.text
+
+
+# --- login-map-ui (C2d): one stable identity color per truck + map opens on a truck ---
+
+def test_map_page_gives_truck_a_stable_color(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # The pin keeps a per-truck identity color instead of recoloring with status
+    assert "TRUCK_COLORS" in response.text
+    assert "function colorDeCamion" in response.text
+    assert "truckSvg(t.color)" in response.text
+    assert 'badge" style="background:${STATUS[t.status].color}' not in response.text
+
+
+def test_map_page_opens_centered_on_first_truck(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "function centrarEnPrimerCamion" in response.text
+    # Boot must center after the first real location poll, not on the default view
+    assert "centrarEnPrimerCamion();" in response.text
+
+
+def test_map_page_discovers_trucks_during_polling(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # Each live poll must reconcile the org-scoped list without resetting
+    # telemetry state for trucks that are still present.
+    assert "function crearEstadoCamion" in response.text
+    assert "await cargarCamiones();" in response.text
+    assert "const existentes = new Map(trucks.map" in response.text
+    assert "markers.delete(id)" in response.text
+    assert "moves.delete(id)" in response.text
+
+
+# --- login-map-ui (C2e): v10 chrome — collapsible sidebar + solid top bar ---
+
+def test_map_page_has_collapsible_sidebar_and_solid_topbar(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    # Sidebar wrapper, toggle button and the mini brand shown when it is hidden
+    assert 'id="sidebar"' in response.text
+    assert 'class="side-in"' in response.text
+    assert 'id="navToggle"' in response.text
+    assert 'class="tl"' in response.text
+    assert ".minibrand" in response.text
+    assert ".app.nav-off" in response.text
+    # The toggle state is persisted per browser, like the theme
+    assert "itertrack-nav" in response.text
+    # The project's own hooks survive the port (the v10 example has neither)
+    assert 'id="btn-logout"' in response.text
+
+
+# --- login-map-ui (C3): v10 glass dashboard layer ---
+
+def test_map_page_has_v10_glass_fullscreen_layer(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    assert "--g-bg:rgba(23,54,116,.72)" in response.text
+    desktop_surfaces = response.text.split("@media (min-width:944px){", 1)[1].split("</style>", 1)[0]
+    assert "--g-bg:rgba(255,255,255,.90)" in desktop_surfaces
+    assert ".content,.grid,.grid>.col:first-child,.mapcard{display:contents}" in response.text
+    assert ".mapbox{position:absolute;inset:0;z-index:0" in response.text
+    assert ".side,.top,.card,.mapcard .card-h,.leaflet-bar,.leaflet-control-attribution" in response.text
+    assert ".leaflet-top.leaflet-left{left:var(--lx);top:147px}" in response.text
+    assert "@media (max-width:1265px)" in response.text
+
+
+def test_map_page_preserves_real_hooks_with_glass_layer(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    for hook in ('id="map"', 'id="liveTag"', 'id="bars"', 'id="donuts"',
+                 'id="detail"', 'id="list"', 'id="q"', 'id="sort"',
+                 'id="dir"', 'id="chips"', 'id="seg"', 'id="alertBtn"',
+                 'id="btn-logout"', 'id="navToggle"'):
+        assert hook in response.text
+    assert "fetch('/auth/me'" in response.text
+    assert "fetch('/trucks'" in response.text
+    assert "function actualizarUbicaciones" in response.text
+
+
+def test_map_page_integrates_mobile_tabs_with_live_map_only(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    page = response.text
+
+    assert 'id="mobile-tabs"' in page
+    for view in ("panel", "fleet", "map"):
+        assert f'data-mobile-view="{view}"' in page
+        assert f'body[data-mobile-view="{view}"]' in page
+    assert "function setMobileView(view)" in page
+    assert "requestAnimationFrame(() => map.invalidateSize())" in page
+    assert "L.map('map')" in page
+    assert "fetch('/auth/me'" in page
+    assert "fetch('/trucks'" in page
+    assert "function actualizarUbicaciones" in page
+    assert "label.textContent = t.plate" in page
+    assert '<em class="lbl" style="font-style:normal">${t.plate}' not in page
+
+    # The visual prototype's simulated fleet and coordinate-grid map stay out
+    # of the authenticated page; its existing requestAnimationFrame movement
+    # tween is legitimate because it animates received GPS samples.
+    assert "const NAMES" not in page
+    assert "Math.random()" not in page
+    assert 'id="world"' not in page
+    assert "const W = 2400" not in page
+    assert "function loop(now)" not in page
+
+
+def test_map_page_uses_mobile_glass_surfaces_and_floating_controls(client):
+    response = client.get("/map")
+    assert response.status_code == 200
+    page = response.text
+    mobile_styles = page.split("/* Mobile surfaces follow the supplied glass treatment without changing desktop. */", 1)[1].split("</style>", 1)[0]
+
+    assert "@media (max-width:943px){" in mobile_styles
+    assert "body{background:#f4f6fb" in mobile_styles
+    assert 'body[data-mobile-view="panel"] .mapbox,body[data-mobile-view="fleet"] .mapbox{display:none}' in mobile_styles
+    assert 'body[data-mobile-view="map"] .mapbox{display:block}' in mobile_styles
+    assert "flex-wrap:nowrap" in mobile_styles
+    assert ".search{flex:1 1 0%" in mobile_styles
+    assert ".pill{flex:0 0 auto" in mobile_styles
+    assert ".card:not(.mapcard),.side,.top{background:var(--g-bg)" in mobile_styles
+    assert "-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
+    assert ".mobile-tabs{" in mobile_styles
+    assert "background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
+    assert 'body[data-mobile-view="panel"] .mapcard .card-h,body[data-mobile-view="fleet"] .mapcard .card-h{display:none}' in mobile_styles
+    assert "body[data-mobile-view=\"map\"] .mapcard .card-h{position:absolute" in mobile_styles
+    assert ".side .logout{position:fixed" in mobile_styles
+    assert ".leaflet-bar,.leaflet-control-attribution{background:var(--g-bg)" in mobile_styles
+    assert ".leaflet-top.leaflet-left{left:auto;right:10px;top:10px}" in mobile_styles
