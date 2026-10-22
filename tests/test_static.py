@@ -40,7 +40,9 @@ def test_vanilla_frontend_is_retired(client, path):
 @requires_build
 def test_built_js_asset_is_served(client):
     html = client.get("/").text
-    asset = re.search(r'/assets/(index-[^"]+\.js)', html).group(1)
+    match = re.search(r'/assets/(index-[^"]+\.js)', html)
+    assert match is not None, f"no hashed JS asset referenced in {html[:200]}"
+    asset = match.group(1)
     response = client.get(f"/assets/{asset}")
     assert response.status_code == 200
     assert "javascript" in response.headers["content-type"]

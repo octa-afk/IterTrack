@@ -3,9 +3,10 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from source.services.tracking import router as tracking_router
+
 from source.services.auth import router as auth_router
 from source.services.devices import router as devices_router
+from source.services.tracking import router as tracking_router
 
 # Built React app (Vite). Build it with: npm --prefix frontend run build
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"

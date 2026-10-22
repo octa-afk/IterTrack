@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -34,7 +34,7 @@ def authenticate_user(db: Session, username: str, password: str):
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.jwt_algorithm)
 
@@ -47,11 +47,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
-        username: str = payload.get("sub")
+        username: str | None = payload.get("sub")
         if username is None:
             raise credentials_exception
     except JWTError:
-        raise credentials_exception
+        raise credentials_exception from None
     user = db.query(models.User).filter(models.User.username == username).first()
     if user is None:
         raise credentials_exception
@@ -66,7 +66,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario ya existe")
     if db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya está registrado")
-    
+
     organization = None
 
     if user.invitation_code and user.org_name:

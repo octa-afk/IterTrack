@@ -1,12 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from source.database.database import get_db
 from source.main import app
-from source.database.database import Base, get_db
 from source.services.auth import get_current_user
-from source.models.organization import Organization
-from source.models.user import User
-from source.services.auth import hash_password
 
 
 @pytest.fixture()

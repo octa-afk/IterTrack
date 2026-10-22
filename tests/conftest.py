@@ -10,12 +10,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from source.main import app
 from source.database.database import Base, get_db
-from source.services.auth import get_current_user
+from source.main import app
 from source.models.organization import Organization
-from source.models.user import User
 from source.models.truck import Truck
+from source.models.user import User
+from source.services.auth import get_current_user
 
 engine = create_engine(
     "sqlite:///:memory:",

@@ -10,8 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-PASS = []
-FAIL = []
+PASS: list[str] = []
+FAIL: list[str] = []
 
 
 def check(nombre, ok, detalle=""):
@@ -30,10 +30,12 @@ check(
 
 # ---------- 2) API con TestClient en memoria ----------
 import warnings
+
 warnings.filterwarnings("ignore", category=DeprecationWarning, module=r"fastapi.*")
 warnings.filterwarnings("ignore", message=r".*httpx.*starlette.*")
 
 from fastapi.testclient import TestClient
+
 from source.main import app
 
 client = TestClient(app)
@@ -80,8 +82,8 @@ check("[API] historial vacío tras delete", r.status_code == 200 and r.json() ==
 
 # Limpieza de datos de test creados por esta corrida
 try:
-    from source.database.database import SessionLocal
     from source import models
+    from source.database.database import SessionLocal
     db = SessionLocal()
     db.query(models.TrackingPoint).filter(models.TrackingPoint.truck_id == truck_id).delete()
     db.query(models.Truck).filter(models.Truck.id == truck_id).delete()

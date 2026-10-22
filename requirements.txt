@@ -19,6 +19,10 @@ uvicorn[standard]==0.49.0          # ASGI server; [standard] keeps fast --reload
 # --- Development / tooling ---
 httpx==0.28.1                      # Starlette TestClient backend (tests/)
 httpx2==2.10.0                     # Starlette TestClient backend without deprecated httpx fallback
+mypy==2.4.0                        # static type checker (`make check`, config in pyproject.toml)
 pytest==9.1.1                      # test runner (Makefile, CI)
 requests==2.34.2                   # simulator HTTP calls (scripts/simulate_trucks.py)
+ruff==0.17.1                       # linter (`make check`, config in pyproject.toml)
+types-passlib==1.7.7.20260211      # type stubs for passlib (source/services/auth.py)
+types-python-jose==3.5.0.20260408  # type stubs for python-jose (source/services/auth.py)
 python-dotenv==1.2.2               # .env loading for the simulator credentials

@@ -1,21 +1,33 @@
-import os
-import sys
+import argparse
 import json
 import math
-import time
-import argparse
-from datetime import datetime, timezone
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from threading import Event
-import requests
+from datetime import UTC, datetime
 from pathlib import Path
+from threading import Event
+from typing import Protocol
+
+import requests
 
 BASE_URL = os.getenv("API_URL", "http://127.0.0.1:8000/trucks")
 AUTH_URL = os.getenv("AUTH_URL", "http://127.0.0.1:8000/auth/login")
 ROUTE_FILE = Path(__file__).parent / "cordoba_route.json"
 
-HEADERS = {}
+HEADERS: dict[str, str] = {}
+
+
+class StopSignal(Protocol):
+    """Subset of `threading.Event` the simulation loop depends on.
+
+    The loop only needs to know whether it was asked to stop, so it types
+    against this shape and tests can inject their own doubles.
+    """
+
+    def is_set(self) -> bool: ...
+
+    def wait(self, timeout: float | None = None) -> bool: ...
 
 
 @dataclass(frozen=True)
@@ -129,7 +141,7 @@ def calcular_distancia_metros(lat1: float, lon1: float, lat2: float, lon2: float
 def cargar_ruta():
     """Carga los puntos de la ruta realista desde el archivo JSON."""
     if ROUTE_FILE.exists():
-        with open(ROUTE_FILE, "r", encoding="utf-8") as f:
+        with open(ROUTE_FILE, encoding="utf-8") as f:
             return json.load(f)
     else:
         # Fallback a circuito básico si el archivo no estuviese presente
@@ -172,7 +184,7 @@ def registrar_camion(
         else:
             # Si ya existía, la API devuelve error o 200 con mensaje
             data = response.json() if response.headers.get("content-type") == "application/json" else response.text
-            print(f"ℹ️ Info registro camión #{truck_id}: {data}")
+            print(f"ℹ️ Info registro camión #{truck_id}: {data}")  # noqa: RUF001
     except requests.RequestException as e:
         print(f"⚠️ Error conectando al servidor en {BASE_URL}: {e}")
 
@@ -224,7 +236,7 @@ def simular_ruta(
     plate: str,
     intervalo: float,
     headers=None,
-    stop_event: Event | None = None,
+    stop_event: StopSignal | None = None,
     phase_offset: int = 0,
     clear_history_on_start: bool = False,
 ):
@@ -264,7 +276,7 @@ def simular_ruta(
                 telemetria_str = "| Punto de partida"
 
             # Hora de medición: el instante en que el simulador toma la lectura, no el envío.
-            medido_en = datetime.now(timezone.utc)
+            medido_en = datetime.now(UTC)
             ok = actualizar_ubicacion(
                 truck_id,
                 lat,

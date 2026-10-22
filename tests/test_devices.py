@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -99,7 +99,7 @@ def test_truck_cannot_have_two_open_assignments_at_db_level(db_session, test_tru
 def test_closed_assignment_does_not_block_new_open_one(db_session, test_truck):
     provision_device(db_session, "AA:BB:CC:DD:EE:10", test_truck.id)
     closed = open_assignments_for_truck(db_session, test_truck.id)[0]
-    closed.valid_to = datetime.now(timezone.utc)
+    closed.valid_to = datetime.now(UTC)
     db_session.commit()
 
     other = Device(identifier="AA:BB:CC:DD:EE:11", token_hash=hash_device_token("y"))

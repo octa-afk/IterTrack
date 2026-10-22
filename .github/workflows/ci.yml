@@ -46,7 +46,7 @@ jobs:
       - name: Build frontend
         run: make frontend
 
-      - name: Syntax check
+      - name: Lint and type check
         run: make check
 
       - name: Run tests

@@ -20,10 +20,8 @@ migrate:
 	env/bin/alembic upgrade head
 
 check:
-	env/bin/python -m py_compile source/main.py
-	env/bin/python -m py_compile source/services/tracking.py
-	env/bin/python -m py_compile source/services/auth.py
-	env/bin/python -m py_compile source/models/user.py
+	env/bin/python -m ruff check source scripts tests
+	env/bin/mypy source scripts tests
 
 simulation:
 	env/bin/python scripts/simulate_trucks.py \

@@ -1,11 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from source.models.device import Device, DeviceAssignment
 from source.models.ingestion import IngestedPoint, RejectedIngestPoint
-from source.models.truck import TrackingPoint, Truck
-from source.services.devices import hash_device_token, provision_device
+from source.models.truck import TrackingPoint
 from source.schemas.ingestion import DeviceIngestBatch, DeviceIngestPoint
+from source.services.devices import provision_device
 
 
 def payload(batch_id=None, points=None):
@@ -13,7 +13,7 @@ def payload(batch_id=None, points=None):
         "batch_id": str(batch_id or uuid4()),
         "points": points or [{
             "sequence": 1, "lat": -31.4, "long": -64.2, "speed": 20,
-            "heading": 90, "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "heading": 90, "recorded_at": datetime.now(UTC).isoformat(),
         }],
     }
 
@@ -28,8 +28,8 @@ def test_ingest_contract_version_defaults_and_rejects_unknown_version():
     point = payload()["points"][0]
     assert DeviceIngestBatch.model_validate({"batch_id": str(uuid4()), "points": [point]}).v == 1
     assert DeviceIngestBatch.model_validate({"v": 1, "batch_id": str(uuid4()), "points": [point]}).v == 1
-    from pydantic import ValidationError
     import pytest
+    from pydantic import ValidationError
     with pytest.raises(ValidationError):
         DeviceIngestBatch.model_validate({"v": 2, "batch_id": str(uuid4()), "points": [point]})
 
@@ -44,8 +44,8 @@ def test_ingest_point_normalizes_utc_and_heading():
 
 
 def test_ingest_point_rejects_timestamp_without_timezone():
-    from pydantic import ValidationError
     import pytest
+    from pydantic import ValidationError
     with pytest.raises(ValidationError):
         DeviceIngestPoint.model_validate({
             "sequence": 1, "lat": -31.4, "long": -64.2, "speed": 20,
@@ -87,9 +87,9 @@ def test_partial_acceptance_preserves_rejected_raw_payload(client, test_truck, d
 def test_assignment_is_resolved_by_recorded_at_and_inactive_truck_rejected(client, test_truck, db_session):
     token = provision_device(db_session, "INGEST-TIME", test_truck.id)
     assignment = db_session.query(DeviceAssignment).one()
-    assignment.valid_from = datetime.now(timezone.utc) - timedelta(days=1)
+    assignment.valid_from = datetime.now(UTC) - timedelta(days=1)
     db_session.commit()
-    point_time = datetime.now(timezone.utc) - timedelta(hours=1)
+    point_time = datetime.now(UTC) - timedelta(hours=1)
     body = payload(points=[{**payload()["points"][0], "recorded_at": point_time.isoformat()}])
     response = client.post("/devices/ingest", json=body, headers={"Authorization": f"Bearer {token}"})
     assert response.json()["results"][0]["status"] == "accepted"
