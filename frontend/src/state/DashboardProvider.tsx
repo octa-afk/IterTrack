@@ -2,11 +2,12 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, clearToken, getToken } from '../api/client';
 import { me } from '../api/auth';
-import { getLocation, listTrucks } from '../api/trucks';
+import { getHistory, getLocation, listTrucks } from '../api/trucks';
 import {
   DEFAULT_FILTERS,
   POLL_MS,
   aplicarPunto,
+  buildHistory,
   crearEstadoCamion,
   filterAndSortTrucks,
   type Filters,
@@ -86,6 +87,26 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const visibleTrucks = filterAndSortTrucks(trucks, filters);
   const selectedTruck = trucks.find((t) => t.id === selectedId) ?? null;
 
+  /* GET /trucks/{id}/iter -> real speed history for the detail sparkline. */
+  const select = (id: number) => {
+    setSelectedId(id);
+    void (async () => {
+      try {
+        const points = await getHistory(id);
+        const history = buildHistory(points);
+        if (!history.length) return;
+        setTrucks((prev) =>
+          prev.map((truck) => (truck.id === id ? { ...truck, history } : truck)),
+        );
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          clearToken();
+          navigate('/');
+        }
+      }
+    })();
+  };
+
   const value: DashboardState = {
     trucks,
     selectedId,
@@ -94,7 +115,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     ready,
     visibleTrucks,
     selectedTruck,
-    select: setSelectedId,
+    select,
     setFilter: (patch) => setFilters((f) => ({ ...f, ...patch })),
   };
 
