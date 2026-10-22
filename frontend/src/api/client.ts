@@ -50,7 +50,19 @@ async function readDetail(res: Response): Promise<unknown> {
 function detailMessage(detail: unknown, fallback: string): string {
   if (typeof detail === 'string') return detail;
   if (detail === undefined || detail === null) return fallback;
-  return JSON.stringify(detail);
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => (item && typeof item === 'object' && 'msg' in item
+        ? String((item as { msg?: unknown }).msg)
+        : String(item)))
+      .filter(Boolean);
+    if (messages.length) return messages.join('; ');
+    return fallback;
+  }
+  if (typeof detail === 'object' && 'msg' in detail) {
+    return String((detail as { msg?: unknown }).msg);
+  }
+  return fallback;
 }
 
 /**
