@@ -1,0 +1,64 @@
+/*
+ * Types mirroring the FastAPI contract:
+ *   - source/schemas/auth.py   -> UserCreate, UserResponse, Token
+ *   - source/schemas/truck.py  -> Location, TrackingPoint shape
+ *   - source/models/truck.py   -> Truck, TrackingPoint ORM columns
+ *
+ * These are the single source of truth for the typed API client. Keep them in
+ * sync with the backend schemas when the contract changes.
+ */
+
+// ---- Auth (source/schemas/auth.py) ----
+
+export interface UserCreate {
+  username: string;
+  email: string;
+  full_name: string;
+  password: string;
+  invitation_code?: string | null;
+  org_name?: string | null;
+}
+
+export interface UserResponse {
+  id: number;
+  username: string;
+  email: string;
+  full_name: string;
+  disabled: boolean;
+}
+
+export interface Token {
+  access_token: string;
+  token_type: string;
+}
+
+// ---- Trucks (source/schemas/truck.py + source/models/truck.py) ----
+
+/** GET /trucks returns the ORM rows; the dashboard consumes id and plate. */
+export interface Truck {
+  id: number;
+  plate: string;
+}
+
+/** Payload accepted by POST /trucks/{id}/location and PUT. */
+export interface Location {
+  lat: number;
+  long: number;
+  speed?: number;
+  heading?: number;
+  /** ISO-8601 timestamp with timezone; omitted -> server time. */
+  recorded_at?: string | null;
+}
+
+/** A stored tracking point, as returned by /location and /iter. */
+export interface TrackingPoint {
+  id: number;
+  truck_id: number;
+  lat: number;
+  long: number;
+  speed: number;
+  heading: number;
+  timestamp: string;
+  recorded_at: string;
+  received_at: string;
+}
