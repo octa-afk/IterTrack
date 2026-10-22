@@ -77,16 +77,18 @@ def reassign_truck_organization(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
 ):
-    truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
+    truck = (
+        db.query(models.Truck)
+        .filter(
+            models.Truck.id == truck_id,
+            models.Truck.organization_id == current_user.organization_id,
+        )
+        .first()
+    )
     if not truck:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="camión no encontrado",
-        )
-    if truck.organization_id != current_user.organization_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes reasignar un camión de otra organización",
         )
     org = (
         db.query(models.Organization)
