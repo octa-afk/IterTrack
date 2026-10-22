@@ -11,6 +11,9 @@ class Truck(BaseModel):
 class TruckActive(BaseModel):
         active: bool
 
+class TruckReassign(BaseModel):
+        organization_id: int
+
 #ubicacion
 class Location(BaseModel):
         lat: float = Field(ge=-90, le=90)
