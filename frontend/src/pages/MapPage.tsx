@@ -5,6 +5,7 @@ import { Topbar } from '../components/Topbar';
 import { MobileTabs } from '../components/MobileTabs';
 import { FleetList } from '../components/FleetList';
 import MapView from '../components/MapView';
+import { BottomCards } from '../components/BottomCards';
 import { TruckDetail } from '../components/TruckDetail';
 import { clearToken } from '../api/client';
 import { DashboardProvider } from '../state/DashboardProvider';
@@ -59,19 +60,7 @@ export default function MapPage() {
                   <MapView />
                 </div>
               </div>
-              <div className="bottom">
-                <div className="card">
-                  <div className="card-h">
-                    <h3>Velocidad por camión</h3>
-                    <span className="tag">Ahora</span>
-                  </div>
-                  <div className="bars" id="bars" />
-                </div>
-                <div className="card">
-                  <h3>Resumen de flota</h3>
-                  <div className="donuts" id="donuts" />
-                </div>
-              </div>
+              <BottomCards />
             </div>
             <div className="col">
               <FleetList />
