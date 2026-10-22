@@ -13,6 +13,7 @@ app.include_router(devices_router)
 # Only the asset directories are exposed; the HTML routes stay as explicit
 # FileResponse endpoints so the source pages are never served as raw files.
 app.mount("/static/css", StaticFiles(directory="source/static/css"), name="css")
+app.mount("/static/js", StaticFiles(directory="source/static/js"), name="js")
 
 @app.get("/health")
 def health():
