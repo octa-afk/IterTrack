@@ -15,7 +15,7 @@ MEASUREMENT_ORDER = (models.TrackingPoint.recorded_at.desc(), models.TrackingPoi
 
 #agrega un camión a la base de datos
 @router.post("")
-def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
     if db.query(models.Truck).filter(models.Truck.id == truck.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El camión ya existe")
     if db.query(models.Truck).filter(models.Truck.plate == truck.plate).first():
@@ -175,7 +175,7 @@ def get_history_truck(truck_id: int, limit: int = Query(100, ge=1, le=1000), db:
 
 #Borra los puntos de tracking del camión sin eliminar el camión
 @router.delete("/{truck_id}/iter", status_code=status.HTTP_204_NO_CONTENT)
-def delete_truck_iter(truck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def delete_truck_iter(truck_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
     truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
     if not truck or truck.organization_id != current_user.organization_id:
         raise HTTPException(
