@@ -34,7 +34,7 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
 ## 3. Ramas y Flujo de Trabajo Git
 
 * `main`: Rama de producción / código estable.
-* `experiment/http`: Rama activa de desarrollo para el backend HTTP, base de datos y esquemas.
+* `develop`: Rama activa de desarrollo e integración (backend HTTP, base de datos, esquemas y frontend).
 * `IterTrack-Hardware`: Rama dedicada exclusivamente al firmware ESP32 y código PlatformIO (`Iter-Hard/`).
 
 ---
@@ -128,7 +128,7 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
 * **Validación de Coordenadas (Completada):**
   * `source/schemas/truck.py` valida `lat` entre `-90` y `90` y `long` entre `-180` y `180` con `Field(ge=..., le=...)`.
 * **CI/CD con GitHub Actions (Completada):**
-  * Workflow en `.github/workflows/ci.yml`. Se ejecuta en `push` y `pull_request` sobre `main` y `experiment/http`, y también manualmente (`workflow_dispatch`).
+  * Workflow en `.github/workflows/ci.yml`. Se ejecuta en `push` y `pull_request` sobre `main` y `develop`, y también manualmente (`workflow_dispatch`).
   * Steps: creación del virtualenv `env/`, `pip install -r requirements.txt`, `make check` y `make test`.
   * **Los targets del `Makefile` invocan `env/bin/python`**, por eso el workflow crea el venv antes de ejecutarlos; sin ese paso falla en el primer step.
   * No requiere servicio de PostgreSQL: `tests/conftest.py` usa SQLite en memoria con `dependency_overrides`.

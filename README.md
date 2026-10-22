@@ -356,7 +356,7 @@ El registro crea una organización con `org_name` o asocia al usuario a una orga
    * Las contraseñas nunca se almacenan en texto plano: se hashean con bcrypt antes de persistir en la tabla `users`.
    * `UserResponse` garantiza que `hashed_password` nunca se expone en las respuestas.
 4. **Integración Continua:**
-   * Cada `push` y cada pull request sobre `main` y `experiment/http` corre automáticamente `make check` y `make test` en GitHub Actions (`.github/workflows/ci.yml`).
+   * Cada `push` y cada pull request sobre `main` y `develop` corre automáticamente `make check` y `make test` en GitHub Actions (`.github/workflows/ci.yml`).
    * El workflow crea el virtualenv `env/` que el `Makefile` espera; no requiere PostgreSQL porque los tests usan SQLite en memoria.
    * El badge de la cabecera refleja el estado del último commit.
 
