@@ -1,5 +1,5 @@
 # React frontend migration
-Branch: feat/telemetry-contract-hardening
+Branch: feat/react-frontend-migration
 Delivery: incremental work-unit commits
 Test runner: `make test && make check`; `npm run build` from Fase 2 onward.
 
