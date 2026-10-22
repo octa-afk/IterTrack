@@ -20,8 +20,8 @@ monolithic `App.tsx`, commits `035d82b`..`fc52895`) was reverted in `8eb1580`.
 - T2 (S1): Migrate the authenticated map dashboard and Leaflet integration. Superseded — reverted in `8eb1580`.
 - T3 (S1): Switch FastAPI static serving to the React build. Superseded — reverted in `8eb1580`.
 - T4 (S2, S3): Extract all inline CSS from the four static pages into `source/static/css/`, add the `/static` mount in FastAPI, and repoint the static tests at the served CSS instead of the HTML body. Route: inline. Status: complete. Commit: dda1f26.
-- T5 (S2, S3): Extract the `map.html` application script into native ES modules under `source/static/js/`, one module per existing responsibility. Route: inline. Status: complete; session, API boundary, explicit store, truck synchronization, telemetry, selection, movement, charts, list, marker, and detail rendering all extracted.
-- T6 (S2, S3, S4): Move the sidebar-toggle IIFE into a module, run the full suite, and smoke `/`, `/map`, `/register` in the browser. Route: inline. Status: complete.
+- T5 (S2, S3): Extract the `map.html` application script into native ES modules under `source/static/js/`, one module per existing responsibility. Route: inline. Status: complete. Commit: 74a5c18.
+- T6 (S2, S3, S4): Move the sidebar-toggle IIFE into a module, run the full suite, and smoke `/`, `/map`, `/register` in the browser. Route: inline. Status: complete. Commit: 74a5c18.
 - T7 (S1, S2): Scaffold Vite + React + TS, reusing `css/tokens.css`, with router and typed API client. Route: inline. Status: pending.
 - T8 (S1): Port the shell (sidebar, topbar, mobile tabs) as components. Route: inline. Status: pending.
 - T9 (S1): Port fleet list, filters, and detail card. Route: inline. Status: pending.
