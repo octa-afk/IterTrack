@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from source import models, schemas
 from source.database.database import get_db
-from source.schemas.truck import TruckActive
+from source.schemas.truck import TruckActive, TruckReassign
 from source.services.auth import get_current_admin_user, get_current_user
 
 router = APIRouter(prefix="/trucks", tags=["trucks"])
@@ -67,6 +67,44 @@ def activate_truck(
         "mensaje": f"Camión {'activado' if payload.active else 'desactivado'}",
         "truck_id": truck.id,
         "active": truck.active,
+    }
+
+# Reasigna un camión a otra organización. Solo administradores.
+@router.patch("/{truck_id}/organization")
+def reassign_truck_organization(
+    truck_id: int,
+    payload: TruckReassign,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user),
+):
+    truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
+    if not truck:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="camión no encontrado",
+        )
+    if truck.organization_id != current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes reasignar un camión de otra organización",
+        )
+    org = (
+        db.query(models.Organization)
+        .filter(models.Organization.id == payload.organization_id)
+        .first()
+    )
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organización destino no encontrada",
+        )
+    truck.organization_id = payload.organization_id
+    db.commit()
+    db.refresh(truck)
+    return {
+        "mensaje": "Camión reasignado a nueva organización",
+        "truck_id": truck.id,
+        "organization_id": truck.organization_id,
     }
 
 #Agrega un punto de ubicación al historial del camión
