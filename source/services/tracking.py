@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from source import models, schemas
 from source.database.database import get_db
-from source.services.auth import get_current_user
+from source.schemas.truck import TruckActive
+from source.services.auth import get_current_admin_user, get_current_user
 
 router = APIRouter(prefix="/trucks", tags=["trucks"])
 
@@ -36,6 +37,36 @@ def add_truck(truck: schemas.Truck, location: schemas.Location, db: Session = De
     return {
         "mensaje": "Camión agregado",
         "truck": truck
+    }
+
+# Cambia el estado activo/inactivo de un camión. Solo administradores.
+@router.patch("/{truck_id}/activate")
+def activate_truck(
+    truck_id: int,
+    payload: TruckActive,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user),
+):
+    truck = (
+        db.query(models.Truck)
+        .filter(
+            models.Truck.id == truck_id,
+            models.Truck.organization_id == current_user.organization_id,
+        )
+        .first()
+    )
+    if not truck:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="camión no encontrado",
+        )
+    truck.active = payload.active
+    db.commit()
+    db.refresh(truck)
+    return {
+        "mensaje": f"Camión {'activado' if payload.active else 'desactivado'}",
+        "truck_id": truck.id,
+        "active": truck.active,
     }
 
 #Agrega un punto de ubicación al historial del camión

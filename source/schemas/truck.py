@@ -8,6 +8,9 @@ class Truck(BaseModel):
         id: int
         plate: str
 
+class TruckActive(BaseModel):
+        active: bool
+
 #ubicacion
 class Location(BaseModel):
         lat: float = Field(ge=-90, le=90)
