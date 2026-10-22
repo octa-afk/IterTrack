@@ -12,7 +12,7 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
   1. **Backend:** API REST construida con **FastAPI** (`source/`).
   2. **Persistencia:** Base de datos relacional **PostgreSQL** administrada mediante **SQLAlchemy 2.0** y **Alembic** (`source/models/`, `alembic/`).
   3. **Autenticación:** Sistema **OAuth2 + JWT** con hashing bcrypt (`source/services/auth.py`, `source/models/user.py`, `source/schemas/auth.py`). Dependencias: `python-jose[cryptography]`, `passlib[bcrypt]`.
-  4. **Visualización / Frontend:** Mapa interactivo en tiempo real con **OpenStreetMap** y **Leaflet** (`source/static/map.html`, servido en `/map`) con orientación cenital del vehículo, cálculo de rumbo y flechas adaptativas. Acceso en navegador vía `source/static/login.html` (`/`) y `source/static/register.html` (`/register`).
+  4. **Visualización / Frontend:** SPA en **React 19 + TypeScript + Vite** (`frontend/`), compilada a `frontend/dist` y servida por FastAPI. Mapa en tiempo real con **Leaflet + MapLibre** (OpenFreeMap), orientación cenital del vehículo, cálculo de rumbo y flechas adaptativas. Rutas `/`, `/register` y `/map`.
   5. **Simulador:** Script Python con ruta urbana realista de 13 km por Córdoba Capital (`scripts/simulate_trucks.py`, `scripts/cordoba_route.json`).
   6. **Hardware Embebido:** Firmware C++ para microcontroladores **ESP32** con **PlatformIO** (ubicado en la rama `origin/IterTrack-Hardware`).
 
@@ -70,13 +70,15 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Las contraseñas nunca se almacenan en texto plano — se hashean con bcrypt antes de persistir en la tabla `users`.
    * El `response_model=UserResponse` en endpoints garantiza que `hashed_password` nunca se expone en respuestas JSON.
 
-6. **Assets estáticos (`source/static/`):**
-   * Se sirven con `FileResponse` desde `source/main.py`: `GET /` → `login.html` (página de login), `GET /map` → `map.html`, `GET /register` → `register.html` (página de registro) y `GET /favicon.ico` → `isologo.png`.
-   * `GET /favicon.ico` lleva `include_in_schema=False` para que no aparezca en `/docs`.
-   * El login es client-side: `login.html` envía usuario/contraseña a `POST /auth/login` como `application/x-www-form-urlencoded`, guarda el `access_token` en `localStorage` (clave `itertrack_token`) y redirige a `/map`.
-   * El registro es client-side: `register.html` envía usuario/email/nombre completo/contraseña a `POST /auth/register` como JSON; ante un `201` hace login automático con `POST /auth/login`, guarda el token y redirige a `/map`. Ante `400`/`422` muestra el `detail` de la API con `textContent` (nunca `innerHTML`). El login enlaza a `/register` y `register.html` enlaza de vuelta a `/`.
-   * La protección de `/map` también es client-side: `map.html` valida el token contra `GET /auth/me` con header `Authorization: Bearer` al cargar; sin token o con respuesta 401 limpia `localStorage` y redirige a `/`. Todos los `fetch` de la página adjuntan el header y hay un botón "Cerrar sesión" que borra el token.
-   * Si se reemplaza el ícono, mantener el nombre del archivo o actualizar el endpoint (no se usa `StaticFiles`).
+6. **Frontend React (`frontend/`):**
+   * La UI es una SPA de **React 19 + TypeScript + Vite** en `frontend/`; se compila a `frontend/dist` con `npm --prefix frontend run build` (o `make frontend`).
+   * `source/main.py` sirve ese build: `GET /`, `GET /register` y `GET /map` devuelven `frontend/dist/index.html` (React Router resuelve la ruta) y `/assets/*` monta los archivos hasheados con `StaticFiles`. Si el build no existe, esos endpoints responden `503` con el comando para generarlo.
+   * El único asset estático restante es `source/static/isologo.png`, servido en `/favicon.ico` con `include_in_schema=False`.
+   * El login es client-side: `LoginPage` envía usuario/contraseña a `POST /auth/login` como `application/x-www-form-urlencoded`, guarda el `access_token` en `localStorage` (clave `itertrack_token`) y navega a `/map`.
+   * El registro es client-side: `RegisterPage` envía usuario/email/nombre completo/contraseña a `POST /auth/register` como JSON; ante un `201` hace login automático, guarda el token y navega a `/map`. Muestra el `detail` de la API como texto (nunca `innerHTML`).
+   * La protección de `/map` es client-side: `DashboardProvider` valida el token contra `GET /auth/me` al montar; sin token o con `401` limpia el storage y redirige a `/`.
+   * En desarrollo, Vite (`:5173`) proxya `/auth`, `/trucks`, `/devices` y `/health` a `http://localhost:8000` (ver `frontend/vite.config.ts`). En producción se sirve el build desde FastAPI.
+   * `frontend/dist` está en `.gitignore`: no se commitea el build.
 
 ---
 
@@ -146,7 +148,7 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
 * **Telemetría de velocidad y rumbo (Implementada):**
   * `Location` admite `speed` y `heading`; ambos valores se guardan en cada punto de tracking. La integración del hardware puede enviar estos campos cuando estén disponibles.
 * **Registro en el navegador (Completada):**
-  * `GET /register` sirve `source/static/register.html`, enlazado desde `login.html`. El flujo completo está descrito en la sección 4.6.
+  * `/register` sirve la SPA; `RegisterPage` hace el registro + auto-login y navega a `/map`. El flujo completo está descrito en la sección 4.6.
 
 ---
 
@@ -159,9 +161,16 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   env/bin/python -m py_compile source/services/auth.py
   env/bin/python -m py_compile source/models/user.py
   ```
+* **Compilar el frontend (necesario para servir `/`, `/register` y `/map`):**
+  ```bash
+  make frontend        # npm ci && npm run build en frontend/
+  ```
+  Si `frontend/dist` no existe, FastAPI responde `503` en esas rutas y los tests
+  de SPA se saltean.
+
 * **Correr exactamente lo que corre el CI (local):**
   ```bash
-  make check && make test
+  make frontend && make check && make test
   ```
   Si esto pasa en local, el workflow de GitHub Actions pasa en el runner.
 * **Comprobar carga de configuración:**

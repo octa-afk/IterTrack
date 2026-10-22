@@ -1,5 +1,0 @@
-/* Register-only surfaces. */
-.mode{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--field)}
-.mode button{border:0;background:none;color:var(--muted);font:600 16px Poppins;padding:12px;cursor:pointer;transition:background .15s,color .15s}
-.mode button.active{background:var(--acc);color:#fff}
-.mode button:hover:not(.active){background:var(--acc-xl)}

@@ -62,7 +62,7 @@ flowchart TD
     end
 
     subgraph Clientes["Visualización / Clientes"]
-        MAP["Mapa en Vivo Leaflet (static/map.html)"]
+        MAP["Panel React + Leaflet (frontend/)"]
         DOCS["Swagger / ReDoc (/docs)"]
     end
 
@@ -106,9 +106,7 @@ IterTrack/
 └── source/
     ├── main.py                    # Punto de entrada de la aplicación FastAPI (API y /map)
     ├── static/
-    │   ├── login.html               # Página de login (enlace a /register)
-    │   ├── register.html            # Formulario de registro con auto-login
-    │   └── map.html               # Frontend interactivo con Leaflet, rumbo y telemetría
+    │   └── isologo.png              # Ícono del sitio (/favicon.ico)
     ├── database/
     │   ├── config.py              # Carga de variables de entorno (DB, JWT)
     │   └── database.py            # Motor de conexión, SessionLocal y Base declarativa
@@ -282,10 +280,10 @@ git checkout IterTrack-Hardware
 
 | Método | Endpoint | Descripción | Cuerpo de la Petición (Ejemplo) | Auth |
 |---|---|---|---|---|
-| `GET` | `/` | Página de login (`static/login.html`) | — | — |
-| `GET` | `/register` | Página de registro (`static/register.html`) | — | — |
-| `GET` | `/map` | Página pública; el frontend valida la sesión antes de consultar la API | — | — |
-| `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`static/isologo.png`) | — | — |
+| `GET` | `/` | SPA React (`frontend/dist/index.html`) — login | — | — |
+| `GET` | `/register` | SPA React — registro | — | — |
+| `GET` | `/map` | SPA React — panel; valida la sesión antes de consultar la API | — | — |
+| `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`source/static/isologo.png`) | — | — |
 | `POST` | `/auth/register` | Registra un usuario; el JSON incluye `org_name` o `invitation_code` | Ver JSON de registro abajo | — |
 | `POST` | `/auth/login` | Login OAuth2 (form-data) y devuelve JWT | `username` / `password` (form) | — |
 | `GET` | `/auth/me` | Datos del usuario autenticado | — | 🔒 Bearer |
