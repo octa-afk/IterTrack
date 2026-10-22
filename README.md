@@ -28,7 +28,7 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 
 * **Registro y gestión de camiones:** Identificación única por ID y patente vehicular única.
 * **Telemetría GPS en tiempo real:** Recepción continua de coordenadas, velocidad, rumbo y timestamp.
-* **Monitoreo en vivo en mapa interactivo:** Visualización en tiempo real sobre OpenStreetMap y Leaflet (`/map`) con rotación de vehículo según rumbo (*bearing*), flechas direccionales adaptativas al zoom y seguimiento automático.
+* **Panel en vivo (SPA React):** Aplicación **React 19 + TypeScript + Vite** servida por FastAPI en `/map`, con mapa **Leaflet + MapLibre** sobre OpenStreetMap, rotación del vehículo según rumbo (*bearing*), flechas direccionales adaptativas al zoom y seguimiento automático.
 * **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
 * **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`); todos los endpoints de camiones, tanto de lectura como de escritura, requieren token Bearer. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
 * **Persistencia Robusta:** Modelos relacionales con SQLAlchemy 2.0 y control de versiones de esquema con Alembic sobre PostgreSQL.
@@ -90,37 +90,54 @@ flowchart TD
 IterTrack/
 ├── README.md                      # Documentación principal del proyecto
 ├── AGENTS.md                      # Reglas, arquitectura e instrucciones para agentes de IA
+├── ROADMAP.md                     # Visión de producto y fases
+├── Makefile                       # test, check, frontend, migrate, dev y simulation
 ├── requirements.txt               # Dependencias Python del proyecto
 ├── .gitignore                     # Filtro de exclusiones para Git
 ├── .env.example                   # Plantilla de variables de entorno (sin credenciales reales)
 ├── alembic.ini.example            # Plantilla de configuración para migraciones de Alembic
+├── frontend/                      # SPA React 19 + TypeScript + Vite
+│   ├── src/
+│   │   ├── api/                   # Clientes tipados de /auth y /trucks
+│   │   ├── components/            # Mapa, lista de flota, gráficos y tarjetas
+│   │   ├── lib/                   # Helpers puros (truckIcon, movement, trucks)
+│   │   ├── pages/                 # LoginPage, RegisterPage, MapPage
+│   │   ├── state/                 # DashboardProvider: sesión, polling y selección
+│   │   ├── styles/                # base.css, auth.css, dashboard.css
+│   │   └── types/                 # Tipos del contrato de la API
+│   ├── vite.config.ts             # Dev server con proxy a :8000
+│   └── package.json
 ├── scripts/
 │   ├── simulate_trucks.py         # Script para simular recorrido y envío de datos GPS
 │   └── cordoba_route.json         # Coordenadas georreferenciadas de la ruta urbana de prueba
+├── tests/                         # Suite pytest (SQLite en memoria)
 ├── alembic/
 │   ├── env.py                     # Configuración del entorno de migración de Alembic
 │   ├── script.py.mako             # Template para generación de revisiones
 │   └── versions/                  # Historial de migraciones de la base de datos
-│       ├── abfa27c3f9e8_crear_tablas_trucks_y_tracking_points.py
-│       └── 391c6b7b75c0_create_users_table.py
 └── source/
-    ├── main.py                    # Punto de entrada de la aplicación FastAPI (API y /map)
+    ├── main.py                    # FastAPI: routers, SPA en /, /register y /map, y /assets
     ├── static/
-    │   └── isologo.png              # Ícono del sitio (/favicon.ico)
+    │   └── isologo.png            # Ícono del sitio (/favicon.ico)
     ├── database/
     │   ├── config.py              # Carga de variables de entorno (DB, JWT)
     │   └── database.py            # Motor de conexión, SessionLocal y Base declarativa
     ├── models/
     │   ├── __init__.py
+    │   ├── device.py              # Dispositivos GPS y asignaciones a camiones
+    │   ├── ingestion.py           # Puntos ingeridos y rechazados
+    │   ├── organization.py        # Organizaciones (multitenancy)
     │   ├── truck.py               # Modelos ORM: Truck y TrackingPoint
     │   └── user.py                # Modelo ORM: User
     ├── schemas/
     │   ├── __init__.py
-    │   ├── truck.py               # Esquemas Pydantic: Truck, Location, TrackingPoint
-    │   └── auth.py                # Esquemas Pydantic: UserCreate, UserResponse, Token
+    │   ├── auth.py                # UserCreate, UserResponse, Token
+    │   ├── ingestion.py           # DeviceIngestBatch / DeviceIngestPoint (contrato v1)
+    │   └── truck.py               # Truck, Location, TrackingPoint
     └── services/
-        ├── tracking.py            # Endpoints de la API (/trucks)
-        └── auth.py                # Utilidades JWT + endpoints (/auth)
+        ├── auth.py                # Utilidades JWT + endpoints (/auth)
+        ├── devices.py             # Ingesta por lotes con token de dispositivo (/devices)
+        └── tracking.py            # Endpoints de la API (/trucks)
 ```
 
 > **Nota:** El código fuente del hardware embebido se gestiona en la rama `origin/IterTrack-Hardware` dentro del directorio `Iter-Hard/`.
@@ -136,6 +153,9 @@ IterTrack/
 * **ORM:** [SQLAlchemy 2.0](https://www.sqlalchemy.org/).
 * **Migraciones:** [Alembic](https://alembic.sqlalchemy.org/).
 * **Validación de Datos:** [Pydantic v2](https://docs.pydantic.dev/) & [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
+* **Frontend:** [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vite.dev/).
+* **Mapa:** [Leaflet 1.9](https://leafletjs.com/) + [MapLibre GL](https://maplibre.org/) con mosaicos de OpenFreeMap.
+* **Lint del frontend:** [oxlint](https://oxc.rs/docs/guide/usage/linter).
 * **Cliente HTTP de pruebas:** [Requests](https://requests.readthedocs.io/).
 * **Autenticación:** [python-jose](https://python-jose.readthedocs.io/) (JWT), [passlib](https://passlib.readthedocs.io/) + bcrypt.
 * **Hardware:** [PlatformIO](https://platformio.org/) / C++ / ESP32 (Arduino framework).
@@ -146,7 +166,8 @@ IterTrack/
 
 1. **Python 3.12 o superior** instalado en el sistema.
 2. **Servidor PostgreSQL** en ejecución local o remoto con una base de datos creada (ej. `itertrack`).
-3. **Git** instalado.
+3. **Node.js 22 o superior** (solo para compilar el frontend con Vite).
+4. **Git** instalado.
 
 ---
 
@@ -205,26 +226,58 @@ Aplica las migraciones para crear las tablas en PostgreSQL:
 alembic upgrade head
 ```
 
+### 6. Compilar el Frontend
+
+FastAPI sirve el build de React desde `frontend/dist`. Sin ese build, `/`, `/register` y `/map` responden `503`.
+
+```bash
+make frontend   # npm ci && npm run build en frontend/
+```
+
+`frontend/dist` está en `.gitignore`: no se commitea, así que cada clon nuevo necesita este paso una vez.
+
 ---
 
 ## ▶️ Ejecución
 
-Inicia el servidor de desarrollo con Uvicorn:
+Inicia el servidor con Uvicorn:
 
 ```bash
 uvicorn source.main:app --reload --port 8000
 ```
 
-El servidor quedará disponible en `http://127.0.0.1:8000`.
+El servidor quedará disponible en `http://127.0.0.1:8000` y sirve tanto la API como la SPA. Necesita `frontend/dist` compilado (paso 6); si falta, las rutas de la SPA responden `503`.
 
 ### 📖 Documentación Interactiva
 
 Una vez iniciado el servidor, puedes interactuar directamente con los endpoints y el mapa desde el navegador:
 
 * **Login:** [http://127.0.0.1:8000/](http://127.0.0.1:8000/) (acceso al mapa; el enlace "Registrate" lleva a `/register`)
-* **Mapa en Vivo (Leaflet):** [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map) (la página valida la sesión y consulta la API con Bearer JWT)
+* **Panel en Vivo:** [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map) (la SPA valida la sesión y consulta la API con Bearer JWT)
 * **Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 * **ReDoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+
+### 🧑‍💻 Desarrollo del Frontend
+
+Para trabajar en la UI con recarga en caliente, levanta la API en `:8000` y el dev server de Vite en paralelo:
+
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:5173
+```
+
+Vite proxya `/auth`, `/trucks`, `/devices` y `/health` a `http://localhost:8000` (ver `frontend/vite.config.ts`), así que el navegador no necesita configuración extra.
+
+### 🧪 Pruebas
+
+```bash
+make frontend && make check && make test   # backend + tests de la SPA servida
+npm --prefix frontend run lint             # oxlint
+npm --prefix frontend run build            # typecheck (tsc) + build
+```
+
+Los tests de pytest usan SQLite en memoria y no requieren PostgreSQL. Los tests que verifican el servido de la SPA y las regresiones de CSS se saltean si `frontend/dist` no existe.
 
 ---
 
@@ -284,6 +337,8 @@ git checkout IterTrack-Hardware
 | `GET` | `/register` | SPA React — registro | — | — |
 | `GET` | `/map` | SPA React — panel; valida la sesión antes de consultar la API | — | — |
 | `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`source/static/isologo.png`) | — | — |
+| `GET` | `/health` | Estado del servicio (`{"status": "ok"}`) | — | — |
+| `GET` | `/assets/{archivo}` | CSS y JS hasheados del build de React | — | — |
 | `POST` | `/auth/register` | Registra un usuario; el JSON incluye `org_name` o `invitation_code` | Ver JSON de registro abajo | — |
 | `POST` | `/auth/login` | Login OAuth2 (form-data) y devuelve JWT | `username` / `password` (form) | — |
 | `GET` | `/auth/me` | Datos del usuario autenticado | — | 🔒 Bearer |
@@ -294,6 +349,7 @@ git checkout IterTrack-Hardware
 | `DELETE` | `/trucks/{truck_id}/iter` | Elimina los puntos de tracking del camión, no el camión | — | 🔒 Bearer |
 | `GET` | `/trucks` | Lista los camiones de la organización del usuario autenticado | — | 🔒 Bearer |
 | `GET` | `/trucks/ids` | Lista IDs y patentes de los camiones de la organización del usuario autenticado | — | 🔒 Bearer |
+| `POST` | `/devices/ingest` | Ingesta por lotes de telemetría, autenticada con el token del dispositivo (no JWT humano) | `{"v": 1, "batch_id": "<uuid>", "points": [{"sequence": 1, "lat": -31.416, "long": -64.183, "speed": 0, "heading": 0, "recorded_at": "2026-01-01T12:00:00Z"}]}` | 🔑 Token de dispositivo |
 
 ### Flujo de autenticación:
 
@@ -350,12 +406,12 @@ El registro crea una organización con `org_name` o asocia al usuario a una orga
 2. **Validación de Datos:**
    * Las coordenadas GPS deben restringirse en los esquemas Pydantic (`-90 <= lat <= 90` y `-180 <= long <= 180`).
 3. **Autenticación:**
-   * Implementada con OAuth2 Password Flow + JWT (HS256). Todos los endpoints `/trucks` (lectura y escritura) requieren Bearer Token; las páginas estáticas se sirven públicamente, pero `/map` valida la sesión en el navegador antes de mostrar los datos. `GET /auth/me` devuelve el usuario autenticado.
+   * Implementada con OAuth2 Password Flow + JWT (HS256). Todos los endpoints `/trucks` (lectura y escritura) requieren Bearer Token; la SPA se sirve públicamente, pero `/map` valida la sesión en el navegador antes de mostrar los datos. `GET /auth/me` devuelve el usuario autenticado. La ingesta de dispositivos (`/devices/ingest`) usa un token propio por equipo, separado de las cuentas humanas.
    * Las contraseñas nunca se almacenan en texto plano: se hashean con bcrypt antes de persistir en la tabla `users`.
    * `UserResponse` garantiza que `hashed_password` nunca se expone en las respuestas.
 4. **Integración Continua:**
    * Cada `push` y cada pull request sobre `main` y `develop` corre automáticamente `make check` y `make test` en GitHub Actions (`.github/workflows/ci.yml`).
-   * El workflow crea el virtualenv `env/` que el `Makefile` espera; no requiere PostgreSQL porque los tests usan SQLite en memoria.
+   * El workflow crea el virtualenv `env/` que el `Makefile` espera y compila el frontend (`make frontend`, sobre Node 22) antes de los tests, porque FastAPI sirve `frontend/dist`. No requiere PostgreSQL: los tests usan SQLite en memoria.
    * El badge de la cabecera refleja el estado del último commit.
 
 ---

@@ -31,7 +31,7 @@ flowchart LR
 | **Capa de esquemas (Pydantic)** | Validación de entrada y serialización de salida. Es el límite de confianza del sistema. |
 | **Capa de modelos (SQLAlchemy 2.0)** | Persistencia tipada. Sin lógica HTTP dentro del modelo. |
 | **Capa de configuración** | Variables de entorno tipadas (conexión, secreto JWT, expiración de token). |
-| **Mapa web** | Cliente estático con Leaflet y OpenStreetMap. Consume la API con Bearer JWT. |
+| **Panel web (SPA)** | Aplicación React 19 + TypeScript + Vite compilada a `frontend/dist` y servida por FastAPI. Mapa con Leaflet y MapLibre. Consume la API con Bearer JWT. |
 
 La separación es deliberada: un endpoint no construye SQL y un modelo no sabe que existe HTTP. Eso permite cambiar la capa de persistencia o el cliente sin tocar la lógica de negocio.
 
@@ -128,7 +128,9 @@ Cada punto guarda dos marcas de tiempo: cuándo se midió y cuándo se recibió.
 
 ## 7. Decisiones y tradeoffs
 
-**Vanilla JS antes que SPA.** El cliente del mapa es HTML y JS sin build tooling. El criterio para migrar a un framework no es estético sino funcional: rutas propias con varias vistas, estado compartido entre tres o más vistas, o llegada de estadísticas. Hasta que eso pase, una SPA sólo agrega dependencias y capas entre el problema y la solución.
+**De vanilla a SPA React.** El cliente empezó como HTML y JS sin build tooling. Se migró a React 19 + TypeScript + Vite cuando se cumplieron los criterios definidos de antemano: rutas propias con varias vistas (`/`, `/register`, `/map`) y estado compartido entre ellas (sesión, flota, selección y telemetría). La decisión siguió siendo funcional, no estética: hoy el costo de build se paga porque el panel tiene estado propio que mantener.
+
+La SPA no se commitea compilada. Vite genera `frontend/dist` con assets hasheados, FastAPI los sirve (`/assets`) y devuelve `index.html` en las tres rutas para que React Router resuelva el resto. Si el build falta, esas rutas responden `503` en lugar de fallar con un traceback: el error queda accionable. Por eso el pipeline de CI compila el frontend antes de correr los tests, y cualquier despliegue debe hacer lo mismo.
 
 **Simulador como herramienta de primera clase.** No es un script de descarte: reproduce el comportamiento real del hardware y se usa como reemplazo cuando el dispositivo no está disponible. Sin él, el sistema sólo se probaba con datos inventados.
 

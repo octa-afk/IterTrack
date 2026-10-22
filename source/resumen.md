@@ -8,27 +8,28 @@ Este documento proporciona una referencia rápida sobre la arquitectura interna,
 
 ```text
 source/
-├── main.py                    # FastAPI, routers y páginas /, /register, /map y /favicon.ico
+├── main.py                    # FastAPI: routers, SPA en /, /register y /map, y /assets
 ├── static/
-│   ├── login.html              # Página de login (GET /)
-│   ├── register.html           # Página de registro (GET /register)
-│   ├── map.html                # Interfaz de monitoreo en vivo (GET /map)
-│   └── isologo.png             # Favicon (GET /favicon.ico)
+│   └── isologo.png            # Favicon (GET /favicon.ico)
 ├── services/
-│   ├── auth.py                 # Registro, login, JWT y usuario actual (/auth)
-│   └── tracking.py             # Endpoints autenticados de camiones y telemetría (/trucks)
+│   ├── auth.py                # Registro, login, JWT y usuario actual (/auth)
+│   ├── devices.py             # Ingesta por lotes con token de dispositivo (/devices)
+│   └── tracking.py            # Endpoints autenticados de camiones y telemetría (/trucks)
 ├── models/
 │   ├── __init__.py            # Exportación de modelos para SQLAlchemy y Alembic
-│   ├── organization.py         # Modelo ORM Organization
-│   ├── truck.py                # Modelos ORM Truck y TrackingPoint
-│   └── user.py                 # Modelo ORM User
+│   ├── device.py              # Device y DeviceAssignment
+│   ├── ingestion.py           # IngestedPoint y RejectedIngestPoint
+│   ├── organization.py        # Modelo ORM Organization
+│   ├── truck.py               # Modelos ORM Truck y TrackingPoint
+│   └── user.py                # Modelo ORM User
 ├── schemas/
 │   ├── __init__.py            # Exportación de esquemas Pydantic
-│   ├── auth.py                 # Esquemas de registro, respuesta de usuario y token
-│   └── truck.py                # Validación y serialización: Truck, Location, TrackingPoint
+│   ├── auth.py                # Esquemas de registro, respuesta de usuario y token
+│   ├── ingestion.py           # Contrato de ingesta v1 (DeviceIngestBatch)
+│   └── truck.py               # Validación y serialización: Truck, Location, TrackingPoint
 └── database/
     ├── config.py              # Variables de entorno y ajustes centralizados (Pydantic Settings)
-    ├── database.py            # Motor SQLAlchemy, SessionLocal, Base declarativa y get_db()
+    └── database.py            # Motor SQLAlchemy, SessionLocal, Base declarativa y get_db()
 ```
 
 ---
@@ -36,11 +37,12 @@ source/
 ## 🛣️ 2. Rutas y Endpoints
 
 ### Punto de Entrada (`source/main.py`)
-* `GET /`: Sirve `source/static/login.html`.
-* `GET /register`: Sirve `source/static/register.html`.
-* `GET /map`: Sirve `source/static/map.html`; la página valida el token en el navegador antes de consultar datos.
-* `GET /favicon.ico`: Sirve `source/static/isologo.png` y no se incluye en OpenAPI.
-* Incluye `auth_router` (`/auth`) y `tracking_router` (`/trucks`). Las páginas estáticas se sirven sin autenticación HTTP; las llamadas a la API de camiones requieren Bearer JWT.
+* `GET /`, `GET /register` y `GET /map`: sirven `frontend/dist/index.html` (SPA React; React Router resuelve la ruta). El guard del cliente valida el token antes de consultar datos.
+* `GET /assets/*`: archivos hasheados del build (CSS y JS).
+* `GET /favicon.ico`: sirve `source/static/isologo.png` y no se incluye en OpenAPI.
+* `GET /health`: estado del servicio, público.
+* Si falta `frontend/dist/index.html`, las rutas de la SPA responden `503` con el comando para generar el build.
+* Incluye `auth_router` (`/auth`), `tracking_router` (`/trucks`) y `devices_router` (`/devices`). La SPA se sirve sin autenticación HTTP; las llamadas a la API de camiones requieren Bearer JWT.
 
 ### Enrutador de autenticación (`source/services/auth.py` - Prefijo `/auth`)
 | Método | Endpoint | Descripción | Auth |
@@ -62,6 +64,13 @@ El registro requiere exactamente uno de `org_name` (crear una organización) o `
 | `GET` | `/trucks` | — | Lista los camiones de la organización del usuario autenticado. |
 | `GET` | `/trucks/ids` | — | Lista IDs y patentes de los camiones de esa organización. |
 
+### Enrutador de Dispositivos (`source/services/devices.py` - Prefijo `/devices`)
+| Método | Endpoint | Descripción | Auth |
+|---|---|---|---|
+| `POST` | `/devices/ingest` | Ingesta por lotes de telemetría; valida el contrato `v=1`, normaliza `recorded_at` a UTC y rechaza camiones inactivos. | Token de dispositivo |
+
+El token del dispositivo es independiente del JWT humano y se guarda solo como hash SHA-256.
+
 > **Autenticación y alcance:** Todos los endpoints `/trucks`, incluidos los `GET`, requieren Bearer JWT. Cada usuario pertenece a una organización y los camiones nuevos se asignan a ella; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia. Los permisos basados en roles todavía no están implementados.
 
 > **Persistencia:** Los endpoints obtienen una sesión con `db: Session = Depends(get_db)`; la conexión se configura en `source/database/config.py`.
@@ -76,6 +85,7 @@ Basados en la sintaxis moderna de **SQLAlchemy 2.0**:
 * `id: Mapped[int]` (Primary Key).
 * `plate: Mapped[str]` (Unique).
 * `organization_id: Mapped[int]` (Foreign Key a `organizations.id`).
+* `active: Mapped[bool]` (Estado del vehículo; por defecto `True`).
 * `tracking_points: Mapped[list["TrackingPoint"]]` (Relación 1 a N con `TrackingPoint`, `back_populates="truck"`).
 
 ### `Organization` y `User`
@@ -90,6 +100,8 @@ Basados en la sintaxis moderna de **SQLAlchemy 2.0**:
 * `speed: Mapped[float]` (Velocidad).
 * `heading: Mapped[float]` (Rumbo en grados).
 * `timestamp: Mapped[datetime]` (Fecha y hora de registro, default `datetime.now`).
+* `recorded_at: Mapped[datetime]` (Momento en que se midió la ubicación; con zona horaria).
+* `received_at: Mapped[datetime]` (Momento en que el servidor recibió el punto).
 * `truck: Mapped["Truck"]` (Relación inversa hacia `Truck`).
 
 ---
@@ -113,10 +125,13 @@ Definidos con **Pydantic v2**:
 
 ---
 
-## 🗺️ 5. Interfaz de Monitoreo (`source/static/map.html`)
+## 🗺️ 5. Interfaz de Monitoreo (`frontend/`)
 
-Frontend interactivo construido con **Leaflet 1.9** y mosaicos de **OpenStreetMap**:
-* **Orientación cenital en tiempo real:** Icono SVG personalizado de camión con faros delanteros y flecha de rumbo que rota dinámicamente (`transform: rotate(...)`) mediante cálculo esférico de *bearing*.
-* **Flechas direccionales adaptativas:** Muestra flechas sobre la línea de recorrido espaciadas en base a distancia visual de pantalla (`MIN_ESPACIADO_PIXELES = 85px`), aumentando en *zoom in* y sintetizándose en *zoom out*.
-* **Panel de telemetría:** Presenta velocidad y rumbo, además de los datos de ubicación del camión.
-* **Seguimiento inteligente:** Checkbox para auto-centrado que se desactiva automáticamente si el usuario arrastra el mapa manualmente.
+SPA en **React 19 + TypeScript + Vite**, compilada a `frontend/dist` y servida por FastAPI. El mapa usa **Leaflet 1.9** con **MapLibre GL** sobre mosaicos de **OpenStreetMap / OpenFreeMap**:
+
+* **Mapa en vivo (`src/components/MapView.tsx`):** reconciliación de marcadores por camión y `flyTo` al seleccionar una unidad.
+* **Orientación cenital (`src/lib/truckIcon.ts`):** ícono SVG del camión con faros y flecha de rumbo que rota con `transform: rotate(var(--heading))` según el *bearing*.
+* **Movimiento (`src/lib/movement.ts`):** interpolación entre la posición anterior y la nueva con `requestAnimationFrame` para que el camión no salte entre pings.
+* **Panel de telemetría (`TruckDetail`):** velocidad, rumbo, punto cardinal y último punto conocido.
+* **Tarjetas inferiores (`SpeedBars`, `FleetDonuts`, `BottomCards`):** distribución de velocidades y estado de la flota.
+* **Estado (`src/state/DashboardProvider.tsx`):** guard de sesión contra `/auth/me`, polling cada 3 s (`POLL_MS`) y carga del historial (`/trucks/{id}/iter`) al seleccionar un camión.
