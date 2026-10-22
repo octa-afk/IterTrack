@@ -1,3 +1,10 @@
+"""Pages, markup, and inline script assertions.
+
+Stylesheet contents live in ``tests/test_static_css.py`` now that CSS is served
+from ``source/static/css/`` instead of being inlined in each page.
+"""
+
+
 def test_root_serves_login_page(client):
     response = client.get("/")
     assert response.status_code == 200
@@ -20,6 +27,23 @@ def test_register_serves_register_page(client):
     response = client.get("/register")
     assert response.status_code == 200
     assert 'id="register-form"' in response.text
+
+
+# --- modularization (T4): pages load their extracted stylesheets ---
+
+def test_pages_link_extracted_stylesheets(client):
+    expected = {
+        "/": ("auth-tokens.css", "auth.css", "login.css"),
+        "/register": ("auth-tokens.css", "auth.css", "register.css"),
+        "/map": ("map.css",),
+    }
+    for route, sheets in expected.items():
+        page = client.get(route)
+        assert page.status_code == 200
+        # The inline block is gone; every page declares its own stylesheets.
+        assert "<style>" not in page.text
+        for sheet in sheets:
+            assert f'href="/static/css/{sheet}"' in page.text
 
 
 # --- register-ui (T1): v10 register page wiring (create/join + auto-login) ---
@@ -50,9 +74,6 @@ def test_register_page_uses_v10_poppins_design(client):
     assert 'class="shell"' in response.text   # two-panel glass shell
     assert 'class="brand"' in response.text   # brand panel with live fleet card
     assert 'class="meter"' in response.text   # password strength meter
-    # 15%-scaled tokens: 1020px shell -> 1173px, 860px breakpoint -> 989px
-    assert "max-width:1173px" in response.text
-    assert "max-width:989px" in response.text
 
 
 def test_register_page_links_to_login_route(client):
@@ -125,21 +146,6 @@ def test_map_page_uses_example_cdn_leaflet(client):
     assert "cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4" in response.text
 
 
-# --- login-map-ui (C1): whole UI scaled by 15% (px literals x1.15) ---
-
-def test_pages_use_scaled_ui_scale(client):
-    login = client.get("/")
-    page = client.get("/map")
-    assert login.status_code == 200
-    assert page.status_code == 200
-    # Base font sizes: login 14px -> 16px, map 13px -> 15px (with body padding 24px -> 28px)
-    assert "font-size:16px" in login.text
-    assert "font-size:15px;padding:28px" in page.text
-    # Media-query breakpoints: login 860 -> 989, map 820 -> 943
-    assert "max-width:989px" in login.text
-    assert "max-width:943px" in page.text
-
-
 # --- login-map-ui (C2): truck marker redesign (SVG truck, status halo, plate label) ---
 
 def test_map_page_renders_truck_marker_design(client):
@@ -148,7 +154,6 @@ def test_map_page_renders_truck_marker_design(client):
     # The marker uses the supplied articulated-truck SVG, with the cab pointing up.
     assert 'viewBox="0 0 48 72"' in response.text
     assert 'fill="#2563EB"' in response.text
-    assert ".pin svg{width:36px;height:54px}" in response.text
     assert "const arrow" not in response.text
     # The marker SVG is static; plate text is added separately with textContent.
     assert "vehicle.innerHTML = truckSvg(t.color)" in response.text
@@ -160,11 +165,8 @@ def test_map_page_renders_truck_marker_design(client):
     assert "vehicle.className = 'truck-svg'" in response.text
     assert 'class="halo"' not in response.text
     assert 'class="badge"' not in response.text
-    assert ".pin .lbl" in response.text
-    assert ".pin.sel .truck-svg" in response.text
     # Heading travels through a CSS variable; an inline transform would override
     # the selection scale declared in the stylesheet.
-    assert ".pin .truck-svg{display:grid;transform:rotate(var(--heading,0deg))" in response.text
     assert "vehicle.style.setProperty('--heading', `${t.heading}deg`)" in response.text
 
 
@@ -238,8 +240,6 @@ def test_map_page_has_collapsible_sidebar_and_solid_topbar(client):
     assert 'class="side-in"' in response.text
     assert 'id="navToggle"' in response.text
     assert 'class="tl"' in response.text
-    assert ".minibrand" in response.text
-    assert ".app.nav-off" in response.text
     # The toggle state is persisted per browser, like the theme
     assert "itertrack-nav" in response.text
     # The project's own hooks survive the port (the v10 example has neither)
@@ -247,19 +247,6 @@ def test_map_page_has_collapsible_sidebar_and_solid_topbar(client):
 
 
 # --- login-map-ui (C3): v10 glass dashboard layer ---
-
-def test_map_page_has_v10_glass_fullscreen_layer(client):
-    response = client.get("/map")
-    assert response.status_code == 200
-    assert "--g-bg:rgba(23,54,116,.72)" in response.text
-    desktop_surfaces = response.text.split("@media (min-width:944px){", 1)[1].split("</style>", 1)[0]
-    assert "--g-bg:rgba(255,255,255,.90)" in desktop_surfaces
-    assert ".content,.grid,.grid>.col:first-child,.mapcard{display:contents}" in response.text
-    assert ".mapbox{position:absolute;inset:0;z-index:0" in response.text
-    assert ".side,.top,.card,.mapcard .card-h,.leaflet-bar,.leaflet-control-attribution" in response.text
-    assert ".leaflet-top.leaflet-left{left:var(--lx);top:147px}" in response.text
-    assert "@media (max-width:1265px)" in response.text
-
 
 def test_map_page_preserves_real_hooks_with_glass_layer(client):
     response = client.get("/map")
@@ -282,7 +269,6 @@ def test_map_page_integrates_mobile_tabs_with_live_map_only(client):
     assert 'id="mobile-tabs"' in page
     for view in ("panel", "fleet", "map"):
         assert f'data-mobile-view="{view}"' in page
-        assert f'body[data-mobile-view="{view}"]' in page
     assert "function setMobileView(view)" in page
     assert "requestAnimationFrame(() => map.invalidateSize())" in page
     assert "L.map('map')" in page
@@ -300,27 +286,3 @@ def test_map_page_integrates_mobile_tabs_with_live_map_only(client):
     assert 'id="world"' not in page
     assert "const W = 2400" not in page
     assert "function loop(now)" not in page
-
-
-def test_map_page_uses_mobile_glass_surfaces_and_floating_controls(client):
-    response = client.get("/map")
-    assert response.status_code == 200
-    page = response.text
-    mobile_styles = page.split("/* Mobile surfaces follow the supplied glass treatment without changing desktop. */", 1)[1].split("</style>", 1)[0]
-
-    assert "@media (max-width:943px){" in mobile_styles
-    assert "body{background:#f4f6fb" in mobile_styles
-    assert 'body[data-mobile-view="panel"] .mapbox,body[data-mobile-view="fleet"] .mapbox{display:none}' in mobile_styles
-    assert 'body[data-mobile-view="map"] .mapbox{display:block}' in mobile_styles
-    assert "flex-wrap:nowrap" in mobile_styles
-    assert ".search{flex:1 1 0%" in mobile_styles
-    assert ".pill{flex:0 0 auto" in mobile_styles
-    assert ".card:not(.mapcard),.side,.top{background:var(--g-bg)" in mobile_styles
-    assert "-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
-    assert ".mobile-tabs{" in mobile_styles
-    assert "background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)" in mobile_styles
-    assert 'body[data-mobile-view="panel"] .mapcard .card-h,body[data-mobile-view="fleet"] .mapcard .card-h{display:none}' in mobile_styles
-    assert "body[data-mobile-view=\"map\"] .mapcard .card-h{position:absolute" in mobile_styles
-    assert ".side .logout{position:fixed" in mobile_styles
-    assert ".leaflet-bar,.leaflet-control-attribution{background:var(--g-bg)" in mobile_styles
-    assert ".leaflet-top.leaflet-left{left:auto;right:10px;top:10px}" in mobile_styles
