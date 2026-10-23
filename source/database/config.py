@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     secret_key: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+
+    # Un visitante de la demo entra con un click sin leer el README. El flag
+    # vive acá y no en el frontend para que la misma imagen sirva a un cliente
+    # real con la demo apagada; las credenciales son públicas por diseño.
+    demo_mode: bool = False
+    demo_admin_username: str = ""
+    demo_admin_password: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @field_validator("database_url")
@@ -25,6 +32,15 @@ class Settings(BaseSettings):
             if value.startswith(prefix):
                 return "postgresql+psycopg2://" + value[len(prefix) :]
         return value
+
+    @property
+    def demo_enabled(self) -> bool:
+        """Solo hay demo si el flag está encendido y hay credenciales que dar."""
+        return (
+            self.demo_mode
+            and bool(self.demo_admin_username)
+            and bool(self.demo_admin_password)
+        )
 
     @field_validator("secret_key")
     @classmethod

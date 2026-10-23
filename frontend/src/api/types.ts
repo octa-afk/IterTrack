@@ -61,3 +61,19 @@ export interface TrackingPoint {
   recorded_at: string;
   received_at: string;
 }
+
+/**
+ * Public configuration served by GET /config.
+ *
+ * `demo.enabled` is decided by the deployment, not by the build: the same image
+ * runs a real customer without the demo button.
+ */
+export interface DemoConfig {
+  enabled: boolean;
+  username?: string;
+  password?: string;
+}
+
+export interface ClientConfig {
+  demo: DemoConfig;
+}

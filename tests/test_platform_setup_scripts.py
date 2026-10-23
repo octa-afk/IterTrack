@@ -195,3 +195,13 @@ def test_seed_refuses_to_adopt_a_truck_owned_by_another_organization(
 def test_seed_rejects_short_demo_password(db_session):
     with pytest.raises(SeedError):
         seed_demo(db_session, demo_config(admin_password="corta"))
+
+
+def test_seed_leaves_the_demo_invitation_closed(db_session):
+    """La demo se entra por el botón; un código abierto deja que cualquiera
+    se registre en Demo Corp y esas cuentas sobreviven a los resets."""
+    result = seed_demo(db_session, demo_config())
+
+    organization = db_session.get(Organization, result.organization_id)
+
+    assert organization.invitation_active is False

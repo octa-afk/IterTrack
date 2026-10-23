@@ -163,7 +163,10 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
             name=config.org_name,
             invitation_code=secrets.token_urlsafe(12),
             invitation_expires_at=None,
-            invitation_revoked_at=None,
+            # La demo no se une por registro: el visitante entra con el boton
+            # del login. Un codigo activo dejaria que cualquiera se registre en
+            # Demo Corp, y esas cuentas sobreviven a los resets.
+            invitation_revoked_at=datetime.now(UTC),
         )
         db.add(organization)
         db.flush()
@@ -305,7 +308,7 @@ def main() -> int:
     modo = "reset" if result.reset else "sin reset"
     print(f"🏢 Demo '{config.org_name}' (id {result.organization_id}) — {modo}")
     print(f"🚚 Camiones creados: {result.trucks} | 📡 Dispositivos: {result.devices}")
-    print(f"🔑 Código de invitación: {result.invitation_code}")
+    print("🔒 Invitación cerrada: la demo se entra con el botón del login.")
     return 0
 
 

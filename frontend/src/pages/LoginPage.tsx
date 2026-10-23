@@ -1,8 +1,9 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mark } from '../components/Mark';
 import { ApiError, setToken } from '../api/client';
 import { login } from '../api/auth';
+import { getConfig } from '../api/config';
 
 const LIVE_ROWS = [
   { dot: '#a6e3c4', plate: 'AF 412 KD', speed: '82 km/h', route: 'Córdoba → Rosario' },
@@ -27,12 +28,46 @@ export default function LoginPage() {
     kind: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [demo, setDemo] = useState<{ username: string; password: string } | null>(null);
+
+  // La demo se decide en el servidor: la misma imagen corre para un cliente
+  // real con el boton apagado. Si /config falla, la pagina sigue siendo un
+  // login normal.
+  useEffect(() => {
+    let active = true;
+    getConfig()
+      .then((cfg) => {
+        if (!active) return;
+        const { enabled, username, password } = cfg.demo;
+        if (enabled && username && password) setDemo({ username, password });
+      })
+      .catch(() => {
+        /* sin configuracion no hay boton, pero el login funciona igual */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const usernameRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
 
   const validateUsername = (v: string) => (v.trim() ? '' : 'Ingresá tu usuario.');
   const validatePass = (v: string) => (v ? '' : 'Ingresá tu contraseña.');
+
+  const handleDemo = async () => {
+    if (!demo) return;
+    setSubmitting(true);
+    setStatus({ text: '', kind: '' });
+    try {
+      const { access_token } = await login(demo.username, demo.password);
+      setToken(access_token);
+      navigate('/map');
+    } catch (err) {
+      setStatus({ text: errorMessage(err), kind: 'bad' });
+      setSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -152,13 +187,28 @@ export default function LoginPage() {
             <button className="btn" id="submit" type="submit" disabled={submitting}>
               {submitting ? 'Ingresando…' : 'Iniciar sesión'}
             </button>
+            {demo && (
+              <button
+                className="btn demo"
+                id="demo"
+                type="button"
+                onClick={handleDemo}
+                disabled={submitting}
+              >
+                Entrar a la demo
+              </button>
+            )}
             <div className={`status ${status.kind}`} role="status" aria-live="polite">
               {status.text}
             </div>
           </form>
-          <p className="alt">
-            ¿Todavía no tenés cuenta? <Link to="/register">Crear cuenta</Link>
-          </p>
+          {demo ? (
+            <p className="hint centered">Sin registro: flota de ejemplo con datos simulados.</p>
+          ) : (
+            <p className="alt">
+              ¿Todavía no tenés cuenta? <Link to="/register">Crear cuenta</Link>
+            </p>
+          )}
         </section>
       </main>
     </div>

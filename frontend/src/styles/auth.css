@@ -301,3 +301,13 @@
   stroke: none;
 }
 
+
+/* El boton de demo solo existe cuando el servidor lo habilita (GET /config). */
+.auth-page .btn.demo {
+  margin-top: 10px;
+  background: transparent;
+  color: var(--acc-d);
+  border: 1px solid var(--line);
+}
+.auth-page .btn.demo:hover { background: rgba(90, 126, 230, 0.08); }
+.auth-page .hint.centered { text-align: center; }
