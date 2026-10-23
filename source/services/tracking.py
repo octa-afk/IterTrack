@@ -139,6 +139,20 @@ def reassign_truck_organization(
             detail="Organización destino no encontrada",
         )
     truck.organization_id = payload.organization_id
+    # Devices assigned to the truck move with it. Without this the previous
+    # tenant still owns (and can revoke) a device that now serves another
+    # organization, while the new tenant cannot manage it at all.
+    assigned_devices = (
+        db.query(models.Device)
+        .join(models.DeviceAssignment, models.DeviceAssignment.device_id == models.Device.id)
+        .filter(
+            models.DeviceAssignment.truck_id == truck.id,
+            models.DeviceAssignment.valid_to.is_(None),
+        )
+        .all()
+    )
+    for device in assigned_devices:
+        device.organization_id = payload.organization_id
     db.commit()
     db.refresh(truck)
     return {
