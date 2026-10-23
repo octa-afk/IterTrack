@@ -25,11 +25,24 @@ Cuatro servicios en un solo host (`docker-compose.yml`):
 
 ## 2. Dónde se hostea
 
-**Azure for Students**, una VM `B1s`, con Docker Compose.
+**Azure for Students**, una VM `Standard_B2ats_v2` en **`chilecentral`**, con Docker Compose.
+
+> **Dos restricciones reales de la suscripción de estudiante, verificadas el 2026-10-23.** No son evidentes en el portal y cuestan una hora de diagnóstico:
+>
+> 1. **Política de regiones.** La suscripción trae asignada la política `sys.regionrestriction` (*Allowed resource deployment regions*) con una lista cerrada: `chilecentral`, `southafricanorth`, `newzealandnorth`, `canadacentral` y `northcentralus`. Desplegar en `brazilsouth` o `eastus2` falla con `RequestDisallowedByAzure`, un error que la CLI de Azure reporta como un `RuntimeError` sin cuerpo.
+> 2. **`B1s` no está disponible para esta oferta.** El catálogo lo marca `NotAvailableForSubscription` en las diez regiones consultadas, incluidas las permitidas por la política. `Standard_B2ats_v2` (2 vCPU, 1 GB, x64) **sí** está disponible en `chilecentral` y también entra en las 750 h gratuitas.
+>
+> Consulta rápida antes de elegir región y tamaño:
+>
+> ```bash
+> az policy assignment list --query "[].{name:name, params:parameters}" -o json
+> az vm list-skus -l chilecentral --size Standard_B2ats_v2 --resource-type virtualMachines -o table
+> ```
 
 Motivos:
 
-- **750 h/mes gratis durante 12 meses** de VM `B1s` / `B2pts v2` / `B2ats v2`, más USD 100 de crédito, **sin tarjeta de crédito**, renovable mientras siga siendo estudiante.
+- **750 h/mes gratis durante 12 meses** de VM `B1s` / `B2pts v2` / `B2ats v2`, más USD 100 de crédito, **sin tarjeta de crédito**, renovable mientras siga siendo estudiante. De los tres, en la práctica solo `B2ats_v2` está disponible en las regiones permitidas.
+- **Chile Central está más cerca de Córdoba que Brazil South**, así que la restricción de política no empeora la latencia: la mejora.
 - **AWS queda descartado**: su free tier 2026 da hasta USD 200, pero la cuenta **se cierra sola a los 6 meses**, así que no sirve para una demo permanente.
 - La alternativa sin administrar servidor es **Heroku** (USD 13/mes durante 24 meses con el Student Pack), pero no permite un worker separado para el simulador.
 
@@ -51,7 +64,7 @@ Lo único atado a Azure es la VM que alquila. Cuando vencen los 12 meses, se lev
 
 1. Cuenta de **Azure for Students** activa (con email institucional).
 2. Un **dominio** apuntando a la VM (registro `A`). El `.me` gratuito de Namecheap del Student Pack alcanza.
-3. La imagen publicada en GHCR por el workflow `publish-image.yml`. Publica un tag por rama al pushear a `main` o `develop`: mientras la demo corra desde `develop`, el tag es `:develop`.
+3. La imagen publicada en GHCR por el workflow `publish-image.yml`. Publica un tag por rama al pushear a `main` o `develop`: mientras la demo corra desde `develop`, el tag es `:develop`. **Verificar que el run esté en verde antes de desplegar**: `docker manifest inspect` devuelve `unauthorized` tanto si el paquete es privado como si el tag no existe.
 4. Acceso SSH a la VM.
 5. Un **Personal Access Token** de GitHub con scope `read:packages`, si el paquete de GHCR es privado.
 

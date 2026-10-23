@@ -222,3 +222,27 @@ Decisión: **reescribir la historia** para reemplazarlo por el noreply de GitHub
 Costo aceptado: todos los SHA cambian y el clon de otra máquina queda incompatible (hay que re-clonar o `reset --hard origin/<rama>`). El email ya no aparece en ningún commit, autor, committer ni mensaje.
 
 Pendiente de decidir: 2 commits conservan el **nombre real** `Octavio Lautaro Torres` (el resto son `octa-afk`). El email ya no está, así que no compromete nada; cambiarlo exige otra reescritura.
+
+### L12 — VM creada y stack preparado (2026-10-23)
+
+**Diagnóstico de una hora que valía la pena documentar.** `B1s` aparecía como `NotAvailableForSubscription` en todas las regiones. La primera hipótesis (proveedores de recursos sin registrar) era cierta pero no era la causa: `Microsoft.Compute`, `Microsoft.Network` y `Microsoft.Storage` estaban `NotRegistered` y se registraron, y la cuota quedó en 0/6 vCPU, pero los SKUs seguían bloqueados.
+
+La causa real apareció al leer el cuerpo de la respuesta que la CLI de Azure se comía con un `RuntimeError: The content for this response was already consumed`: **`RequestDisallowedByAzure`**, por la política `sys.regionrestriction` (*Allowed resource deployment regions*), que limita la suscripción a cinco regiones: `chilecentral`, `southafricanorth`, `newzealandnorth`, `canadacentral`, `northcentralus`.
+
+Con eso, `Standard_B2ats_v2` (2 vCPU / 1 GB / x64) sí aparece disponible en `chilecentral`, y también entra en las 750 h gratuitas. Es mejor latencia que Brazil South para Córdoba.
+
+Estado:
+
+| Ítem | Valor |
+|---|---|
+| Resource group | `itertrack-rg` en `chilecentral` |
+| VM | `itertrack-vm`, `Standard_B2ats_v2`, Ubuntu 24.04, disco 30 GB |
+| IP pública | `57.156.58.24` (static, Standard SKU) |
+| Dominio provisional | `57-156-58-24.sslip.io` (resuelve desde la VM; el resolver local no lo resuelve) |
+| Acceso | SSH con `~/.ssh/itertrack_vm`, sin password; puertos 80/443 abiertos |
+| En la VM | Docker 29.1.3, Compose 2.40.3, 1 GB de swap, 25 GB libres |
+| Archivos | `docker-compose.yml`, `Caddyfile`, `.env` (600) en `~/itertrack` |
+
+`docker compose config --quiet` **valida** por primera vez los artefactos Docker: 4 servicios, 3 volúmenes, imagen `:develop` interpolada desde el `.env`. Antes de esto no había Docker en la máquina local y la validación era solo de YAML.
+
+Bloqueante: `docker manifest inspect ghcr.io/octa-afk/itertrack:develop` responde `unauthorized`, que no distingue entre paquete privado y tag inexistente. Falta que el paquete sea público o un PAT con `read:packages`, y confirmar que el run del workflow terminó en verde.
