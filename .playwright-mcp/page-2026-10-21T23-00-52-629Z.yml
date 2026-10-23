@@ -1,0 +1,53 @@
+- generic [ref=f15e2]:
+  - generic [ref=f15e3]:
+    - region "Map" [ref=f15e4]
+    - generic [ref=f15e5]:
+      - button "Zoom in" [ref=f15e6] [cursor=pointer]
+      - button "Zoom out" [ref=f15e8] [cursor=pointer]
+      - button "Drag to rotate map, click to reset north" [ref=f15e10]
+  - complementary [ref=f15e12]:
+    - strong [ref=f15e13]:
+      - text: ↗
+      - generic [ref=f15e18]: IterTrack
+    - navigation [ref=f15e19]:
+      - generic [ref=f15e20]: Panel
+      - generic [ref=f15e25]: Camiones
+      - generic [ref=f15e30]: Rutas
+      - generic [ref=f15e36]: Reportes
+      - generic [ref=f15e40]: Ajustes
+    - button "Salir" [ref=f15e45] [cursor=pointer]
+  - banner [ref=f15e50]:
+    - button "Mostrar u ocultar menú" [ref=f15e51] [cursor=pointer]
+    - textbox "Buscar camiones" [ref=f15e53]:
+      - /placeholder: Buscar patente, chofer o ruta
+    - generic [ref=f15e56]: 0 alertas
+    - generic [ref=f15e60]: OC
+  - generic [ref=f15e61]:
+    - heading "Mapa en vivo" [level=1] [ref=f15e62]
+    - generic [ref=f15e63]: Actualizando
+  - complementary [ref=f15e64]:
+    - generic [ref=f15e65]:
+      - generic [ref=f15e66]:
+        - button "Toda la flota" [ref=f15e67] [cursor=pointer]
+        - button "Solo alertas" [ref=f15e68] [cursor=pointer]
+      - generic [ref=f15e69]:
+        - button "Todos" [ref=f15e70] [cursor=pointer]
+        - button "En movimiento" [ref=f15e71] [cursor=pointer]
+        - button "Detenidos" [ref=f15e72] [cursor=pointer]
+        - button "Apagados" [ref=f15e73] [cursor=pointer]
+      - generic [ref=f15e74]:
+        - combobox "Ordenar por" [ref=f15e75]:
+          - option "Patente" [selected]
+          - option "Velocidad"
+        - combobox "Dirección" [ref=f15e76]:
+          - option "Ascendente" [selected]
+          - option "Descendente"
+      - generic [ref=f15e77]: 0 de 0 camiones
+      - paragraph [ref=f15e79]: No hay camiones que coincidan con el filtro.
+      - list [ref=f15e80]
+    - paragraph [ref=f15e82]: Elegí un camión para ver su detalle.
+  - generic [ref=f15e84]:
+    - heading "Velocidad por camión Ahora" [level=3] [ref=f15e85]:
+      - text: Velocidad por camión
+      - generic [ref=f15e86]: Ahora
+    - generic [ref=f15e87]: Límite 90 km/h

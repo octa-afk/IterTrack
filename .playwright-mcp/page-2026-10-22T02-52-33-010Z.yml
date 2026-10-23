@@ -1,0 +1,48 @@
+- main [ref=f19e4]:
+  - generic [ref=f19e5]:
+    - generic [ref=f19e6]:
+      - img "IterTrack" [ref=f19e7]
+      - text: IterTrack
+    - heading "Toda tu flota, en un solo mapa." [level=2] [ref=f19e11]
+    - paragraph [ref=f19e12]: Seguí cada camión en tiempo real, filtrá por estado y recibí alertas antes de que se conviertan en problemas.
+    - generic [aria-hidden] [ref=f19e13]:
+      - generic [ref=f19e14]: En ruta ahora
+      - list [ref=f19e15]:
+        - listitem [ref=f19e16]:
+          - generic [ref=f19e18]: AF 412 KD
+          - emphasis [ref=f19e19]: 82 km/h
+          - generic [ref=f19e20]: Córdoba → Rosario
+        - listitem [ref=f19e21]:
+          - generic [ref=f19e23]: AG 233 MP
+          - emphasis [ref=f19e24]: Detenido
+          - generic [ref=f19e25]: Córdoba → Tucumán
+        - listitem [ref=f19e26]:
+          - generic [ref=f19e28]: AF 678 NC
+          - emphasis [ref=f19e29]: 105 km/h
+          - generic [ref=f19e30]: Río Cuarto → San Luis
+  - generic [ref=f19e31]:
+    - heading "Iniciar sesión" [level=1] [ref=f19e32]
+    - paragraph [ref=f19e33]: Ingresá con tu cuenta para ver el panel de la flota.
+    - generic [ref=f19e34]:
+      - generic [ref=f19e35]:
+        - generic [ref=f19e36]: Usuario
+        - textbox "Usuario" [ref=f19e38]:
+          - /placeholder: Tu usuario
+      - generic [ref=f19e39]:
+        - generic [ref=f19e40]: Contraseña
+        - generic [ref=f19e41]:
+          - textbox "Contraseña" [ref=f19e42]:
+            - /placeholder: Tu contraseña
+          - button "Mostrar contraseña" [ref=f19e43] [cursor=pointer]: Mostrar
+      - generic [ref=f19e44]:
+        - generic [ref=f19e45]:
+          - checkbox "Mantener sesión iniciada" [ref=f19e46]
+          - text: Mantener sesión iniciada
+        - link "¿Olvidaste tu contraseña?" [ref=f19e47] [cursor=pointer]:
+          - /url: "#"
+      - button "Iniciar sesión" [ref=f19e48] [cursor=pointer]
+      - status [ref=f19e49]
+    - paragraph [ref=f19e50]:
+      - text: ¿Todavía no tenés cuenta?
+      - link "Crear cuenta" [ref=f19e51] [cursor=pointer]:
+        - /url: /register

@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#dfe8f6">
+<title>IterTrack · Panel de seguimiento</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22380 355 1210 1200%22%3E%3Cpath fill=%22%235472d2%22 d=%22M390 752C385 590 500 465 665 465H1200L900 752Z%22/%3E%3Cpath fill=%22%233a58b4%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z%22/%3E%3Cpath fill=%22%236a8cee%22 d=%22M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z%22/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --mint:#dfe8f6; --green:#5a7ee6; --green-d:#4666cc; --green-l:#cbd8f8; --green-xl:#ecf1fc;
+    --bg:#efefef; --card:#fff; --ink:#1f2a3d; --muted:#6b778c; --line:#e6eaf2; --ring:#fff;
+    --move:#5a7ee6; --idle:#eeb04a; --stop:#8a949c; --alert:#e0675c;
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%}
+  body{font-family:Poppins,system-ui,sans-serif;background:var(--mint);color:var(--ink);font-size:15px;padding:28px;display:grid;place-items:center}
+  svg{display:block}
+  .app{width:100%;max-width:1702px;height:calc(100vh - 55px);min-height:713px;border-radius:35px;overflow:hidden;display:grid;grid-template-columns:253px 1fr;box-shadow:0 16px 39px rgba(60,90,150,.28)}
+
+  /* Sidebar */
+  .side{background:var(--green);color:#fff;display:flex;flex-direction:column;padding:35px 0 30px}
+  .logo{display:flex;align-items:center;gap:12px;padding:0 32px;font-weight:600;font-size:18px;margin-bottom:62px}
+  .logo svg{width:25px;height:25px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round}
+  nav{display:grid;gap:4.6px}
+  nav a{display:flex;align-items:center;gap:16px;padding:14px 32px;color:#e5f2ed;text-decoration:none;font-size:16px;cursor:pointer;position:relative}
+  nav a svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  nav a.on{color:#fff;font-weight:600}
+  nav a.on::after{content:"";width:6.9px;height:6.9px;border-radius:50%;background:#fff;position:absolute;right:25px}
+  nav a:hover{background:rgba(255,255,255,.08)}
+  nav a:focus-visible,.logout:focus-visible{outline:2.3px solid #fff;outline-offset:-4.6px}
+  .logout{margin:auto 32px 0;background:#fff;color:var(--ink);border:0;border-radius:1149px;padding:12px 0;font:500 14px Poppins;display:flex;justify-content:center;align-items:center;gap:9.2px;cursor:pointer}
+  .logout svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* Contenido */
+  .content{background:var(--bg);padding:23px 25px;display:grid;grid-template-rows:auto 1fr;gap:18px;min-height:0;min-width:0}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:18px}
+  .search{flex:0 1 437px;display:flex;align-items:center;background:#fff;border-radius:1149px;padding:0 21px;height:46px;box-shadow:0 2.3px 6.9px rgba(0,0,0,.05)}
+  .search input{flex:1;border:0;outline:0;font:inherit;background:none;color:var(--ink);min-width:0}
+  .search svg{width:18px;height:18px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+  .search:focus-within{box-shadow:0 0 0 2.3px var(--green)}
+  .pill{display:flex;align-items:center;gap:16px;background:var(--green);color:#fff;border-radius:1149px;padding:5.8px 6.9px 5.8px 16px;height:51px}
+  .pill .al{border:1.5px dashed #fff;border-radius:1149px;padding:4.6px 16px;font-size:13px;background:none;color:#fff;font-family:inherit;cursor:pointer}
+  .pill .bell{width:23px;height:23px;fill:#fff;position:relative}
+  .avatar{width:39px;height:39px;border-radius:50%;background:#fff;color:var(--green);display:grid;place-items:center;font-weight:600;font-size:14px}
+
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 391px;gap:18px;min-height:0}
+  .col{display:flex;flex-direction:column;gap:18px;min-height:0;min-width:0}
+  .card{background:var(--card);border-radius:18px;padding:18px;box-shadow:0 2.3px 9.2px rgba(0,0,0,.04);min-height:0;min-width:0}
+  .card h3{font-size:15px;font-weight:600;margin-bottom:12px}
+  .card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .card-h h3{margin:0}
+  .tag{background:var(--green);color:#fff;border-radius:6.9px;font-size:12px;padding:4.6px 12px}
+
+  /* Mapa */
+  .mapcard{flex:1;padding:16px;display:flex;flex-direction:column}
+  .mapbox{flex:1;border-radius:14px;overflow:hidden;min-height:299px;position:relative}
+  #map{position:absolute;inset:0}
+  .mapbox,#map,.leaflet-container,.maplibregl-canvas{background:var(--map-bg,#f4f6fb)}
+  .map-style-loading::before{content:'';position:absolute;inset:0;z-index:500;background:var(--map-bg,#f4f6fb);pointer-events:none}
+  .leaflet-container{font-family:Poppins,sans-serif}
+  .pin{width:48px;height:48px;display:grid;place-items:center;position:relative}
+  .pin .truck-svg{display:grid;transition:transform .2s,filter .2s}
+  .pin svg{width:48px;height:48px}
+  .pin.sel .truck-svg{transform:scale(1.15);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+  .pin .lbl{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .pin.sel .lbl{display:block}
+
+  /* Fila inferior */
+  .bottom{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;height:205px}
+  .bottom .card{overflow:hidden}
+  .bars{height:129px;position:relative;display:flex;align-items:flex-end;gap:6.9px;padding-top:4.6px}
+  .bars .limit{position:absolute;left:0;right:0;border-top:1.5px dashed var(--idle);pointer-events:none}
+  .bars .limit span{position:absolute;right:0;top:-17px;font-size:10px;color:var(--idle);background:#fff;padding-left:4.6px}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;border:0;background:none;padding:0;cursor:pointer;font-family:inherit}
+  .bar i{width:100%;max-width:30px;background:#e9ebe8;border-radius:4.6px 4.6px 0 0;transition:background .2s}
+  .bar:hover i{background:var(--green-l)}
+  .bar.sel i{background:var(--green-l)}
+  .bar b{font-size:10px;font-weight:500;color:var(--muted);margin-top:4.6px;white-space:nowrap}
+  .bar.sel b{color:var(--green);font-weight:600}
+  .bar:focus-visible{outline:2.3px solid var(--green)}
+  .donuts{display:flex;justify-content:space-around;align-items:center;height:calc(100% - 32px)}
+  .dn{display:flex;align-items:center;gap:9.2px}
+  .dn svg{width:78px;height:78px;transform:rotate(-90deg)}
+  .dn circle{fill:none;stroke-width:9}
+  .dn .t{font-size:12px;color:var(--muted);line-height:1.35}
+  .dn .t b{display:block;color:var(--ink);font-size:17px;font-weight:600}
+  .dn .pc{position:absolute;inset:0;display:grid;place-items:center;font-weight:600;font-size:14px}
+
+  /* Columna derecha */
+  .listcard{flex:1;display:flex;flex-direction:column;padding:18px 0 0}
+  .listcard > *:not(ul){margin-left:18px;margin-right:18px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border-radius:1149px;padding:3.5px;margin-bottom:12px}
+  .seg button{border:0;background:none;border-radius:1149px;padding:8.1px;font:500 13px Poppins;cursor:pointer;color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--green);color:#fff}
+  .chips{display:flex;flex-wrap:wrap;gap:5.8px;margin-bottom:12px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:1149px;padding:4.6px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--green-xl);border-color:var(--green);color:var(--green-d);font-weight:600}
+  .sorts{display:grid;grid-template-columns:1fr 1fr;gap:6.9px;margin-bottom:6.9px}
+  select{width:100%;padding:8.1px 9.2px;border:1px solid var(--line);border-radius:9.2px;background:#fff;font:inherit;font-size:13px;color:var(--ink)}
+  .count{font-size:13px;color:var(--muted);margin-bottom:6.9px}
+  ul{list-style:none;padding:0;overflow:auto;flex:1;border-top:1px solid var(--line)}
+  li button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:12px 1fr auto;gap:1px 12px;align-items:center;width:100%;padding:12px 18px;border-bottom:1px solid var(--line);cursor:pointer}
+  li button:hover{background:#f7f8f6}
+  li.sel button{background:var(--green-xl);box-shadow:inset 3.5px 0 0 var(--green)}
+  .dot{width:12px;height:12px;border-radius:50%;grid-row:span 2}
+  .nm{font-weight:600;font-size:14px}
+  .sb{font-size:12px;color:var(--muted);grid-column:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sp{font-weight:600;font-size:15px;text-align:right;color:var(--green)}
+  .sp small{font-weight:400;color:var(--muted);font-size:11px}
+  .fu{grid-column:3;text-align:right;font-size:12px;color:var(--muted)}
+  .fu.low{color:var(--alert);font-weight:600}
+  li button:focus-visible,.chip:focus-visible,.seg button:focus-visible,select:focus-visible{outline:2.3px solid var(--green);outline-offset:-2.3px}
+  .empty{padding:25px 18px;color:var(--muted);font-size:14px}
+
+  .detail{background:var(--bg);border-radius:16px;padding:14px}
+  .detail .when{font-size:12px;color:var(--muted);margin-bottom:9.2px;display:flex;justify-content:space-between}
+  .detail .st{display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border-radius:12px;padding:12px 4.6px;text-align:center}
+  .detail .st b{display:block;font-size:20px;font-weight:600;color:var(--green)}
+  .detail .st span{font-size:11px;color:var(--muted)}
+  .detail .info{font-size:13px;margin:12px 2.3px 4.6px;display:grid;grid-template-columns:auto 1fr;gap:3.5px 14px}
+  .detail .info dt{color:var(--muted)} .detail .info dd{text-align:right;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .spark{width:100%;height:74px;margin-top:6.9px}
+  .noSel{color:var(--muted);font-size:14px;text-align:center;padding:21px 9.2px}
+
+  @media (max-width:1265px){
+    .grid{grid-template-columns:1fr}
+    .listcard{min-height:483px}
+  }
+  @media (max-width:943px){
+    body{padding:0;display:block}
+    .app{display:block;height:auto;border-radius:0;box-shadow:none}
+    .side{flex-direction:row;padding:14px 18px;align-items:center}
+    .logo{margin:0;padding:0} nav,.logout{display:none}
+    .content{padding:16px}
+    .top{flex-wrap:wrap} .search{flex:1 1 100%}
+    .mapcard{min-height:391px}
+    .bottom{grid-template-columns:1fr;height:auto} .bottom .card{height:219px}
+    .donuts{flex-wrap:wrap;gap:6.9px}
+  }
+
+  /* ===== Chrome unido (lateral + superior) con glass, estilo DeepSeek ===== */
+  :root{--blur:blur(25px) saturate(170%)}
+  .app{
+    background:
+      radial-gradient(598px 437px at 4% 8%,rgba(110,150,235,.55),transparent 70%),
+      radial-gradient(713px 483px at 70% -8%,rgba(150,205,245,.50),transparent 70%),
+      radial-gradient(598px 483px at 6% 100%,rgba(124,131,201,.35),transparent 70%),
+      linear-gradient(135deg,#dbe7f8,#c9daf3);
+    border:1px solid rgba(255,255,255,.6);
+  }
+  /* Lateral: pegado al borde, separado solo por una línea fina */
+  .side{
+    background:linear-gradient(180deg,rgba(22,58,140,.80),rgba(110,150,235,.55));
+    -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    border-right:1px solid rgba(255,255,255,.35);
+  }
+  nav{padding:0 14px}
+  nav a{border-radius:14px;padding:14px 18px}
+  nav a.on{background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+  nav a.on::after{right:18px}
+  .logout{background:rgba(255,255,255,.9)}
+
+  /* Contenido: la barra superior nace donde termina el lateral */
+  .content{background:transparent;padding:0;gap:0;grid-template-rows:auto minmax(0,1fr)}
+  .top{
+    padding:12px 25px;border-radius:0;
+    background:rgba(255,255,255,.45);
+    -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    border-bottom:1px solid rgba(255,255,255,.75);
+  }
+  .search{background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(255,255,255,.85)}
+  /* Zona de trabajo sólida */
+  .grid{padding:21px 25px;background:#f4f7fc;overflow:hidden}
+
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .top{background:rgba(255,255,255,.92)} .side{background:var(--green-d)}
+  }
+  @media (prefers-reduced-transparency:reduce){
+    .top{background:rgba(255,255,255,.94);-webkit-backdrop-filter:none;backdrop-filter:none}
+  }
+  @media (max-width:1265px){
+    .grid{overflow:auto;grid-template-rows:none;align-content:start}
+  }
+  @media (max-width:943px){
+    body{padding:0;display:block}
+    .app{display:block;height:auto;border:0}
+    .side{border-right:0;border-bottom:1px solid rgba(255,255,255,.35)}
+    .top{padding:12px 16px}
+    .grid{padding:16px;overflow:visible}
+  }
+
+  /* ===== Versión celeste suave (glass claro) ===== */
+  .app{
+    background:
+      radial-gradient(644px 460px at 5% 6%,rgba(120,165,240,.38),transparent 100%),
+      radial-gradient(713px 483px at 78% -6%,rgba(165,210,245,.55),transparent 70%),
+      radial-gradient(598px 483px at 10% 100%,rgba(185,180,240,.28),transparent 70%),
+      linear-gradient(135deg,#dbe7f8,#cbdcf3);
+    border:1px solid rgba(255,255,255,.85);
+    box-shadow:0 16px 39px rgba(60,90,150,.18);
+  }
+  .side{
+    background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.38));
+    border-right:1px solid rgba(255,255,255,.9);
+    color:var(--ink);
+  }
+  .logo{color:var(--ink)}
+  .logo svg{stroke:var(--green-d)}
+  nav a{color:#3b4862}
+  nav a:hover{background:rgba(90,126,230,.10)}
+  nav a.on{color:var(--green-d);background:rgba(90,126,230,.15);box-shadow:inset 0 0 0 1px rgba(90,126,230,.22)}
+  nav a.on::after{background:var(--green)}
+  nav a:focus-visible,.logout:focus-visible{outline:2.3px solid var(--green);outline-offset:-4.6px}
+  .logout{background:rgba(255,255,255,.85);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(255,255,255,.9),0 2.3px 9.2px rgba(60,90,150,.12)}
+  .top{background:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.9)}
+  .search{background:rgba(255,255,255,.75)}
+  .pill{background:var(--green)}
+  .avatar{color:var(--green-d)}
+  .card{box-shadow:0 3.5px 16px rgba(60,90,150,.08)}
+  @media (max-width:943px){ .side{border-bottom:1px solid rgba(255,255,255,.9)} }
+
+  /* ===== Pantalla completa ===== */
+  html,body{height:100%}
+  @media (min-width:944px){
+    body{padding:0;display:block;overflow:auto}
+    .app{width:100%;max-width:none;height:100vh;height:100dvh;min-height:644px;border-radius:0;border:0;box-shadow:none}
+  }
+  @media (max-width:943px){
+    .app{border-radius:0}
+  }
+
+  /* ===== Logo IterTrack ===== */
+  .logo{--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2}
+  .logo{gap:13px;font-size:21px;letter-spacing:.2px}
+  .logo svg.mark{width:37px;height:37px;fill:none;stroke:none;flex:none}
+  .mark .m1{fill:var(--m1)}.mark .m2{fill:var(--m2)}.mark .m3{fill:var(--m3)}
+
+  /* ===== Selección plana (sin bordes de color, sin halos) ===== */
+  nav{padding:0 14px;gap:2.3px}
+  nav a{border-radius:12px;padding:13px 16px}
+  nav a:hover{background:rgba(31,42,61,.05)}
+  nav a.on{background:rgba(31,42,61,.09);box-shadow:none;color:var(--ink);font-weight:500}
+  nav a.on::after{display:none}
+  ul{border-top:0;padding:4.6px 9.2px}
+  li button{border-bottom:0;border-radius:12px;padding:12px 14px}
+  li button:hover{background:rgba(31,42,61,.05)}
+  li.sel button{background:rgba(31,42,61,.09);box-shadow:none}
+  .chip{border-color:transparent;background:rgba(31,42,61,.05)}
+  .chip[aria-pressed="true"]{background:rgba(31,42,61,.14);border-color:transparent;color:var(--ink);font-weight:600}
+  .seg{background:rgba(31,42,61,.06);box-shadow:none}
+  .seg button[aria-pressed="true"]{background:#fff;color:var(--ink)}
+  .pill .al{border:0;background:rgba(255,255,255,.2)}
+  .search:focus-within{box-shadow:inset 0 0 0 1px rgba(31,42,61,.3)}
+
+  /* ===== Variación v10: barra superior sólida · glass solo en el lateral · lateral ocultable ===== */
+  .app{transition:grid-template-columns .28s cubic-bezier(.4,0,.2,1)}
+  .app.nav-off{grid-template-columns:0 1fr}
+  .side{padding:0;min-width:0;overflow:hidden;transition:border-color .28s}
+  .side-in{width:253px;height:100%;display:flex;flex-direction:column;padding:35px 0 30px;transition:opacity .2s}
+  .app.nav-off .side{border-right-width:0}
+  .app.nav-off .side-in{opacity:0}
+
+  .tl{display:flex;align-items:center;gap:14px;flex:1 1 auto;min-width:0}
+  .navtoggle{width:44px;height:44px;border-radius:12px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none}
+  .navtoggle:hover{color:var(--ink);background:rgba(31,42,61,.06)}
+  .navtoggle:focus-visible{outline:2.3px solid var(--green);outline-offset:2.3px}
+  .navtoggle svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .minibrand{display:none;align-items:center;gap:9.2px;font-weight:600;font-size:17px;white-space:nowrap;color:var(--ink);--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2;}
+  .minibrand svg{width:28px;height:28px;fill:none;stroke:none;flex:none}
+  .app.nav-off .minibrand{display:flex}
+
+  /* Barra superior sólida (sin glass) */
+  .top{
+    background:#fff;
+    -webkit-backdrop-filter:none;backdrop-filter:none;
+    border-bottom:1px solid var(--line);
+    padding:12px 25px;
+  }
+  .search{background:#f1f4fb;box-shadow:none}
+
+  @media (prefers-reduced-motion:reduce){.app,.side,.side-in{transition:none}}
+  @media (max-width:943px){
+    .side{padding:0}
+    .side-in{width:100%;flex-direction:row;padding:14px 18px;align-items:center}
+    .app.nav-off .side-in{opacity:1}
+    .navtoggle,.minibrand{display:none!important}
+    .tl{flex:1 1 100%}
+    .top{padding:12px 16px}
+  }
+
+  /* ===== C3 v10 glass layer: full-screen map with floating panels =====
+     This ports the visual shell only; live data, auth, and existing hooks stay
+     in the project markup and scripts below. Dimensions retain the C1 15%
+     scale used by this page (example --rp/--lx: 360/236 -> 414/271). */
+  :root{
+    --g-bg:rgba(255,255,255,.64);--g-solid:rgba(248,250,254,.97);
+    --g-bd:rgba(255,255,255,.78);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);
+    --g-sh:0 12px 39px rgba(25,45,95,.16);--g-fill:rgba(31,42,61,.06);
+    --g-fill2:rgba(31,42,61,.11);--g-on:rgba(255,255,255,.95);
+    --ac:#5a7ee6;--blur:blur(28px) saturate(180%);--rp:414px;--lx:271px;
+  }
+  .app{position:relative;background:var(--mint)}
+  .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
+  .mapbox{position:absolute;inset:0;z-index:0;min-height:0;border-radius:0;box-shadow:none}
+  .side,.top,.card,.mapcard .card-h,.leaflet-bar,.leaflet-control-attribution{
+    background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)
+  }
+  .side{position:absolute;z-index:5;left:16px;top:16px;bottom:16px;width:235px;border-radius:30px;padding:0;transition:width .3s ease,opacity .2s ease}
+  .side-in{width:100%;height:100%;padding:40px 0 23px}
+  .logo{margin-bottom:39px}
+  .top{position:absolute;z-index:5;left:var(--lx);right:16px;top:16px;height:64px;padding:0 10px 0 9px;border-radius:32px}
+  .search{background:var(--g-fill);box-shadow:none;height:44px}
+  .search:focus-within{box-shadow:0 0 0 2px var(--ac)}
+  .pill{background:none;padding:0;height:auto;color:var(--ink)}
+  .pill .al{background:var(--g-fill2);color:var(--ink)} .pill .bell{fill:var(--ink)}
+  .avatar{background:var(--ac);color:#fff}
+  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:97px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px}
+  .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
+  .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:97px;bottom:39px;width:var(--rp);gap:14px}
+  .card{border-radius:28px}
+  .bottom{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;height:202px;gap:14px}
+  .dn{gap:7px}.dn svg{width:62px;height:62px}.dn .t b{white-space:nowrap;font-size:15px}.dn .pc{font-size:13px}
+  .detail,.detail .st{background:var(--g-fill)}
+  .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
+  .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
+  .bar i{background:var(--g-fill2)}.bar:hover i,.bar.sel i{background:var(--green-l)}
+  .bars .limit span{background:transparent}.dn circle:first-child{stroke:var(--g-fill2)}
+  .leaflet-top.leaflet-left{left:var(--lx);top:147px}.leaflet-left .leaflet-control{margin-left:0}
+  .leaflet-bar,.leaflet-touch .leaflet-bar{border:1px solid var(--g-bd)!important;border-radius:18px;overflow:hidden}
+  .leaflet-bar a{background:transparent;color:var(--ink);border-bottom:1px solid var(--g-bd);width:39px;height:39px;line-height:39px}
+  .leaflet-bar a:hover{background:var(--g-fill)}
+  .leaflet-bottom.leaflet-right{right:auto;left:var(--lx);bottom:0}
+  .leaflet-control-attribution{border-radius:12px 12px 0 0;color:var(--muted);box-shadow:none;border-bottom:0}
+  .leaflet-control-attribution a{color:var(--green-d)}
+  .app.nav-off .side{width:0;opacity:0;pointer-events:none;border:0}
+  .app.nav-off{--lx:16px}
+  .app.nav-off .top,.app.nav-off .mapcard .card-h,.app.nav-off .bottom,
+  .app.nav-off .leaflet-top.leaflet-left,.app.nav-off .leaflet-bottom.leaflet-right{transition:left .3s ease}
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
+  @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
+  @media (max-width:1265px){
+    body{display:block;overflow:auto}.app{height:auto;min-height:100vh;display:block;padding:14px}
+    .content,.grid,.grid>.col:first-child,.mapcard{display:block}
+    .side,.top,.bottom,.mapcard .card-h,.grid>.col:last-child{position:relative;inset:auto;width:auto;height:auto;margin:0 0 14px}
+    .grid>.col:last-child{display:flex}.side{flex-direction:row;padding:0}.side-in{height:auto;min-height:64px;flex-direction:row;padding:12px 16px;align-items:center}
+    .logo{margin:0}.mapbox{position:relative;inset:auto;height:64vh;margin-bottom:14px;border-radius:28px}
+    .mapcard .card-h{display:inline-flex}.bottom{display:grid;grid-template-columns:1fr}.bottom .card{height:219px}
+    .leaflet-top.leaflet-left{left:0;top:0}.leaflet-bottom.leaflet-right{left:auto;right:0}
+  }
+  @media (max-width:943px){
+    .app{padding:0}.side-in{width:100%}.top{padding:0 14px}.grid{padding:14px}.mapbox{height:56vh}
+  }
+  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom{transition:none!important}}
+
+  /* ===== Móvil: mapa a pantalla completa + panel inferior arrastrable + menú como cajón ===== */
+  .grab,.scrim{display:none}
+  .detailcard{padding:14px}
+
+  @media (max-width:767px), (pointer:coarse) and (max-height:500px){
+    :root{
+      --top-h:56px;--peek:172px;--half:54vh;
+      --sheet-top:calc(env(safe-area-inset-top) + 76px);
+      --sheet-h:calc(100vh - var(--sheet-top));
+      --sheet-bg:rgba(248,250,254,.97);
+      --blur:blur(16px) saturate(170%);
+    }
+    @supports (height:1dvh){:root{--half:54dvh;--sheet-h:calc(100dvh - var(--sheet-top))}}
+
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+    body{display:block;padding:0}
+    .app,.app.nav-off{position:fixed;inset:0;display:block;width:auto;max-width:none;height:auto;min-height:0;padding:0;overflow:hidden;border:0;border-radius:0;box-shadow:none}
+    .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
+
+    /* Mapa */
+    .app .mapbox{position:absolute;inset:0;height:auto;min-height:0;margin:0;border-radius:0}
+    .app .mapcard .card-h{display:none}
+    .pin,.pin svg{width:40px;height:40px}
+    .pin{-webkit-touch-callout:none}
+
+    /* Barra superior flotante */
+    .app .top{position:absolute;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top));height:var(--top-h);margin:0;padding:0 8px 0 6px;border-radius:28px;flex-wrap:nowrap;gap:6px;z-index:5}
+    .tl{flex:1 1 auto;gap:4px;min-width:0}
+    .app .navtoggle{display:grid!important;width:44px;height:44px}
+    .app .minibrand{display:none!important}
+    .search{flex:1 1 auto;height:44px;padding:0 14px}
+    .search input{font-size:16px}
+    .search svg{flex:none;margin-left:8px}
+    .pill{gap:8px}
+    .pill .bell{display:none}
+    .pill .al{min-height:40px;padding:0 14px;white-space:nowrap;font-size:13px}
+    .avatar{width:36px;height:36px}
+    @media (max-width:420px){.pill .avatar{display:none}}
+
+    /* Menú lateral como cajón */
+    .app .side,.app.nav-off .side{position:fixed;left:0;top:0;bottom:0;right:auto;width:min(84vw,300px);height:auto;margin:0;padding:0;border-radius:0 28px 28px 0;border:0;border-right:1px solid var(--g-bd);background:rgba(250,252,255,.97);-webkit-backdrop-filter:none;backdrop-filter:none;opacity:1;pointer-events:auto;z-index:20;flex-direction:column;transform:translateX(-104%);visibility:hidden;transition:transform .28s cubic-bezier(.4,0,.2,1),visibility 0s .28s}
+    .app.drawer-open .side{transform:none;visibility:visible;transition:transform .28s cubic-bezier(.4,0,.2,1),visibility 0s}
+    .app .side-in,.app.nav-off .side-in{width:100%;height:100%;min-height:0;flex-direction:column;align-items:stretch;opacity:1;padding:calc(28px + env(safe-area-inset-top)) 0 calc(24px + env(safe-area-inset-bottom))}
+    .app .side nav{display:grid}
+    .app .side .logout{display:flex;margin:auto 24px 0;min-height:46px}
+    .app .logo{margin:0 0 28px;padding:0 28px}
+    nav a{min-height:48px;padding:14px 18px}
+    .scrim{display:block;position:fixed;inset:0;z-index:19;background:rgba(20,30,50,.38);opacity:0;pointer-events:none;transition:opacity .25s}
+    .app.drawer-open .scrim{opacity:1;pointer-events:auto}
+
+    /* Panel inferior (lista + detalle + gráficos) */
+    .app .grid>.col:last-child{
+      position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;margin:0;
+      height:var(--sheet-h);
+      display:flex;flex-direction:column;gap:10px;
+      padding:0 14px calc(14px + env(safe-area-inset-bottom));
+      background:var(--sheet-bg);border-top:1px solid var(--g-bd);border-radius:26px 26px 0 0;
+      box-shadow:0 -8px 30px rgba(25,45,95,.18);
+      overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+      z-index:6;will-change:transform;
+      transform:translateY(calc(100% - var(--peek)));
+      transition:transform .32s cubic-bezier(.32,.72,0,1);
+    }
+    .app.sheet-peek .grid>.col:last-child{overflow-y:hidden}
+    .app.sheet-half .grid>.col:last-child{transform:translateY(calc(100% - var(--half)));padding-bottom:calc(var(--sheet-h) - var(--half) + 14px + env(safe-area-inset-bottom))}
+    .app.sheet-full .grid>.col:last-child{transform:none}
+    .app .grid>.col:last-child.dragging{transition:none}
+
+    .grab{display:grid;place-items:center;position:sticky;top:0;z-index:3;flex:none;height:32px;margin:0 -14px;background:var(--sheet-bg);border-radius:26px 26px 0 0;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
+    .grab::before{content:"";width:40px;height:5px;border-radius:3px;background:rgba(31,42,61,.25)}
+    .grab:focus-visible{outline:2.3px solid var(--ac);outline-offset:-3px}
+
+    .app .grid>.col:last-child>.grab{order:0}
+    .app .grid>.col:last-child>.detailcard{order:1}
+    .app .grid>.col:last-child>.listcard{order:2}
+    .app .grid>.col:last-child>.bottom{order:3}
+    .app .detailcard:has(.noSel){display:none}
+
+    .app .grid>.col:last-child .card{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;border:0;box-shadow:none;border-radius:0;padding:0}
+    .app .grid>.col:last-child .bottom .card{background:var(--g-fill);border-radius:18px;padding:14px}
+
+    /* Lista y filtros */
+    .app .listcard{flex:none;min-height:0;display:flex;flex-direction:column}
+    .app .listcard>*:not(ul){margin-left:0;margin-right:0}
+    .seg{order:1;margin-bottom:10px}
+    .chips{order:2;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:10px;padding-bottom:2px}
+    .chips::-webkit-scrollbar{display:none}
+    .count{order:3;margin-bottom:8px}
+    .sorts{order:4;margin-bottom:8px}
+    .app .listcard ul{order:5;flex:none;overflow:visible;padding:0;margin:0}
+    .seg button{min-height:40px;font-size:14px}
+    .chip{flex:none;min-height:38px;padding:0 15px;font-size:13.5px}
+    select{min-height:44px;padding:0 12px;font-size:16px}
+    li button{min-height:60px;padding:12px 10px}
+    .sp{font-size:16px}
+
+    /* Detalle */
+    .detail{background:var(--g-fill)}
+    .detail .st{background:#fff}
+    .detail-close{display:block;width:100%;min-height:44px;margin-top:12px;border:0;border-radius:1149px;background:var(--g-fill2);color:var(--ink);font:500 14px Poppins,system-ui,sans-serif;cursor:pointer}
+
+    /* Gráficos dentro del panel */
+    .app .bottom{position:static;display:grid;grid-template-columns:1fr;gap:10px;height:auto;margin:0}
+    .app .bottom .card{height:auto}
+    .bars{overflow-x:auto}
+    .bar{min-width:30px}
+    .donuts{height:auto;flex-wrap:wrap;gap:14px 10px;margin-top:4px}
+
+    /* Controles de Leaflet */
+    .app .leaflet-top.leaflet-left{left:auto;right:10px;top:calc(76px + env(safe-area-inset-top))}
+    .app .leaflet-left .leaflet-control{margin-left:0;margin-right:0}
+    .leaflet-bar a{width:44px;height:44px;line-height:44px}
+    .app .leaflet-bottom.leaflet-right{left:6px;right:auto;bottom:auto;top:calc(72px + env(safe-area-inset-top))}
+    .leaflet-control-attribution{font-size:9px;border-radius:8px;padding:1px 6px;border-bottom:1px solid var(--g-bd)}
+
+    @media (prefers-reduced-motion:reduce){
+      .app .side,.app .grid>.col:last-child,.scrim{transition:none!important}
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app sheet-peek">
+  <aside class="side" id="sidebar"><div class="side-in">
+    <div class="logo">
+      <svg class="mark" viewBox="380 355 1210 1200" role="img" aria-label="IterTrack"><path class="m3" d="M390 752C385 590 500 465 665 465H1200L900 752Z"/><path class="m2" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z"/><path class="m1" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z"/></svg>
+      IterTrack
+    </div>
+    <nav aria-label="Principal">
+      <a class="on" tabindex="0"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>Panel</a>
+      <a tabindex="0"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/></svg>Camiones</a>
+      <a tabindex="0"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a4 4 0 0 0 0-8h-4a4 4 0 0 1 0-8h6"/></svg>Rutas</a>
+      <a tabindex="0"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Reportes</a>
+      <a tabindex="0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4-2 1.6a7 7 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.4-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.2-.8.2-1.2z"/></svg>Ajustes</a>
+    </nav>
+    <button class="logout" id="btn-logout" type="button"><svg viewBox="0 0 24 24"><path d="M9 21H5V3h4M16 17l5-5-5-5M21 12H9"/></svg>Salir</button>
+  </div></aside>
+
+  <div class="content">
+    <div class="top">
+      <div class="tl">
+        <button class="navtoggle" id="navToggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Ocultar panel lateral" title="Ocultar panel lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
+        <span class="minibrand"><svg class="mark" viewBox="380 355 1210 1200" aria-hidden="true"><path class="m3" d="M390 752C385 590 500 465 665 465H1200L900 752Z"/><path class="m2" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z"/><path class="m1" d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z"/></svg>IterTrack</span>
+        <label class="search">
+          <input id="q" type="search" placeholder="Buscar patente, chofer o ruta" aria-label="Buscar camiones">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        </label>
+      </div>
+      <div class="pill">
+        <button class="al" id="alertBtn" type="button">0 alertas</button>
+        <svg class="bell" viewBox="0 0 24 24"><path d="M12 2a6 6 0 0 0-6 6v4l-2 3v1h16v-1l-2-3V8a6 6 0 0 0-6-6zm-2 18a2 2 0 0 0 4 0z"/></svg>
+        <div class="avatar">FL</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="col">
+        <div class="card mapcard">
+          <div class="card-h"><h3>Mapa en vivo</h3><span class="tag" id="liveTag">Actualizando</span></div>
+          <div class="mapbox"><div id="map"></div></div>
+        </div>
+        <div class="bottom">
+          <div class="card">
+            <div class="card-h"><h3>Velocidad por camión</h3><span class="tag">Ahora</span></div>
+            <div class="bars" id="bars"></div>
+          </div>
+          <div class="card">
+            <h3>Resumen de flota</h3>
+            <div class="donuts" id="donuts"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="grab" id="grab" role="button" tabindex="0" aria-expanded="false" aria-label="Panel de camiones. Tocá o arrastrá para expandir"></div>
+        <div class="card listcard">
+          <div class="seg" id="seg">
+            <button type="button" data-v="all" aria-pressed="true">Toda la flota</button>
+            <button type="button" data-v="alert" aria-pressed="false">Solo alertas</button>
+          </div>
+          <div class="chips" id="chips">
+            <button class="chip" data-s="all" aria-pressed="true">Todos</button>
+            <button class="chip" data-s="move" aria-pressed="false">En movimiento</button>
+            <button class="chip" data-s="idle" aria-pressed="false">Detenidos</button>
+            <button class="chip" data-s="stop" aria-pressed="false">Apagados</button>
+          </div>
+          <div class="sorts">
+            <select id="sort" aria-label="Ordenar por">
+              <option value="plate">Patente</option>
+              <option value="speed">Velocidad</option>
+              <option value="fuel">Combustible</option>
+              <option value="updated">Última señal</option>
+              <option value="driver">Chofer</option>
+            </select>
+            <select id="dir" aria-label="Dirección del orden">
+              <option value="asc">Ascendente</option>
+              <option value="desc">Descendente</option>
+            </select>
+          </div>
+          <div class="count" id="count"></div>
+          <ul id="list"></ul>
+        </div>
+        <div class="card detailcard"><div class="detail" id="detail"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="scrim" id="scrim" aria-hidden="true"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
+<script>
+/* ---------- Session (real auth guard) ----------
+   Shared token with login.html: localStorage.itertrack_token.
+   Missing token or 401 from GET /auth/me -> clear storage and go back to "/". */
+const TOKEN_KEY = 'itertrack_token';
+
+function authHeaders(){
+  const token = localStorage.getItem(TOKEN_KEY);
+  return token ? { Authorization: 'Bearer ' + token } : {};
+}
+
+// Logout (and auth failures): clear localStorage, then redirect to the login page.
+function clearSessionAndRedirect(){
+  localStorage.clear();
+  window.location.replace('/');
+}
+
+async function verificarSesion(){
+  if (!localStorage.getItem(TOKEN_KEY)){
+    clearSessionAndRedirect();
+    return false;
+  }
+  try{
+    const res = await fetch('/auth/me', { headers: authHeaders() });
+    if (res.ok){
+      const user = await res.json();
+      // Avatar initials from the real user; textContent, never innerHTML (XSS)
+      document.querySelector('.avatar').textContent = String(user.username || '??').slice(0, 2).toUpperCase();
+      return true;
+    }
+  } catch (error){
+    console.error('Error al validar la sesión:', error);
+  }
+  // Missing token, 401 or network failure: clear storage and go back to "/"
+  clearSessionAndRedirect();
+  return false;
+}
+
+/* ---------- Data (real endpoints: /trucks + location polling) ---------- */
+const SPEED_LIMIT = 90;      // km/h: alert threshold and chart limit
+const POLL_MS = 3000;        // location refresh interval
+const MOVE_MIN_MS = 400;     // movement tween floor: keeps short hops visible
+const MOVE_MAX_MS = 6000;    // movement tween cap: never longer than two polls
+const MOVE_EASE = k => (k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2) / 2); // easeInOutQuad
+const OPEN_ZOOM = 12;         // zoom used when the map opens on the first truck
+const STALE_MS = 10 * 60e3;  // no signal for 10 min -> truck considered off
+const HISTORY_MAX = 18;      // speed samples kept for the detail sparkline
+
+const STATUS = {
+  move: {label:'En movimiento', color:'#5a7ee6'},
+  idle: {label:'Detenido',      color:'#eeb04a'},
+  stop: {label:'Apagado',       color:'#8a949c'},
+  alert:{label:'Alerta',        color:'#e0675c'},
+};
+
+// Identity colour per truck: stable across reloads (keyed on the plate) so a
+// truck keeps the same colour whatever its status is. The status keeps its own
+// channel: the list dot, the detail panel and the pin's halo.
+const TRUCK_COLORS = ['#3f6fe0','#2f9e6b','#8b5cf0','#0e93a8','#d1468f','#7a8b2e','#e0a02f','#d64545'];
+const hashTexto = s => { let h = 0; for (const c of s) h = (h * 31 + c.codePointAt(0)) >>> 0; return h; };
+function colorDeCamion(t){ return TRUCK_COLORS[hashTexto(String(t.plate ?? t.id)) % TRUCK_COLORS.length]; }
+
+// Mapped from GET /trucks (id, plate). The backend does not expose
+// fuel/driver/route, so those stay null/empty and render as "no data".
+let trucks = [];
+let selectedId = null;
+const state = {q:'', status:'all', view:'all', sort:'plate', dir:'asc'};
+
+/* ---------- Map ---------- */
+const map = L.map('map').setView([-31.9,-64.0], 7);
+const MAP_STYLE = 'https://tiles.openfreemap.org/styles/bright';
+const mapContainer = document.getElementById('map');
+mapContainer.classList.add('map-style-loading');
+const base = L.maplibreGL({
+  style: MAP_STYLE,
+  attribution:'<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+}).addTo(map);
+const mapLibreMap = base.getMaplibreMap();
+function neutralizeBuildings(){
+  if (!mapLibreMap.isStyleLoaded()) return;
+  mapLibreMap.getStyle().layers.forEach(layer => {
+    const sourceLayer = layer['source-layer'] || '';
+    if (layer.type === 'fill' && sourceLayer === 'building') {
+      mapLibreMap.setPaintProperty(layer.id, 'fill-opacity', 0);
+    } else if (layer.type === 'fill-extrusion' && sourceLayer === 'building') {
+      mapLibreMap.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0);
+    }
+  });
+}
+function mostrarCargaEstilo(){
+  mapContainer.classList.add('map-style-loading');
+}
+function ocultarCargaEstilo(){
+  mapContainer.classList.remove('map-style-loading');
+}
+function mapaListo(){
+  neutralizeBuildings();
+  ocultarCargaEstilo();
+}
+mapLibreMap.on('styledataloading', mostrarCargaEstilo);
+mapLibreMap.on('load', mapaListo);
+mapLibreMap.on('style.load', neutralizeBuildings);
+mapLibreMap.on('error', ocultarCargaEstilo);
+new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('map'));
+
+const markers = new Map();
+const truck = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">
+  <circle cx="256" cy="256" r="232" fill="#1F4E8C" stroke="#FFFFFF" stroke-width="24"/>
+  <g transform="translate(256 256) scale(0.74) translate(-256 -258)">
+    <g fill="#FFFFFF">
+      <path d="M96 120 Q96 38 170 34 Q256 28 342 34 Q416 38 416 120 V300 Q416 308 408 308 H104 Q96 308 96 300 Z"/>
+      <rect x="92" y="310" width="328" height="142" rx="18"/>
+      <rect x="100" y="446" width="52" height="36" rx="9"/>
+      <rect x="360" y="446" width="52" height="36" rx="9"/>
+    </g>
+    <g fill="#FFFFFF" stroke="#1F4E8C" stroke-width="12" paint-order="stroke">
+      <rect x="58" y="108" width="42" height="98" rx="16"/>
+      <rect x="412" y="108" width="42" height="98" rx="16"/>
+    </g>
+    <g fill="#1F4E8C">
+      <rect x="106" y="90" width="300" height="120" rx="18"/>
+      <rect x="126" y="312" width="34" height="74" rx="7"/>
+      <rect x="352" y="312" width="34" height="74" rx="7"/>
+      <rect x="172" y="322" width="168" height="8" rx="4"/>
+      <rect x="172" y="340" width="168" height="8" rx="4"/>
+      <rect x="172" y="358" width="168" height="8" rx="4"/>
+      <rect x="172" y="376" width="168" height="8" rx="4"/>
+    </g>
+  </g>
+</svg>`;
+
+const truckSvg = () => truck;
+const pinIcon = (t, sel) => L.divIcon({
+  className:'', iconSize:[10,10], iconAnchor:[5,5],
+  html:`<div class="pin ${t.status} ${sel?'sel':''}">
+    <span class="truck-svg" style="transform:rotate(${t.heading}deg)">${truckSvg(t.color)}</span>
+    <em class="lbl" style="font-style:normal">${t.plate}</em></div>`
+});
+
+/* ---------- Smooth movement ----------
+   The API delivers one sample per poll, so the "two locations" the truck moves
+   between are two consecutive samples. The logical position (t.lat/t.lng) always
+   follows the newest sample, keeping speed, heading, the detail panel and flyTo
+   exact; only the marker rendering is tweened from the previous sample to the
+   new one over the time that sample actually covers. */
+const moves = new Map();     // truck id -> {from, to, start, dur}
+let rafId = null;
+
+function tickMovimiento(){
+  rafId = null;
+  const now = performance.now();
+  let activo = false;
+  moves.forEach((m, id) => {
+    const k = Math.min(1, (now - m.start) / m.dur);   // 0..1 progress
+    const e = MOVE_EASE(k);
+    const mk = markers.get(id);
+    if (mk) mk.setLatLng([m.from[0] + (m.to[0]-m.from[0])*e, m.from[1] + (m.to[1]-m.from[1])*e]);
+    if (k < 1) activo = true; else moves.delete(id);  // arrived: sample becomes the pin
+  });
+  if (activo) rafId = requestAnimationFrame(tickMovimiento);
+}
+function despertarMovimiento(){ if (rafId === null) rafId = requestAnimationFrame(tickMovimiento); }
+
+function programarMovimiento(t, from, to, dtMs){
+  // Under 5 m the truck is parked: drop any pending tween and sit on the sample.
+  if (haversineM(from[0], from[1], to[0], to[1]) < 5){ moves.delete(t.id); return; }
+  const dur = Math.max(MOVE_MIN_MS, Math.min(MOVE_MAX_MS, dtMs > 0 ? dtMs : POLL_MS));
+  moves.set(t.id, {from, to, start: performance.now(), dur});
+  despertarMovimiento();
+}
+
+/* ---------- Utilities ---------- */
+const ago = ms => {
+  const s = Math.max(0, Math.round((Date.now()-ms)/1000));
+  if (s < 60) return `hace ${s} s`;
+  if (s < 3600) return `hace ${Math.round(s/60)} min`;
+  return `hace ${Math.round(s/3600)} h`;
+};
+const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+function visibleTrucks(){
+  const q = norm(state.q.trim());
+  const list = trucks.filter(t =>
+    (state.view==='all' || t.status==='alert') &&
+    (state.status==='all' || t.status===state.status) &&
+    (!q || norm(`${t.plate} ${t.driver} ${t.route}`).includes(q))
+  );
+  const k = state.sort, m = state.dir==='asc' ? 1 : -1;
+  list.sort((a,b) => {
+    const x = a[k], y = b[k];
+    return (typeof x==='string' ? x.localeCompare(y,'es') : x-y) * m;
+  });
+  return list;
+}
+
+// Geographic helpers used to derive speed/heading from real coordinates.
+const toRad = d => d * Math.PI / 180;
+const toDeg = r => r * 180 / Math.PI;
+function haversineM(aLat, aLng, bLat, bLng){
+  const R = 6371e3;
+  const dLat = toRad(bLat - aLat), dLng = toRad(bLng - aLng);
+  const h = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function bearing(aLat, aLng, bLat, bLng){
+  const y = Math.sin(toRad(bLng - aLng)) * Math.cos(toRad(bLat));
+  const x = Math.cos(toRad(aLat)) * Math.sin(toRad(bLat)) -
+            Math.sin(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.cos(toRad(bLng - aLng));
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+// Status is derived from real telemetry: fresh + fast = move/alert, fresh +
+// slow = idle, stale or unknown = stop.
+function estadoDe(t){
+  if (!t.updated) return 'stop';
+  if (Date.now() - t.updated > STALE_MS) return 'stop';
+  if (t.speed > SPEED_LIMIT) return 'alert';
+  if (t.speed < 3) return 'idle';
+  return 'move';
+}
+
+/* ---------- Charts ---------- */
+function donut(pct, color, label, value, center){
+  const r = 27, c = 2*Math.PI*r;
+  const pctText = center === undefined ? Math.round(pct) + '%' : center;
+  return `<div class="dn"><div style="position:relative">
+    <svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="${r}" stroke="#e9ebe8"/>
+    <circle cx="34" cy="34" r="${r}" stroke="${color}" stroke-linecap="round" stroke-dasharray="${c*pct/100} ${c}"/></svg>
+    <div class="pc" style="color:${color}">${pctText}</div></div>
+    <div class="t">${label}<b>${value}</b></div></div>`;
+}
+
+function renderDonuts(){
+  const n = trucks.length || 1;
+  const moving = trucks.filter(t=>t.status==='move'||t.status==='alert').length;
+  const fresh = trucks.filter(t=>t.updated && Date.now()-t.updated < 5*60e3).length;
+  // No fuel data in the API: render "no data" instead of inventing a value.
+  document.getElementById('donuts').innerHTML =
+    donut(moving/n*100, '#eeb04a', 'En ruta', `${moving} de ${n}`) +
+    donut(0, '#9a8fd6', 'Combustible', 'promedio', '—') +
+    donut(fresh/n*100, '#7fa0e8', 'Con señal', `${fresh} de ${n}`);
+}
+
+function renderBars(list){
+  const max = 120, h = 129 - 18;
+  const bars = document.getElementById('bars');
+  bars.replaceChildren();
+
+  const limit = document.createElement('div');
+  limit.className = 'limit';
+  limit.style.bottom = (18 + h*SPEED_LIMIT/max) + 'px';
+  const limitLabel = document.createElement('span');
+  limitLabel.textContent = `Límite ${SPEED_LIMIT} km/h`;
+  limit.appendChild(limitLabel);
+  bars.appendChild(limit);
+
+  list.forEach(t => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bar ' + (t.id===selectedId ? 'sel' : '');
+    b.dataset.id = t.id;
+    b.title = `${t.plate}: ${t.speed} km/h`;
+    const bar = document.createElement('i');
+    bar.style.height = Math.max(3.5, h*t.speed/max) + 'px';
+    const lbl = document.createElement('b');
+    lbl.textContent = String(t.plate).slice(0,2) + String(t.plate).slice(-2);
+    b.append(bar, lbl);
+    b.onclick = () => select(+b.dataset.id, true);
+    bars.appendChild(b);
+  });
+}
+
+// Sparkline from numeric speed samples only (no API strings involved).
+function sparkline(data){
+  const w = 300, h = 64, max = Math.max(120, ...data);
+  const pts = data.map((v,i) => [i*(w/(data.length-1)), h-4 - (h-10)*v/max]);
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i=1;i<pts.length;i++){
+    const [x0,y0] = pts[i-1], [x1,y1] = pts[i], cx = (x0+x1)/2;
+    d += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`;
+  }
+  const ly = h-4 - (h-10)*SPEED_LIMIT/max;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Velocidad reciente">
+    <line x1="0" y1="${ly}" x2="${w}" y2="${ly}" stroke="#eeb04a" stroke-dasharray="4 4" stroke-width="1"/>
+    <path d="${d}" fill="none" stroke="#5a7ee6" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+/* ---------- Render ---------- */
+function render(){
+  const list = visibleTrucks();
+  const ids = new Set(list.map(t=>t.id));
+
+  trucks.forEach(t => {
+    if (t.lat === null) return; // no location yet: nothing to pin
+    let mk = markers.get(t.id);
+    if (!mk){
+      mk = L.marker([t.lat,t.lng], {icon:pinIcon(t,false), title:t.plate});
+      mk.on('click', () => select(t.id, false));
+      markers.set(t.id, mk);
+    }
+    if (!moves.has(t.id)) mk.setLatLng([t.lat,t.lng]); // an in-flight tween owns the pin
+    mk.setIcon(pinIcon(t, t.id===selectedId));
+    if (ids.has(t.id)) mk.addTo(map); else map.removeLayer(mk);
+  });
+
+  const ul = document.getElementById('list');
+  ul.replaceChildren();
+  if (!list.length){
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Ningún camión coincide con los filtros.';
+    ul.appendChild(li);
+  }
+  // API strings (plate, driver) go through textContent only, never innerHTML.
+  list.forEach(t => {
+    const li = document.createElement('li');
+    if (t.id===selectedId) li.classList.add('sel');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = STATUS[t.status].color;
+
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = t.plate;
+
+    const sp = document.createElement('span');
+    sp.className = 'sp';
+    sp.textContent = t.speed;
+    const spUnit = document.createElement('small');
+    spUnit.textContent = ' km/h';
+    sp.appendChild(spUnit);
+
+    const sb = document.createElement('span');
+    sb.className = 'sb';
+    sb.textContent = [t.driver, t.updated ? ago(t.updated) : 'Sin señal'].filter(Boolean).join(' · ');
+
+    const fu = document.createElement('span');
+    fu.className = 'fu' + (t.fuel!=null && t.fuel<25 ? ' low' : '');
+    fu.textContent = t.fuel!=null ? `${t.fuel}% comb.` : '—';
+
+    btn.append(dot, nm, sp, sb, fu);
+    btn.onclick = () => select(t.id, true);
+    li.appendChild(btn);
+    ul.appendChild(li);
+  });
+
+  document.getElementById('count').textContent = `${list.length} de ${trucks.length} camiones`;
+  const nAlert = trucks.filter(t=>t.status==='alert').length;
+  document.getElementById('alertBtn').textContent = `${nAlert} ${nAlert===1?'alerta':'alertas'}`;
+
+  renderBars(list);
+  renderDonuts();
+  renderDetail();
+}
+
+function renderDetail(){
+  const el = document.getElementById('detail');
+  const t = trucks.find(x=>x.id===selectedId);
+  if (!t){
+    const empty = document.createElement('div');
+    empty.className = 'noSel';
+    empty.textContent = 'Elegí un camión en el mapa o en la lista para ver su detalle.';
+    el.replaceChildren(empty);
+    return;
+  }
+  el.replaceChildren();
+
+  const when = document.createElement('div');
+  when.className = 'when';
+  const left = document.createElement('span');
+  const plate = document.createElement('b');
+  plate.style.color = 'var(--ink)';
+  plate.style.fontSize = '14px';
+  plate.textContent = t.plate;
+  const stLabel = document.createElement('span');
+  stLabel.style.color = STATUS[t.status].color;
+  stLabel.style.fontWeight = '600';
+  stLabel.textContent = STATUS[t.status].label;
+  left.append(plate, document.createTextNode(' · '), stLabel);
+  const right = document.createElement('span');
+  right.textContent = t.updated ? ago(t.updated) : 'Sin señal';
+  when.append(left, right);
+
+  const st = document.createElement('div');
+  st.className = 'st';
+  const statCell = (value, label) => {
+    const cell = document.createElement('div');
+    const b = document.createElement('b');
+    b.textContent = value;
+    const span = document.createElement('span');
+    span.textContent = label;
+    cell.append(b, span);
+    return cell;
+  };
+  st.append(
+    statCell(t.speed, 'km/h'),
+    statCell(t.fuel!=null ? `${t.fuel}%` : '—', 'Combustible'),
+    statCell(`${Math.round(t.heading)}°`, 'Rumbo')
+  );
+
+  const info = document.createElement('dl');
+  info.className = 'info';
+  const infoRow = (dt, dd) => {
+    const a = document.createElement('dt');
+    a.textContent = dt;
+    const c = document.createElement('dd');
+    c.textContent = dd;
+    info.append(a, c);
+  };
+  infoRow('Chofer', t.driver || '—');
+  infoRow('Ruta', t.route || '—');
+  infoRow('Posición', t.lat!=null ? `${t.lat.toFixed(3)}, ${t.lng.toFixed(3)}` : '—');
+
+  el.append(when, st, info);
+  if (t.history && t.history.length > 1){
+    // Generated locally from numeric samples: safe to inject as markup.
+    el.insertAdjacentHTML('beforeend', sparkline(t.history));
+  }
+  if (isMobile()){
+    // En móvil el detalle vive en el panel inferior: botón para volver a la lista completa.
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'detail-close';
+    close.textContent = 'Ver toda la flota';
+    close.onclick = () => { selectedId = null; render(); if (window.setSheet) window.setSheet('half', true); };
+    el.appendChild(close);
+  }
+}
+
+// Misma condición que el bloque CSS móvil: teléfono vertical o apaisado.
+const MOBILE_Q = '(max-width:767px), (pointer:coarse) and (max-height:500px)';
+const isMobile = () => window.matchMedia(MOBILE_Q).matches;
+
+function enfocarCamion(t){
+  const z = Math.max(map.getZoom(), 10);
+  if (isMobile()){
+    // Centra el camión en la parte visible del mapa (entre la barra superior y el panel inferior).
+    const half = Math.round(window.innerHeight * 0.54), top = 76;
+    const p = map.project([t.lat, t.lng], z).add([0, (half - top) / 2]);
+    map.flyTo(map.unproject(p, z), z, {duration:.8});
+  } else {
+    map.flyTo([t.lat,t.lng], z, {duration:.8});
+  }
+}
+
+function select(id, fly){
+  selectedId = id;
+  const t = trucks.find(x=>x.id===id);
+  if (t){
+    if ((fly || isMobile()) && t.lat!=null) enfocarCamion(t);
+    cargarHistorial(t);
+  }
+  render();
+  if (isMobile() && window.setSheet) window.setSheet('half', true);
+}
+
+/* ---------- Real API calls ---------- */
+// GET /trucks: org-scoped list (id + plate) guarded by the Bearer token.
+function crearEstadoCamion(t){
+  return {
+    id: t.id,
+    plate: t.plate,
+    color: colorDeCamion(t),   // identity colour, fixed for the whole session
+    lat: null, lng: null,
+    heading: 0,
+    status: 'stop',
+    speed: 0,
+    fuel: null,  // not exposed by the backend
+    driver: '',  // not exposed by the backend
+    route: '',   // not exposed by the backend
+    updated: 0,
+    history: [],
+  };
+}
+
+async function cargarCamiones(){
+  try{
+    const res = await fetch('/trucks', { headers: authHeaders() });
+    if (res.status === 401){ clearSessionAndRedirect(); return false; }
+    if (!res.ok) return false;
+    const data = await res.json();
+    const existentes = new Map(trucks.map(t => [t.id, t]));
+    const idsActuales = new Set(data.map(t => t.id));
+
+    // Remove stale client-only state, including pins and in-flight tweens.
+    existentes.forEach((t, id) => {
+      if (idsActuales.has(id)) return;
+      const marker = markers.get(id);
+      if (marker) map.removeLayer(marker);
+      markers.delete(id);
+      moves.delete(id);
+      if (selectedId === id) selectedId = null;
+    });
+
+    // Reuse existing objects so telemetry, history, selection and marker state
+    // survive every list refresh; only newly discovered trucks get defaults.
+    trucks = data.map(t => {
+      const conocido = existentes.get(t.id);
+      if (conocido) {
+        conocido.plate = t.plate;
+        return conocido;
+      }
+      return crearEstadoCamion(t);
+    });
+    return true;
+  }catch(error){
+    console.error('Error al cargar camiones:', error);
+    return false;
+  }
+}
+
+function aplicarPunto(t, p){
+  const lat = p.lat, lng = p.long;
+  const ts = Date.parse(p.timestamp) || Date.now();
+  const anterior = t.lat === null ? null : [t.lat, t.lng];
+  if (anterior){
+    const dtMs = ts - t.updated;
+    const dist = haversineM(anterior[0], anterior[1], lat, lng);
+    if (dtMs > 0){
+      // Real speed derived from displacement between consecutive points
+      t.speed = Math.max(0, Math.min(200, Math.round((dist / (dtMs/1000)) * 3.6)));
+    }
+    if (dist > 5) t.heading = bearing(anterior[0], anterior[1], lat, lng);
+    // Two consecutive samples received: glide from the previous one to this one.
+    programarMovimiento(t, anterior, [lat, lng], dtMs);
+  }
+  t.lat = lat; t.lng = lng; t.updated = ts;
+  t.history.push(t.speed);
+  if (t.history.length > HISTORY_MAX) t.history.shift();
+  t.status = estadoDe(t);
+}
+
+// Poll GET /trucks/{id}/location for every truck (replaces the example's
+// movement simulation with real telemetry).
+async function actualizarUbicaciones(){
+  await cargarCamiones();
+  await Promise.all(trucks.map(async t => {
+    try{
+      const res = await fetch(`/trucks/${t.id}/location`, { headers: authHeaders() });
+      if (res.status === 401){ clearSessionAndRedirect(); return; }
+      if (!res.ok) return; // 404: truck without registered locations
+      const p = await res.json();
+      aplicarPunto(t, p);
+    }catch(error){
+      console.error('Error al actualizar ubicación:', error);
+    }
+  }));
+  render();
+}
+
+// GET /trucks/{id}/iter: derive a real speed history for the selected truck.
+async function cargarHistorial(t){
+  try{
+    const res = await fetch(`/trucks/${t.id}/iter`, { headers: authHeaders() });
+    if (res.status === 401){ clearSessionAndRedirect(); return; }
+    if (!res.ok) return;
+    const pts = await res.json();          // newest first
+    const chrono = pts.slice().reverse();  // oldest first
+    const hist = [];
+    for (let i = 1; i < chrono.length; i++){
+      const dtSeg = (Date.parse(chrono[i].timestamp) - Date.parse(chrono[i-1].timestamp)) / 1000;
+      const dist = haversineM(chrono[i-1].lat, chrono[i-1].long, chrono[i].lat, chrono[i].long);
+      hist.push(dtSeg > 0 ? Math.max(0, Math.min(200, Math.round((dist/dtSeg)*3.6))) : 0);
+    }
+    if (hist.length) t.history = hist.slice(-HISTORY_MAX);
+    render();
+  }catch(error){
+    console.error('Error al cargar historial:', error);
+  }
+}
+
+/* ---------- Events ---------- */
+document.getElementById('q').oninput = e => { state.q = e.target.value; render(); };
+document.getElementById('sort').onchange = e => { state.sort = e.target.value; render(); };
+document.getElementById('dir').onchange  = e => { state.dir  = e.target.value; render(); };
+document.getElementById('chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  state.status = b.dataset.s;
+  document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c===b));
+  render();
+});
+function setView(v){
+  state.view = v;
+  document.querySelectorAll('#seg button').forEach(c => c.setAttribute('aria-pressed', c.dataset.v===v));
+  render();
+}
+document.getElementById('seg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (b) setView(b.dataset.v);
+});
+document.getElementById('alertBtn').onclick = () => setView('alert');
+document.getElementById('btn-logout').addEventListener('click', clearSessionAndRedirect);
+
+/* ---------- Boot: only with a valid session ---------- */
+// Open the map on the first truck of the list, honouring the user's sort/filter.
+function centrarEnPrimerCamion(){
+  const t = visibleTrucks()[0];
+  if (!t || t.lat === null) return;   // nothing located yet: keep the default view
+  map.setView([t.lat, t.lng], Math.max(map.getZoom(), OPEN_ZOOM));
+}
+
+verificarSesion().then(async (sesionValida) => {
+  if (!sesionValida) return;
+  const ok = await cargarCamiones();
+  render();
+  if (!ok) return;
+  await actualizarUbicaciones();
+  centrarEnPrimerCamion();
+  setInterval(actualizarUbicaciones, POLL_MS);
+});
+</script>
+<script>
+// Sidebar toggle (v10 chrome): hides the rail, keeps the mini brand in the bar.
+(function(){
+  const app = document.querySelector('.app'), btn = document.getElementById('navToggle'), side = document.getElementById('sidebar');
+  function setNav(open){
+    app.classList.toggle('nav-off', !open);
+    side.inert = !open;
+    btn.setAttribute('aria-expanded', open);
+    btn.setAttribute('aria-label', open ? 'Ocultar panel lateral' : 'Mostrar panel lateral');
+    btn.title = btn.getAttribute('aria-label');
+    try{ localStorage.setItem('itertrack-nav', open ? '1' : '0'); }catch(e){}
+  }
+  btn.addEventListener('click', () => setNav(app.classList.contains('nav-off')));
+  try{ if(localStorage.getItem('itertrack-nav') === '0') setNav(false); }catch(e){}
+})();
+</script>
+<script>
+// Móvil: panel inferior arrastrable (peek / half / full) y menú lateral como cajón.
+(function(){
+  const app = document.querySelector('.app');
+  const sheet = document.querySelector('.grid > .col:last-child');
+  const grab = document.getElementById('grab');
+  const side = document.getElementById('sidebar');
+  const toggle = document.getElementById('navToggle');
+  const scrim = document.getElementById('scrim');
+  const bottom = document.querySelector('.bottom');
+  const search = document.getElementById('q');
+  const mq = window.matchMedia(MOBILE_Q);
+  const marker = document.createComment('bottom');
+  const ORDER = ['peek','half','full'];
+  let state = 'peek';
+  bottom.after(marker);
+
+  function heights(){
+    return { peek:172, half:Math.round(window.innerHeight * .54), full:sheet.offsetHeight };
+  }
+
+  function setSheet(s, resetScroll){
+    state = s;
+    app.classList.remove('sheet-peek','sheet-half','sheet-full');
+    app.classList.add('sheet-' + s);
+    grab.setAttribute('aria-expanded', String(s !== 'peek'));
+    if (s === 'peek' || resetScroll) sheet.scrollTop = 0;
+  }
+  window.setSheet = setSheet;
+
+  function setDrawer(open){
+    app.classList.toggle('drawer-open', open);
+    side.inert = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    const label = open ? 'Cerrar menú' : 'Abrir menú';
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+  }
+
+  // En móvil el botón abre el cajón; el handler de escritorio (nav-off) no debe correr.
+  toggle.addEventListener('click', e => {
+    if (!mq.matches) return;
+    e.stopImmediatePropagation();
+    setDrawer(!app.classList.contains('drawer-open'));
+  }, true);
+  scrim.addEventListener('click', () => setDrawer(false));
+  side.querySelectorAll('nav a').forEach(a => a.addEventListener('click', () => { if (mq.matches) setDrawer(false); }));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && app.classList.contains('drawer-open')){ setDrawer(false); toggle.focus(); }
+  });
+
+  // Arrastre del panel
+  let drag = null;
+  const cycle = dir => {
+    const i = ORDER.indexOf(state);
+    const next = dir ? Math.max(0, Math.min(2, i + dir)) : (i + 1) % 3;
+    setSheet(ORDER[next]);
+  };
+  grab.addEventListener('pointerdown', e => {
+    if (!mq.matches) return;
+    drag = { y:e.clientY, vis:window.innerHeight - sheet.getBoundingClientRect().top, cur:null, moved:false, lastY:e.clientY, lastT:e.timeStamp, v:0 };
+    grab.setPointerCapture(e.pointerId);
+    sheet.classList.add('dragging');
+  });
+  grab.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const h = heights(), dy = drag.y - e.clientY;
+    if (Math.abs(dy) > 4) drag.moved = true;
+    drag.cur = Math.min(h.full, Math.max(h.peek, drag.vis + dy));
+    sheet.style.transform = `translateY(${h.full - drag.cur}px)`;
+    const dt = e.timeStamp - drag.lastT;
+    if (dt > 0){ drag.v = (drag.lastY - e.clientY) / dt; drag.lastY = e.clientY; drag.lastT = e.timeStamp; }
+  });
+  function endDrag(){
+    if (!drag) return;
+    const d = drag, h = heights();
+    drag = null;
+    sheet.classList.remove('dragging');
+    sheet.style.transform = '';
+    if (!d.moved){ cycle(); return; }
+    const proj = (d.cur ?? d.vis) + d.v * 180;   // proyecta la inercia del gesto
+    const target = ORDER.map(k => [k, Math.abs(h[k] - proj)]).sort((a,b) => a[1] - b[1])[0][0];
+    setSheet(target);
+  }
+  grab.addEventListener('pointerup', endDrag);
+  grab.addEventListener('pointercancel', endDrag);
+  grab.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); cycle(); }
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); cycle(1); }
+    else if (e.key === 'ArrowDown'){ e.preventDefault(); cycle(-1); }
+  });
+
+  // Gestos de contexto
+  search.addEventListener('input', () => { if (mq.matches && state === 'peek') setSheet('half'); });
+  search.addEventListener('keydown', e => { if (e.key === 'Enter') search.blur(); });
+  document.getElementById('alertBtn').addEventListener('click', () => { if (mq.matches) setSheet('half', true); });
+  map.on('click', () => { if (mq.matches && state !== 'peek') setSheet('peek'); });
+
+  // Los gráficos viven en el panel solo en móvil
+  function apply(){
+    if (mq.matches){
+      sheet.appendChild(bottom);
+      setDrawer(false);
+      setSheet(state);
+    } else {
+      marker.before(bottom);
+      app.classList.remove('drawer-open','sheet-peek','sheet-half','sheet-full');
+      sheet.style.transform = '';
+      side.inert = app.classList.contains('nav-off');
+    }
+    setTimeout(() => map.invalidateSize(), 50);
+  }
+  mq.addEventListener('change', apply);
+  apply();
+})();
+</script>
+</body>
+</html>

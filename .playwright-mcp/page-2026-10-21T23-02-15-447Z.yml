@@ -1,0 +1,84 @@
+- generic [ref=f21e3]:
+  - generic [ref=f21e4]:
+    - generic:
+      - region "Map" [ref=f21e5]
+      - button "Map marker" [ref=f21e48]:
+        - emphasis [ref=f21e63]: ABC123
+      - button "Map marker" [ref=f21e64]:
+        - emphasis [ref=f21e79]: ABC123-03
+      - button "Map marker" [ref=f21e80]:
+        - emphasis [ref=f21e95]: ABC123-02
+    - generic [ref=f21e6]:
+      - button "Zoom in" [ref=f21e7] [cursor=pointer]
+      - button "Zoom out" [ref=f21e9] [cursor=pointer]
+      - button "Drag to rotate map, click to reset north" [ref=f21e11]
+  - complementary [ref=f21e13]:
+    - strong [ref=f21e14]:
+      - text: ↗
+      - generic [ref=f21e19]: IterTrack
+  - banner [ref=f21e20]:
+    - button "Mostrar u ocultar menú" [ref=f21e21] [cursor=pointer]
+    - textbox "Buscar camiones" [ref=f21e23]:
+      - /placeholder: Buscar patente, chofer o ruta
+    - generic [ref=f21e26]: OC
+  - generic [ref=f21e27]:
+    - heading "Mapa en vivo" [level=1] [ref=f21e28]
+    - generic [ref=f21e29]: Actualizando
+  - complementary [ref=f21e30]:
+    - generic [ref=f21e31]:
+      - generic [ref=f21e32]:
+        - button "Toda la flota" [ref=f21e33] [cursor=pointer]
+        - button "Solo alertas" [ref=f21e34] [cursor=pointer]
+      - generic [ref=f21e35]:
+        - button "Todos" [ref=f21e36] [cursor=pointer]
+        - button "En movimiento" [ref=f21e37] [cursor=pointer]
+        - button "Detenidos" [ref=f21e38] [cursor=pointer]
+        - button "Apagados" [ref=f21e39] [cursor=pointer]
+      - generic [ref=f21e40]:
+        - combobox "Ordenar por" [ref=f21e41]:
+          - option "Patente" [selected]
+          - option "Velocidad"
+        - combobox "Dirección" [ref=f21e42]:
+          - option "Ascendente" [selected]
+          - option "Descendente"
+      - generic [ref=f21e43]: 3 de 3 camiones
+      - list [ref=f21e96]:
+        - listitem [ref=f21e97]:
+          - button "ABC123 237 km/h hace instantes" [ref=f21e98] [cursor=pointer]:
+            - generic [ref=f21e100]: ABC123
+            - generic [ref=f21e101]: 237 km/h
+            - generic [ref=f21e102]: hace instantes
+        - listitem [ref=f21e103]:
+          - button "ABC123-02 9 km/h hace instantes" [ref=f21e104] [cursor=pointer]:
+            - generic [ref=f21e106]: ABC123-02
+            - generic [ref=f21e107]: 9 km/h
+            - generic [ref=f21e108]: hace instantes
+        - listitem [ref=f21e109]:
+          - button "ABC123-03 29 km/h hace instantes" [ref=f21e110] [cursor=pointer]:
+            - generic [ref=f21e112]: ABC123-03
+            - generic [ref=f21e113]: 29 km/h
+            - generic [ref=f21e114]: hace instantes
+    - generic [ref=f21e46]:
+      - generic [ref=f21e115]:
+        - strong [ref=f21e116]:
+          - text: ABC123
+          - emphasis [ref=f21e117]: · Alerta
+        - generic [ref=f21e118]: hace instantes
+      - generic [ref=f21e119]:
+        - generic [ref=f21e120]:
+          - text: "237"
+          - generic [ref=f21e121]: km/h
+        - generic [ref=f21e122]:
+          - text: —
+          - generic [ref=f21e123]: Combustible
+        - generic [ref=f21e124]:
+          - text: 110°
+          - generic [ref=f21e125]: Rumbo
+      - generic [ref=f21e126]:
+        - term [ref=f21e127]: Chofer
+        - definition [ref=f21e128]: —
+        - term [ref=f21e129]: Ruta
+        - definition [ref=f21e130]: —
+        - term [ref=f21e131]: Posición
+        - definition [ref=f21e132]: "-31.411, -64.191"
+  - text: Límite 90 km/h

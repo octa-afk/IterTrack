@@ -1,0 +1,48 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - img "IterTrack" [ref=e5]
+      - text: IterTrack
+    - heading "Toda tu flota, en un solo mapa." [level=2] [ref=e9]
+    - paragraph [ref=e10]: Seguí cada camión en tiempo real, filtrá por estado y recibí alertas antes de que se conviertan en problemas.
+    - generic [aria-hidden] [ref=e11]:
+      - generic [ref=e12]: En ruta ahora
+      - list [ref=e13]:
+        - listitem [ref=e14]:
+          - generic [ref=e16]: AF 412 KD
+          - emphasis [ref=e17]: 82 km/h
+          - generic [ref=e18]: Córdoba → Rosario
+        - listitem [ref=e19]:
+          - generic [ref=e21]: AG 233 MP
+          - emphasis [ref=e22]: Detenido
+          - generic [ref=e23]: Córdoba → Tucumán
+        - listitem [ref=e24]:
+          - generic [ref=e26]: AF 678 NC
+          - emphasis [ref=e27]: 105 km/h
+          - generic [ref=e28]: Río Cuarto → San Luis
+  - generic [ref=e29]:
+    - heading "Iniciar sesión" [level=1] [ref=e30]
+    - paragraph [ref=e31]: Ingresá con tu cuenta para ver el panel de la flota.
+    - generic [ref=e32]:
+      - generic [ref=e33]:
+        - generic [ref=e34]: Usuario
+        - textbox "Usuario" [ref=e36]:
+          - /placeholder: Tu usuario
+      - generic [ref=e37]:
+        - generic [ref=e38]: Contraseña
+        - generic [ref=e39]:
+          - textbox "Contraseña" [ref=e40]:
+            - /placeholder: Tu contraseña
+          - button "Mostrar contraseña" [ref=e41] [cursor=pointer]: Mostrar
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - checkbox "Mantener sesión iniciada" [ref=e44]
+          - text: Mantener sesión iniciada
+        - link "¿Olvidaste tu contraseña?" [ref=e45] [cursor=pointer]:
+          - /url: "#"
+      - button "Iniciar sesión" [ref=e46] [cursor=pointer]
+      - status [ref=e47]
+    - paragraph [ref=e48]:
+      - text: ¿Todavía no tenés cuenta?
+      - link "Crear cuenta" [ref=e49] [cursor=pointer]:
+        - /url: /register
