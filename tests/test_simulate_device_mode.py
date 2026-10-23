@@ -327,3 +327,29 @@ def test_constructor_de_sender_rate_limits_a_failing_recovery(monkeypatch):
 
     # Una recuperación fallida no debe golpear la API en cada punto.
     assert len(intentos) == 1
+
+
+def test_constructor_de_sender_allows_another_recovery_after_a_success(monkeypatch):
+    intentos = []
+    emitidos = iter(["primero", "segundo"])
+
+    def fake_enviar_ingesta(
+        token, lat, long, speed, heading, recorded_at, sequence=1, batch_id=None,
+        on_unauthorized=None,
+    ):
+        # Cada punto llega con un token inválido: dos resets seguidos.
+        if on_unauthorized is not None:
+            on_unauthorized()
+        return True
+
+    def renovar():
+        intentos.append(1)
+        return next(emitidos)
+
+    monkeypatch.setattr("scripts.simulate_trucks.enviar_ingesta", fake_enviar_ingesta)
+
+    sender = constructor_de_sender("viejo", on_unauthorized=renovar)
+    sender(0.0, 0.0, 1.0, 2.0, datetime(2026, 10, 23, tzinfo=UTC))
+    sender(0.0, 0.0, 1.0, 2.0, datetime(2026, 10, 23, tzinfo=UTC))
+
+    assert len(intentos) == 2

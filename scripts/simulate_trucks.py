@@ -495,8 +495,11 @@ def constructor_de_sender(
     def renovar() -> str | None:
         if monotonic() - estado["ultimo_intento"] < RECOVERY_COOLDOWN:
             return None
-        estado["ultimo_intento"] = monotonic()
         nuevo = on_unauthorized() if on_unauthorized is not None else None
+        # Un éxito habilita el intento siguiente de inmediato: el cooldown es
+        # para no golpear la API cuando la recuperación no da token, no para
+        # castigar a dos resets seguidos.
+        estado["ultimo_intento"] = -RECOVERY_COOLDOWN if nuevo else monotonic()
         if nuevo:
             estado["token"] = nuevo
         return nuevo
