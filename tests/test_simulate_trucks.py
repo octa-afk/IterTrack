@@ -1,11 +1,17 @@
 import os
 from datetime import UTC, datetime, timedelta
+from itertools import pairwise
+
+import pytest
 
 from scripts.simulate_trucks import (
     actualizar_ubicacion,
     build_truck_configs,
+    calcular_distancia_metros,
     cargar_env_local,
+    cargar_ruta,
     ejecutar_simulaciones,
+    espera_y_velocidad,
     rotate_route,
     route_offset,
     simular_ruta,
@@ -524,3 +530,43 @@ def test_cargar_env_local_loads_values_without_overriding_process_env(monkeypatc
 
     monkeypatch.delenv("ITERTRACK_PROBE_NEW", raising=False)
 
+
+
+# ---- cadencia y velocidad realista ----
+# La ruta no tiene espaciado uniforme: a un punto cada 2 s fijos, un tramo de
+# 162 m implica 293 km/h y el panel dibuja un límite de 90 km/h.
+
+
+def test_espera_y_velocidad_caps_a_long_segment_at_the_target_speed():
+    espera, velocidad = espera_y_velocidad(160.0, intervalo_minimo=2.0, objetivo_kmh=55.0)
+
+    assert velocidad == pytest.approx(55.0, abs=0.01)
+    assert espera == pytest.approx(160.0 / (55.0 / 3.6), abs=0.01)
+
+
+def test_espera_y_velocidad_keeps_the_minimum_interval_on_short_segments():
+    espera, velocidad = espera_y_velocidad(2.0, intervalo_minimo=2.0, objetivo_kmh=55.0)
+
+    assert espera == 2.0
+    assert velocidad == pytest.approx(3.6, abs=0.01)
+
+
+def test_espera_y_velocidad_handles_a_zero_length_segment():
+    espera, velocidad = espera_y_velocidad(0.0, intervalo_minimo=2.0, objetivo_kmh=55.0)
+
+    assert espera == 2.0
+    assert velocidad == 0.0
+
+
+def test_no_segment_of_the_real_route_exceeds_the_target_speed():
+    ruta = cargar_ruta()
+    objetivo = 55.0
+
+    velocidades = []
+    for (lat1, lon1), (lat2, lon2) in pairwise(ruta):
+        dist = calcular_distancia_metros(lat1, lon1, lat2, lon2)
+        _, velocidad = espera_y_velocidad(dist, intervalo_minimo=2.0, objetivo_kmh=objetivo)
+        velocidades.append(velocidad)
+
+    assert max(velocidades) <= objetivo + 0.01
+    assert max(velocidades) < 90

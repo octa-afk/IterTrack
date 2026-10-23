@@ -176,6 +176,24 @@ def calcular_distancia_metros(lat1: float, lon1: float, lat2: float, lon2: float
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     return 2 * r * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
+def espera_y_velocidad(
+    dist_metros: float, intervalo_minimo: float, objetivo_kmh: float
+) -> tuple[float, float]:
+    """Espera entre puntos y velocidad reportada para un tramo de la ruta.
+
+    Los puntos de la ruta no están espaciados de forma uniforme: con una
+    cadencia fija, un tramo de 162 m implica 293 km/h y el panel dibuja un
+    límite de 90. Esperar en proporción a la distancia mantiene la velocidad
+    por debajo del objetivo, y el intervalo mínimo evita que los tramos cortos
+    martillen la API.
+    """
+    if dist_metros <= 0:
+        return intervalo_minimo, 0.0
+    metros_por_segundo = max(objetivo_kmh, 0.1) / 3.6
+    espera = max(intervalo_minimo, dist_metros / metros_por_segundo)
+    return espera, dist_metros / espera * 3.6
+
+
 def cargar_ruta():
     """Carga los puntos de la ruta realista desde el archivo JSON."""
     if ROUTE_FILE.exists():
@@ -530,11 +548,15 @@ def simular_ruta(
     admin_headers=None,
     refresh_headers=None,
     sender=None,
+    objetivo_kmh: float = 55.0,
 ):
     ruta = rotate_route(cargar_ruta(), phase_offset)
     total_puntos = len(ruta)
     print(f"\n🚚 Iniciando simulación de ruta urbana en Córdoba ({total_puntos} puntos)")
-    print(f"⏱️ Intervalo: {intervalo}s entre pings | API: {BASE_URL}\n")
+    print(
+        f"⏱️ Intervalo mínimo: {intervalo}s | velocidad objetivo: {objetivo_kmh:.0f} km/h"
+        f" | API: {BASE_URL}\n"
+    )
 
     if headers is None:
         headers = autenticar()
@@ -594,11 +616,12 @@ def simular_ruta(
                 dist = calcular_distancia_metros(prev_lat, prev_lon, lat, lon)
                 rumbo = calcular_rumbo(prev_lat, prev_lon, lat, lon)
                 cardinal = punto_cardinal(rumbo)
-                velocidad_kmh = (dist / intervalo) * 3.6
+                espera, velocidad_kmh = espera_y_velocidad(dist, intervalo, objetivo_kmh)
                 telemetria_str = f"| Rumbo: {rumbo:5.1f}° {cardinal:2} | Vel: {velocidad_kmh:4.1f} km/h | Tramo: {dist:4.1f}m"
             else:
                 rumbo = 0
                 velocidad_kmh = 0
+                espera = intervalo
                 telemetria_str = "| Punto de partida"
 
             # Hora de medición: el instante en que el simulador toma la lectura, no el envío.
@@ -607,7 +630,7 @@ def simular_ruta(
             status = "🟢 OK" if ok else "🔴 FAIL"
 
             print(f"[{i + 1:3}/{total_puntos}] {status} | Lat: {lat:10.6f}, Long: {lon:10.6f} {telemetria_str}")
-            stop_event.wait(intervalo)
+            stop_event.wait(espera)
 
         vuelta += 1
 
@@ -620,6 +643,7 @@ def ejecutar_simulaciones(
     clear_history_on_start: bool = False,
     mode: str = "user",
     force: bool = False,
+    objetivo_kmh: float = 55.0,
 ):
     """Run all configured truck workers until interrupted.
 
@@ -699,6 +723,7 @@ def ejecutar_simulaciones(
             admin_headers=admin_headers,
             refresh_headers=None if sender is not None else renovar_credenciales,
             sender=sender,
+            objetivo_kmh=objetivo_kmh,
         )
         for config, sender in trabajos
     ]
@@ -719,6 +744,15 @@ if __name__ == "__main__":
     parser.add_argument("--plate", type=str, default="ABC123", help="Patente del camión (default: ABC123)")
     parser.add_argument("-i", "--interval", type=float, default=2.0, help="Intervalo en segundos entre pings (default: 2.0)")
     parser.add_argument("-n", "--count", type=int, default=1, help="Cantidad de camiones (default: 1)")
+    parser.add_argument(
+        "--speed-kmh",
+        type=float,
+        default=55.0,
+        help=(
+            "Velocidad objetivo en km/h. Los tramos largos esperan lo necesario para "
+            "no superarla; --interval queda como cadencia mínima (default: 55)."
+        ),
+    )
     parser.add_argument(
         "--clear-history-on-start",
         action="store_true",
@@ -752,5 +786,6 @@ if __name__ == "__main__":
         clear_history_on_start=args.clear_history_on_start,
         mode=args.mode,
         force=args.force,
+        objetivo_kmh=args.speed_kmh,
     )
     raise SystemExit(0 if ok else 1)
