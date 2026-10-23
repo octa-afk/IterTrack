@@ -1,0 +1,33 @@
+# Build context hygiene. The image rebuilds the frontend and installs Python
+# dependencies from scratch, so no local artefacts or secrets are needed.
+
+# Python virtualenvs (hundreds of MB)
+env/
+venv/
+.venv/
+**/__pycache__/
+*.py[cod]
+
+# Node dependencies and the Vite build (rebuilt inside the image)
+frontend/node_modules/
+frontend/dist/
+
+# Secrets: never let a local .env or a credentialed alembic.ini into the image.
+# The Dockerfile copies alembic.ini.example instead; env.py overrides the URL.
+.env
+.env.*
+!.env.example
+alembic.ini
+
+# Not needed at runtime
+.git/
+.github/
+tests/
+odd/
+docs/
+.codegraph/
+.claude/
+.vscode/
+.idea/
+extras/
+opencode.json
