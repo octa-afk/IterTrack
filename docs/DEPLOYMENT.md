@@ -51,23 +51,41 @@ Lo único atado a Azure es la VM que alquila. Cuando vencen los 12 meses, se lev
 
 1. Cuenta de **Azure for Students** activa (con email institucional).
 2. Un **dominio** apuntando a la VM (registro `A`). El `.me` gratuito de Namecheap del Student Pack alcanza.
-3. La imagen publicada en GHCR por el workflow `publish-image.yml` (se dispara al pushear a `main`).
+3. La imagen publicada en GHCR por el workflow `publish-image.yml`. Publica un tag por rama al pushear a `main` o `develop`: mientras la demo corra desde `develop`, el tag es `:develop`.
 4. Acceso SSH a la VM.
+5. Un **Personal Access Token** de GitHub con scope `read:packages`, si el paquete de GHCR es privado.
 
-> El repositorio es **público**, así que el paquete de GHCR debe ser público o la VM necesita autenticarse contra `ghcr.io`.
+> **El repositorio es privado** (verificado contra la API de GitHub: responde `404` sin autenticación). El paquete de GHCR hereda esa visibilidad, así que la VM debe autenticarse antes de hacer `pull`. Dos caminos:
+>
+> - **Recomendado:** PAT con `read:packages` y `docker login ghcr.io` en la VM.
+> - Alternativa: poner el paquete como público en *Package settings → Change visibility*. Si GitHub lo permite para un repo privado, evita el token; comprobalo en la UI antes de contar con eso.
+>
+> El token del PAT **no** va al repositorio ni al `docker-compose.yml`: se guarda en `~/.docker/config.json` de la VM.
 
 ## 5. Primer despliegue
+
+La VM **no necesita clonar el repositorio**: le bastan tres archivos (`docker-compose.yml`, `Caddyfile` y `.env`) y permiso para hacer `pull` de la imagen. Eso mantiene el host desacoplado del código y evita guardar credenciales de Git ahí.
 
 ```bash
 # En la VM
 sudo apt update && sudo apt install -y docker.io docker-compose-v2
 sudo usermod -aG docker "$USER"   # cerrar sesión y volver a entrar
 
-git clone https://github.com/octa-afk/IterTrack.git
-cd IterTrack
-git checkout main
+mkdir -p ~/itertrack && cd ~/itertrack
 
-cp deploy/.env.example .env
+# Autenticación contra GHCR (solo si el paquete es privado)
+echo "<PAT con read:packages>" | docker login ghcr.io -u octa-afk --password-stdin
+```
+
+```bash
+# Desde tu máquina, en el repo
+scp docker-compose.yml Caddyfile deploy/.env.example octa@IP_DE_LA_VM:~/itertrack/
+```
+
+```bash
+# En la VM
+cd ~/itertrack
+mv .env.example .env
 # completar DOMAIN, POSTGRES_PASSWORD, SECRET_KEY,
 # PLATFORM_ADMIN_PASSWORD, DEMO_*_PASSWORD
 
