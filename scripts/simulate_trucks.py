@@ -6,14 +6,32 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from threading import Event
-from typing import Protocol
+from threading import Event, Lock
+from typing import Any, Protocol
 
 import requests
 
+SCRIPT_ENV_FILE = Path(__file__).resolve().parent / ".env"
+
+
+def cargar_env_local(ruta: Path | None = None) -> None:
+    """Load `scripts/.env` without overriding variables already in the environment."""
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    candidate = SCRIPT_ENV_FILE if ruta is None else ruta
+    if candidate.is_file():
+        load_dotenv(candidate)
+
+
+# Loaded before the endpoint constants below, so `API_URL` and `AUTH_URL` in
+# `scripts/.env` actually take effect.
+cargar_env_local()
+
 BASE_URL = os.getenv("API_URL", "http://127.0.0.1:8000/trucks")
 AUTH_URL = os.getenv("AUTH_URL", "http://127.0.0.1:8000/auth/login")
-ROUTE_FILE = Path(__file__).parent / "cordoba_route.json"
+ROUTE_FILE = Path(__file__).resolve().parent / "cordoba_route.json"
 
 HEADERS: dict[str, str] = {}
 
@@ -80,20 +98,8 @@ def rotate_route(route: list, offset: int) -> list:
     offset %= len(route)
     return route[offset:] + route[:offset]
 
-def _cargar_env_local() -> None:
-    """Carga el .env junto al script si existe. No pisa variables ya definidas."""
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        return
-    candidate = Path(__file__).resolve().parent / ".env"
-    if candidate.is_file():
-        load_dotenv(candidate)
-
-
 def _login(user_var: str, password_var: str, etiqueta: str) -> dict[str, str]:
-    """Autentica con un par de variables de entorno y devuelve los headers."""
-    _cargar_env_local()
+    """Authenticate with a pair of environment variables and return the headers."""
     username = os.getenv(user_var)
     password = os.getenv(password_var)
     if not username or not password:
@@ -221,21 +227,34 @@ def actualizar_ubicacion(
     heading: float,
     recorded_at: datetime,
     headers=None,
+    on_unauthorized=None,
 ) -> bool:
-    """Envía la coordenada y su hora de medición al endpoint PUT /trucks/{id}/location."""
-    try:
-        response = requests.put(
+    """Envía la coordenada y su hora de medición al endpoint PUT /trucks/{id}/location.
+
+    Si el token venció (401) y hay un callback ``on_unauthorized``, renueva las
+    credenciales y reintenta una sola vez. Sin eso la simulación se queda
+    reportando fallos para siempre y el mapa se congela.
+    """
+    payload: dict[str, Any] = {
+        "lat": lat,
+        "long": long,
+        "speed": speed,
+        "heading": heading,
+        "recorded_at": recorded_at.isoformat(),
+    }
+
+    def enviar(auth_headers):
+        return requests.put(
             f"{BASE_URL}/{truck_id}/location",
-            json={
-                "lat": lat,
-                "long": long,
-                "speed": speed,
-                "heading": heading,
-                "recorded_at": recorded_at.isoformat(),
-            },
-            headers=HEADERS if headers is None else headers,
-            timeout=5
+            json=payload,
+            headers=HEADERS if auth_headers is None else auth_headers,
+            timeout=5,
         )
+
+    try:
+        response = enviar(headers)
+        if response.status_code == 401 and on_unauthorized is not None:
+            response = enviar(on_unauthorized())
         return response.status_code == 200
     except requests.RequestException as e:
         print(f"⚠️ Error al actualizar ubicación: {e}")
@@ -250,6 +269,7 @@ def simular_ruta(
     phase_offset: int = 0,
     clear_history_on_start: bool = False,
     admin_headers=None,
+    refresh_headers=None,
 ):
     ruta = rotate_route(cargar_ruta(), phase_offset)
     total_puntos = len(ruta)
@@ -260,6 +280,20 @@ def simular_ruta(
         headers = autenticar()
     if stop_event is None:
         stop_event = Event()
+
+    # Un solo re-login actualiza el dict compartido, así todos los hilos de
+    # simulación se recuperan juntos del vencimiento del token.
+    on_unauthorized = None
+    if refresh_headers is not None:
+
+        def _renew() -> dict:
+            renovado = dict(refresh_headers())
+            if renovado:
+                headers.clear()
+                headers.update(renovado)
+            return headers
+
+        on_unauthorized = _renew
 
     # El registro y la limpieza son operaciones de administración; la
     # telemetría la puede enviar cualquier usuario de la organización.
@@ -292,15 +326,15 @@ def simular_ruta(
 
             # Hora de medición: el instante en que el simulador toma la lectura, no el envío.
             medido_en = datetime.now(UTC)
-            ok = actualizar_ubicacion(
-                truck_id,
-                lat,
-                lon,
-                speed=velocidad_kmh,
-                heading=rumbo,
-                recorded_at=medido_en,
-                headers=headers,
-            )
+            update_kwargs = {
+                "speed": velocidad_kmh,
+                "heading": rumbo,
+                "recorded_at": medido_en,
+                "headers": headers,
+            }
+            if on_unauthorized is not None:
+                update_kwargs["on_unauthorized"] = on_unauthorized
+            ok = actualizar_ubicacion(truck_id, lat, lon, **update_kwargs)
             status = "🟢 OK" if ok else "🔴 FAIL"
 
             print(f"[{i + 1:3}/{total_puntos}] {status} | Lat: {lat:10.6f}, Long: {lon:10.6f} {telemetria_str}")
@@ -327,6 +361,14 @@ def ejecutar_simulaciones(
     if not admin_headers:
         print("ℹ️ Sin ADMIN_API_USER/ADMIN_API_PASSWORD: el registro usará la cuenta de telemetría.")  # noqa: RUF001
         admin_headers = headers
+
+    refresh_lock = Lock()
+
+    def renovar_credenciales() -> dict:
+        """Re-login serializado: un token nuevo sirve a todos los camiones."""
+        with refresh_lock:
+            return dict(autenticar())
+
     stop_event = Event()
     executor = ThreadPoolExecutor(max_workers=count)
     futures = [
@@ -340,6 +382,7 @@ def ejecutar_simulaciones(
             config.route_offset,
             clear_history_on_start=clear_history_on_start,
             admin_headers=admin_headers,
+            refresh_headers=renovar_credenciales,
         )
         for config in configs
     ]
