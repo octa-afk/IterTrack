@@ -288,3 +288,20 @@ Cron instalado en el host (`crontab`, no systemd timer):
 ```
 
 Nota para el futuro: `crontab -` dentro de un script con `set -e` falló en silencio; `crontab archivo` sí funciona. Es el tipo de detalle que hace que un cron "esté instalado" y no corra nunca.
+
+### L15 — Velocidad realista del simulador (2026-10-23)
+
+Hallazgo 3 de L13, corregido. La ruta tiene 425 puntos con espaciado irregular (media 30,7 m, máximo 162,8 m); emitir un punto cada 2 s fijos implicaba hasta 293 km/h y 93 de 424 tramos superaban el límite de 90 que dibuja el panel.
+
+`espera_y_velocidad` calcula la espera de cada tramo en proporción a su longitud para una velocidad objetivo, con `--interval` como piso para que los tramos cortos no martillen la API. La velocidad reportada es el objetivo en los tramos abiertos y menor en los densos, y **nunca lo supera**: el piso solo aplica donde la distancia no alcanza para llegar al objetivo.
+
+| Métrica | Antes | Después |
+|---|---|---|
+| Velocidad máxima | 293 km/h | **55,0 km/h** |
+| Velocidad media | — | 29,4 km/h |
+| Tramos sobre 90 km/h | 93 de 424 | **0** |
+| Vuelta completa | 14,2 min | 20,8 min |
+
+Medido también en la demo en vivo tras desplegar: 39 muestras, máximo 55,0, media 23,6, ninguna sobre 90.
+
+El test recorre la ruta real que se entrega y afirma el techo sobre cada tramo, así que editar las coordenadas no puede reintroducir el problema en silencio.
