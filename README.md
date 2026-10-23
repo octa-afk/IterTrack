@@ -458,6 +458,8 @@ Reglas que el backend hace cumplir en todos los endpoints:
 
 La demo corre en un host aislado con su propia base de datos: nada de lo que haga un visitante alcanza datos de un cliente real.
 
+**El login tiene un botón «Entrar a la demo»**: un click y estás en el mapa, sin escribir nada. Aparece solo si el servidor tiene `DEMO_MODE=true`, así que la misma imagen corre en el despliegue de un cliente con el botón ausente. Las credenciales no están en el bundle: el frontend las pide a `GET /config`, y con la demo apagada el endpoint ni siquiera devuelve el usuario.
+
 | Cuenta | Rol | Para qué |
 |---|---|---|
 | `demo-admin` | `org_admin` de `Demo Corp` | Experiencia completa: camiones, dispositivos, invitaciones |
@@ -465,9 +467,9 @@ La demo corre en un host aislado con su propia base de datos: nada de lo que hag
 
 Las contraseñas están en [`deploy/.env.example`](./deploy/.env.example). Son públicas por diseño; la de `platform_admin` no lo es y nunca se publica.
 
-Qué mirar: los tres camiones de `Demo Corp` se mueven cada 2 segundos sobre un circuito de 13 km en Córdoba, con velocidad y rumbo reales. El `org_admin` de la demo no puede crear organizaciones ni ver otra empresa: recibe `404`.
+Qué mirar: los tres camiones de `Demo Corp` se mueven sobre un circuito de 13 km en Córdoba a una velocidad objetivo de 55 km/h, con rumbo real. El `org_admin` de la demo no puede crear organizaciones (`403`) ni ver otra empresa (`404`, para no revelar que existe).
 
-Los datos se rebarrer cada 24 h con `env/bin/python -m scripts.seed_demo --reset`, que nunca toca la cuenta de plataforma ni otras organizaciones.
+La invitación de `Demo Corp` nace revocada: la demo se entra por el botón, no por registro, y así nadie crea cuentas que sobrevivan a los resets. Los datos se rebarrer cada 24 h con `env/bin/python -m scripts.seed_demo --reset`, que nunca toca la cuenta de plataforma ni otras organizaciones.
 
 ---
 

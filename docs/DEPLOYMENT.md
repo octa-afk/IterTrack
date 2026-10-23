@@ -128,7 +128,9 @@ En el navegador: `/` muestra el login, `/map` el panel, y los camiones de `Demo 
 Checklist mínimo:
 
 - [ ] `GET /health` responde 200.
-- [ ] La SPA carga y el login de demo funciona.
+- [ ] La SPA carga y el botón **Entrar a la demo** aparece y entra al mapa.
+- [ ] `GET /config` devuelve `{"demo":{"enabled":true,...}}`.
+- [ ] El registro con el código de la demo responde `400`: la invitación nace revocada.
 - [ ] El mapa muestra 3 camiones moviéndose.
 - [ ] `demo-admin` recibe 403 al intentar crear una organización.
 - [ ] El owner de plataforma (no público) ve `IterTrack` y `Demo Corp`.
@@ -206,7 +208,9 @@ Al vencer los 12 meses: renovar la suscripción de estudiante, o mover el mismo 
 
 | Variable | Pública |
 |---|---|
-| `DEMO_ADMIN_PASSWORD`, `DEMO_MEMBER_PASSWORD` | ✅ Sí, se muestran en el login |
+| `DEMO_MODE` | ✅ Sí, es `true` en la demo y `false` en un cliente |
+| `DEMO_ADMIN_USERNAME`, `DEMO_ADMIN_PASSWORD` | ✅ Sí, el login los pide a `GET /config` |
+| `DEMO_MEMBER_PASSWORD` | ✅ Sí, está en el ejemplo |
 | `PLATFORM_ADMIN_PASSWORD` | ❌ Nunca |
 | `SECRET_KEY` | ❌ Nunca |
 | `POSTGRES_PASSWORD` | ❌ Nunca |
