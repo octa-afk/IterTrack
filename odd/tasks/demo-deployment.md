@@ -305,3 +305,17 @@ Hallazgo 3 de L13, corregido. La ruta tiene 425 puntos con espaciado irregular (
 Medido también en la demo en vivo tras desplegar: 39 muestras, máximo 55,0, media 23,6, ninguna sobre 90.
 
 El test recorre la ruta real que se entrega y afirma el techo sobre cada tramo, así que editar las coordenadas no puede reintroducir el problema en silencio.
+
+### L16 — Acceso de un click y cierre de la invitación (2026-10-23)
+
+Hallazgo 4 de L13 más el hueco de acceso. La página de login no mencionaba la demo: un visitante veía "Tu usuario" y no tenía forma de entrar sin leer el README, que es exactamente lo que un reclutador no hace.
+
+`GET /config` reporta si el despliegue es una demo. El flag vive en el **servidor** y no en el build, porque la misma imagen tiene que servir a un cliente real sin el botón:
+
+- `DEMO_MODE` es `false` por defecto. Apagado, el endpoint devuelve `{"demo":{"enabled":false}}` y ni el usuario sale del servidor.
+- Encendido, devuelve usuario y contraseña de la demo y el login muestra **Entrar a la demo**, que loguea y navega al mapa.
+- Las credenciales **no están en el bundle**: verificado sobre el JS servido en producción, contiene "Entrar a la demo" y cero apariciones de `demo-admin`.
+
+Con el botón en su lugar, la invitación de `Demo Corp` deja de tener sentido. `seed_demo` ahora la crea revocada, igual que `bootstrap_platform` hace con la organización interna. En la instancia que ya existía se revocó por API: `DELETE /organizations/3/invitation` → `invitation_active: false`, y un registro con el código viejo responde `400 "Código de invitación inválido"`.
+
+Verificado en producción: `/config` devuelve las credenciales, la invitación quedó revocada y el registro está cerrado. 206 tests, ruff y mypy limpios.
