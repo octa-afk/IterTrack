@@ -39,7 +39,11 @@ export default function LoginPage() {
       .then((cfg) => {
         if (!active) return;
         const { enabled, username, password } = cfg.demo;
-        if (enabled && username && password) setDemo({ username, password });
+        if (enabled && username && password) {
+          setDemo({ username, password });
+          setUsername((current) => current || username);
+          setPassword((current) => current || password);
+        }
       })
       .catch(() => {
         /* sin configuracion no hay boton, pero el login funciona igual */
