@@ -180,6 +180,22 @@ Host elegido: **Azure for Students** (VM B1s, 750 h/mes gratis 12 meses, sin tar
 
 Verificado: YAML parseado y estructura afirmada (4 servicios, Postgres sin `ports`, worker en modo device y sin migrar, volúmenes correctos, workflow con `packages: write`); suite completa **187 passed** y `make check` limpio. **No verificado**: `docker compose config` e `docker build`, porque Docker no está instalado.
 
+### L10 — Sincronización de documentación (2026-10-23)
+
+La documentación había quedado desactualizada y en dos puntos **afirmaba lo contrario de lo que hace el código**:
+
+- README decía que `POST /auth/register` aceptaba `org_name` para crear una organización. Eso se retiró hace varios commits.
+- README y ROADMAP decían que "los permisos por rol siguen pendientes". Se implementaron en el bloque 1.
+
+Cambios:
+
+- **`README.md`**: roles y alcance explícitos (tabla de tres roles y las cuatro reglas que el backend hace cumplir), sección de modos del simulador, paso 7 de instalación (bootstrap + seed, con la explicación del círculo vicioso de la primera cuenta), tabla de API ampliada con organizaciones y ciclo de vida de dispositivos, sección **Demo Pública** con las credenciales que sí son públicas, sección **Despliegue**, y `SECRET_KEY` mínima de 32 caracteres en seguridad.
+- **`docs/DEPLOYMENT.md`** (nuevo): runbook completo —qué se despliega, por qué Azure y por qué no AWS, reglas de portabilidad, prerrequisitos, primer despliegue, checklist de verificación, operación (logs, reset, backup, túnel SSH, update), rollback, mudanza a otro host, costos y vencimiento, y qué variables son públicas y cuáles no.
+- **`docs/ARCHITECTURE.md`**: sección 4 suma el alcance explícito del rol; sección 5 reescrita con `Device.organization_id`, la regla del `404` y la resincronización de dispositivos al transferir un camión.
+- **`AGENTS.md`**: nuevo punto 4.9 (arranque, demo y despliegue) y comandos de bootstrap, seed y Docker en la sección 8.
+- **`ROADMAP.md`**: Fase 2 marcada como implementada en permisos por rol; Fase 6 nueva con la demo pública y lo que le falta.
+
+
 
 
 

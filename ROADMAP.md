@@ -21,9 +21,9 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 
 ### Fase 2 — Identidad y acceso
 - Auth OAuth2 + JWT — completado.
-- **Login y registro en el navegador: completados** (`/` y `/register`). La membresía de usuarios y el alcance de camiones por organización están implementados; los permisos por rol siguen pendientes.
+- **Login y registro en el navegador: completados** (`/` y `/register`). La membresía de usuarios, el alcance por organización y los permisos por rol están implementados.
 - **Validación de contraseña en el registro:** mínimo 12 caracteres, al menos una letra y un número (`UserCreate`). Esta política se valida al registrar; el login autentica contra el hash existente y no rechaza cuentas por no cumplirla. Casos cubiertos en `tests/test_auth.py`.
-- Permisos objetivo — clientes solo lectura; cada administrador interno tendrá las mismas facultades. Aún pendiente de implementación.
+- **Permisos por rol (completado):** `platform_admin`, `org_admin` y `member` con `CHECK CONSTRAINT` en la base y dependencias explícitas por endpoint. El `org_admin` administra solo su organización y un recurso ajeno responde `404`; el `platform_admin` es el único que lee todas las flotas y crea organizaciones. El alta de camión cross-org usa `POST /organizations/{id}/trucks`.
 - Los camiones nuevos se asignan a la organización del usuario autenticado; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia — implementado.
 
 ### Decisiones confirmadas — administración de vehículos
@@ -33,7 +33,7 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 - Un vehículo se conserva en el sistema y cambia entre activo e inactivo; desactivarlo no elimina su historial de tracking.
 - Los usuarios del cliente se darán de alta mediante un código de invitación; no crearán organizaciones ni vehículos por cuenta propia.
 - Un vehículo dado de baja queda inactivo y deja de transmitir. El backend debe rechazar nuevas ubicaciones para hacer cumplir ese estado, conservando los datos históricos.
-- Estas decisiones definen el objetivo futuro y están implementadas solo en parte: el modelo `Truck` ya tiene estado `active` y tanto `PUT /trucks/{id}/location` (responde `409`) como `/devices/ingest` rechazan camiones inactivos. Los endpoints administrativos de alta, activación y reasignación de organización existen y están restringidos a cuentas con `role = "admin"`; los usuarios cliente solo consultan.
+- Estas decisiones definen el objetivo futuro y están implementadas en su mayoría: el modelo `Truck` tiene estado `active` y tanto `PUT /trucks/{id}/location` (responde `409`) como `/devices/ingest` rechazan camiones inactivos. El alta, la activación y la reasignación de organización existen; la última es exclusiva de `platform_admin` porque transferir un activo entre empresas no es decisión del cliente.
 - **Invitaciones (implementado):** las organizaciones se crean únicamente con `POST /organizations` (admin) y cada una tiene un único código rotable en `organizations.invitation_code`. `GET /organizations` lista organizaciones; `GET /organizations/{id}/invitation` inspecciona el código; `POST /organizations/{id}/invitation/rotate` genera uno nuevo; `DELETE /organizations/{id}/invitation` lo revoca. `POST /auth/register` exige un código activo: uno revocado o vencido responde `400` `"Código de invitación inválido"`. Los códigos existentes sin fecha de expiración siguen vigentes.
 
 ### Próximo frente backend — ciclo de vida y acceso
@@ -69,6 +69,14 @@ Motor de alertas con reglas configurables por cliente:
 - **Parada prolongada** en zona no autorizada.
 - **Exceso de velocidad** (el campo `speed` ya está disponible en `Location`; quedan pendientes la regla de alerta y su umbral).
 - Notificaciones: email / webhook / push (a definir).
+
+### Fase 6 — Demo pública y despliegue 🚧
+- Dockerfile multi-stage (Node compila la SPA, Python corre la app) con entrypoint idempotente.
+- `docker-compose` con Caddy (TLS), `web`, `worker` (flota simulada por el pipeline real de dispositivos) y Postgres en volumen nombrado.
+- Imagen publicada en GHCR; despliegue en una VM de Azure for Students.
+- Simulador con dos modos: usuario y dispositivo. En modo dispositivo saltea los camiones ocupados por hardware real.
+- Pendiente: botón de acceso demo en el login, reset automático cada 24 h y dominio definitivo.
+- Runbook: `docs/DEPLOYMENT.md`.
 
 ## Definiciones a validar con el cliente
 - Qué cuenta exactamente como "desvío" (km fuera de ruta, tiempo, destino).
