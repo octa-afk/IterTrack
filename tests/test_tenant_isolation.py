@@ -217,6 +217,41 @@ def test_platform_admin_lists_every_device(client_as, db_session, test_org, test
     assert len(response.json()) == 2
 
 
+def test_provisioning_records_the_truck_organization(
+    client_as, db_session, test_org, test_truck
+):
+    admin = make_user(db_session, test_org, "orgadmin12", "org_admin")
+
+    with client_as(admin) as client:
+        response = client.post(
+            "/devices", json={"identifier": "DEV-PROVISIONED", "truck_id": test_truck.id}
+        )
+
+    assert response.status_code == 201
+    assert response.json()["organization_id"] == test_org.id
+    device = db_session.query(Device).filter(Device.identifier == "DEV-PROVISIONED").one()
+    assert device.organization_id == test_org.id
+
+
+def test_org_admin_cannot_provision_on_another_organization_truck(
+    client_as, db_session, test_org, test_org2
+):
+    admin = make_user(db_session, test_org, "orgadmin13", "org_admin")
+    foreign_truck = Truck(id=911, plate="FOREIGN911", organization_id=test_org2.id)
+    db_session.add(foreign_truck)
+    db_session.commit()
+
+    with client_as(admin) as client:
+        response = client.post(
+            "/devices", json={"identifier": "DEV-FOREIGN-PROV", "truck_id": foreign_truck.id}
+        )
+
+    assert response.status_code == 404
+    assert (
+        db_session.query(Device).filter(Device.identifier == "DEV-FOREIGN-PROV").first() is None
+    )
+
+
 def test_org_admin_cannot_revoke_another_organization_device(
     client_as, db_session, test_org, test_org2
 ):
@@ -243,7 +278,8 @@ def test_org_admin_cannot_reassign_device_to_another_organization_truck(
     with client_as(admin) as client:
         response = client.post(f"/devices/{device.id}/reassign", json={"truck_id": 910})
 
-    assert response.status_code in (400, 403, 404)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Camión no encontrado"
     assert (
         db_session.query(DeviceAssignment).filter(DeviceAssignment.device_id == device.id).count()
         == 0
