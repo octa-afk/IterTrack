@@ -34,7 +34,7 @@ DEFAULT_ORG_NAME = "Demo Corp"
 DEFAULT_TRUCK_COUNT = 3
 DEFAULT_BASE_ID = 1
 DEFAULT_BASE_PLATE = "ABC123"
-DEFAULT_DEVICE_PREFIX = "DEMO-DEVICE"
+DEFAULT_DEVICE_PREFIX = "SIM"
 
 
 class SeedError(ValueError):
@@ -220,7 +220,7 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
 
     trucks_created = 0
     devices_created = 0
-    for index, truck_config in enumerate(truck_configs, start=1):
+    for truck_config in truck_configs:
         truck = db.get(Truck, truck_config.truck_id)
         if truck is not None and truck.organization_id != organization.id:
             raise SeedError(
@@ -249,7 +249,9 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
         else:
             truck.organization_id = organization.id
 
-        identifier = f"{config.device_prefix}-{index:02d}"
+        # Same formula the simulator uses, so device mode recognises these
+        # as its own instead of a real ESP32.
+        identifier = f"{config.device_prefix}-{truck.id:03d}"
         device = db.query(Device).filter(Device.identifier == identifier).first()
         if device is not None and device.organization_id != organization.id:
             raise SeedError(

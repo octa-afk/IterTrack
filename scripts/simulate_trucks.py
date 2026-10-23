@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from threading import Event, Lock
 from typing import Any, Protocol
+from uuid import uuid4
 
 import requests
 
@@ -31,6 +32,19 @@ cargar_env_local()
 
 BASE_URL = os.getenv("API_URL", "http://127.0.0.1:8000/trucks")
 AUTH_URL = os.getenv("AUTH_URL", "http://127.0.0.1:8000/auth/login")
+
+
+def _api_root(url: str) -> str:
+    """Derive the API root so device endpoints can be reached from API_URL."""
+    return url[: -len("/trucks")] if url.endswith("/trucks") else url
+
+
+DEVICES_URL = f"{_api_root(BASE_URL)}/devices"
+INGEST_URL = f"{DEVICES_URL}/ingest"
+# Simulated devices are named after this prefix so the simulator can recognise
+# its own devices and never take over a real ESP32 by accident.
+SIMULATED_DEVICE_PREFIX = os.getenv("SIMULATED_DEVICE_PREFIX", "SIM")
+
 ROUTE_FILE = Path(__file__).resolve().parent / "cordoba_route.json"
 
 HEADERS: dict[str, str] = {}
@@ -260,6 +274,201 @@ def actualizar_ubicacion(
         print(f"⚠️ Error al actualizar ubicación: {e}")
         return False
 
+def listar_dispositivos(headers=None):
+    """Return the devices visible to the caller, or None when the request fails."""
+    try:
+        response = requests.get(
+            DEVICES_URL,
+            headers=HEADERS if headers is None else headers,
+            timeout=5,
+        )
+    except requests.RequestException as e:
+        print(f"⚠️ Error al listar dispositivos: {e}")
+        return None
+    if response.status_code != 200:
+        print(f"⚠️ No se pudieron listar dispositivos ({response.status_code}).")
+        return None
+    return response.json()
+
+
+def _dispositivo_que_ocupa(dispositivos, truck_id):
+    for device in dispositivos:
+        assignment = device.get("assignment")
+        if assignment and assignment.get("truck_id") == truck_id:
+            return device
+    return None
+
+
+def _dispositivo_por_identificador(dispositivos, identifier):
+    for device in dispositivos:
+        if device.get("identifier") == identifier:
+            return device
+    return None
+
+
+def _post_dispositivo(url, headers=None, payload=None):
+    return requests.post(
+        url,
+        headers=HEADERS if headers is None else headers,
+        json=payload,
+        timeout=5,
+    )
+
+
+def _token_de(response):
+    if response.status_code not in (200, 201):
+        return None
+    try:
+        return response.json().get("token")
+    except ValueError:
+        return None
+
+
+def _aprovisionar(identifier: str, truck_id: int, admin_headers) -> str | None:
+    try:
+        response = _post_dispositivo(
+            DEVICES_URL, admin_headers, {"identifier": identifier, "truck_id": truck_id}
+        )
+    except requests.RequestException as e:
+        print(f"⚠️ Error al aprovisionar '{identifier}': {e}")
+        return None
+    return _token_de(response)
+
+
+def _rotar_token(device_id: int, admin_headers) -> str | None:
+    try:
+        response = _post_dispositivo(
+            f"{DEVICES_URL}/{device_id}/token/rotate", admin_headers
+        )
+    except requests.RequestException as e:
+        print(f"⚠️ Error al rotar el token del dispositivo {device_id}: {e}")
+        return None
+    return _token_de(response)
+
+
+def _reasignar(device_id: int, truck_id: int, admin_headers) -> bool:
+    try:
+        response = _post_dispositivo(
+            f"{DEVICES_URL}/{device_id}/reassign", admin_headers, {"truck_id": truck_id}
+        )
+    except requests.RequestException as e:
+        print(f"⚠️ Error al reasignar el dispositivo {device_id}: {e}")
+        return False
+    return response.status_code == 200
+
+
+def _revocar(device_id: int, admin_headers) -> bool:
+    try:
+        response = _post_dispositivo(f"{DEVICES_URL}/{device_id}/revoke", admin_headers)
+    except requests.RequestException as e:
+        print(f"⚠️ Error al revocar el dispositivo {device_id}: {e}")
+        return False
+    return response.status_code == 200
+
+
+def preparar_dispositivo(truck_id: int, admin_headers=None, force: bool = False) -> str | None:
+    """Return a token for a simulated device on `truck_id`, or None to skip it.
+
+    The simulator never removes a device it did not create unless `force` is
+    set, so a real ESP32 keeps its truck. Devices it owns are identified by
+    `SIMULATED_DEVICE_PREFIX`.
+    """
+    identifier = f"{SIMULATED_DEVICE_PREFIX}-{truck_id:03d}"
+    dispositivos = listar_dispositivos(admin_headers)
+    if dispositivos is None:
+        return None
+
+    ocupante = _dispositivo_que_ocupa(dispositivos, truck_id)
+    if ocupante is not None and ocupante.get("identifier") != identifier:
+        if not force:
+            print(
+                f"⏭️ Camión #{truck_id} ocupado por '{ocupante.get('identifier')}' "
+                "(hardware real): se saltea. Usá --force para revocarlo."
+            )
+            return None
+        print(
+            f"⚠️ --force: revocando '{ocupante.get('identifier')}' del camión #{truck_id}. "
+            "Vas a tener que volver a aprovisionar ese ESP32."
+        )
+        if not _revocar(ocupante["id"], admin_headers):
+            return None
+        dispositivos = listar_dispositivos(admin_headers)
+        if dispositivos is None:
+            return None
+
+    nuestro = _dispositivo_por_identificador(dispositivos, identifier)
+    if nuestro is None:
+        token = _aprovisionar(identifier, truck_id, admin_headers)
+        if token is None:
+            print(f"⛔ No se pudo aprovisionar '{identifier}' en el camión #{truck_id}.")
+        return token
+
+    asignacion = nuestro.get("assignment")
+    if asignacion is None or asignacion.get("truck_id") != truck_id:
+        if not _reasignar(nuestro["id"], truck_id, admin_headers):
+            print(f"⛔ No se pudo reasignar '{identifier}' al camión #{truck_id}.")
+            return None
+    return _rotar_token(nuestro["id"], admin_headers)
+
+
+def enviar_ingesta(
+    token: str,
+    lat: float,
+    long: float,
+    speed: float,
+    heading: float,
+    recorded_at: datetime,
+    sequence: int = 1,
+    batch_id: str | None = None,
+) -> bool:
+    """Send one measurement through the same endpoint a real ESP32 uses."""
+    payload: dict[str, Any] = {
+        "batch_id": batch_id or str(uuid4()),
+        "points": [
+            {
+                "sequence": sequence,
+                "lat": lat,
+                "long": long,
+                "speed": speed,
+                "heading": heading,
+                "recorded_at": recorded_at.isoformat(),
+            }
+        ],
+    }
+    try:
+        response = requests.post(
+            INGEST_URL,
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5,
+        )
+    except requests.RequestException as e:
+        print(f"⚠️ Error al enviar ingesta: {e}")
+        return False
+    if response.status_code != 200:
+        print(f"⚠️ Ingesta rechazada ({response.status_code}): {response.text}")
+        return False
+    results = response.json().get("results") or []
+    rechazados = [result for result in results if result.get("status") != "accepted"]
+    if rechazados:
+        print(f"⚠️ Ingesta con puntos rechazados: {rechazados}")
+        return False
+    return True
+
+
+def constructor_de_sender(token: str):
+    """Bind a device token to the sender contract the route loop expects."""
+    secuencia = {"n": 0}
+
+    def enviar(lat, lon, velocidad, rumbo, medido_en) -> bool:
+        secuencia["n"] += 1
+        return enviar_ingesta(
+            token, lat, lon, velocidad, rumbo, medido_en, sequence=secuencia["n"]
+        )
+
+    return enviar
+
+
 def simular_ruta(
     truck_id: int,
     plate: str,
@@ -270,6 +479,7 @@ def simular_ruta(
     clear_history_on_start: bool = False,
     admin_headers=None,
     refresh_headers=None,
+    sender=None,
 ):
     ruta = rotate_route(cargar_ruta(), phase_offset)
     total_puntos = len(ruta)
@@ -294,6 +504,23 @@ def simular_ruta(
             return headers
 
         on_unauthorized = _renew
+
+    # Modo usuario: la telemetría va por PUT /trucks/{id}/location con credenciales
+    # de usuario. Modo dispositivo inyecta un sender que habla el protocolo del hardware.
+    if sender is None:
+
+        def _enviar_como_usuario(lat, lon, velocidad, rumbo, medido_en) -> bool:
+            update_kwargs = {
+                "speed": velocidad,
+                "heading": rumbo,
+                "recorded_at": medido_en,
+                "headers": headers,
+            }
+            if on_unauthorized is not None:
+                update_kwargs["on_unauthorized"] = on_unauthorized
+            return actualizar_ubicacion(truck_id, lat, lon, **update_kwargs)
+
+        sender = _enviar_como_usuario
 
     # El registro y la limpieza son operaciones de administración; la
     # telemetría la puede enviar cualquier usuario de la organización.
@@ -326,15 +553,7 @@ def simular_ruta(
 
             # Hora de medición: el instante en que el simulador toma la lectura, no el envío.
             medido_en = datetime.now(UTC)
-            update_kwargs = {
-                "speed": velocidad_kmh,
-                "heading": rumbo,
-                "recorded_at": medido_en,
-                "headers": headers,
-            }
-            if on_unauthorized is not None:
-                update_kwargs["on_unauthorized"] = on_unauthorized
-            ok = actualizar_ubicacion(truck_id, lat, lon, **update_kwargs)
+            ok = sender(lat, lon, velocidad_kmh, rumbo, medido_en)
             status = "🟢 OK" if ok else "🔴 FAIL"
 
             print(f"[{i + 1:3}/{total_puntos}] {status} | Lat: {lat:10.6f}, Long: {lon:10.6f} {telemetria_str}")
@@ -349,18 +568,51 @@ def ejecutar_simulaciones(
     intervalo: float,
     count: int,
     clear_history_on_start: bool = False,
+    mode: str = "user",
+    force: bool = False,
 ):
-    """Authenticate once and run all configured truck workers until interrupted."""
+    """Run all configured truck workers until interrupted.
+
+    `mode="user"` writes through PUT /trucks/{id}/location.
+    `mode="device"` provisions a simulated device per truck and writes through
+    POST /devices/ingest, the same path a real ESP32 uses, so the hardware
+    pipeline is exercised. Trucks already held by a real device are skipped
+    unless `force` is set.
+    """
+    if mode not in ("user", "device"):
+        raise ValueError("mode must be 'user' or 'device'")
+
     route_length = len(cargar_ruta())
     configs = build_truck_configs(base_id, base_plate, count, route_length)
-    headers = dict(autenticar())
-    if not headers:
-        print("⛔ Sin token no se puede enviar telemetría. Abortando.")
-        return
     admin_headers = dict(autenticar_admin())
     if not admin_headers:
         print("ℹ️ Sin ADMIN_API_USER/ADMIN_API_PASSWORD: el registro usará la cuenta de telemetría.")  # noqa: RUF001
-        admin_headers = headers
+
+    if mode == "device":
+        if not admin_headers:
+            print("⛔ El modo dispositivo necesita ADMIN_API_USER/ADMIN_API_PASSWORD. Abortando.")
+            return
+        trabajos = []
+        ruta = cargar_ruta()
+        lat_inicial, lon_inicial = ruta[0]
+        for config in configs:
+            registrar_camion(
+                config.truck_id, lat_inicial, lon_inicial, config.plate, headers=admin_headers
+            )
+            token = preparar_dispositivo(config.truck_id, admin_headers, force=force)
+            if token is None:
+                continue
+            trabajos.append((config, constructor_de_sender(token)))
+        if not trabajos:
+            print("⛔ Ningún camión quedó disponible para simular. Abortando.")
+            return
+    else:
+        headers = dict(autenticar())
+        if not headers:
+            print("⛔ Sin token no se puede enviar telemetría. Abortando.")
+            return
+        admin_headers = admin_headers or headers
+        trabajos = [(config, None) for config in configs]
 
     refresh_lock = Lock()
 
@@ -370,21 +622,22 @@ def ejecutar_simulaciones(
             return dict(autenticar())
 
     stop_event = Event()
-    executor = ThreadPoolExecutor(max_workers=count)
+    executor = ThreadPoolExecutor(max_workers=max(len(trabajos), 1))
     futures = [
         executor.submit(
             simular_ruta,
             config.truck_id,
             config.plate,
             intervalo,
-            headers,
+            {} if sender is not None else headers,
             stop_event,
             config.route_offset,
             clear_history_on_start=clear_history_on_start,
             admin_headers=admin_headers,
-            refresh_headers=renovar_credenciales,
+            refresh_headers=None if sender is not None else renovar_credenciales,
+            sender=sender,
         )
-        for config in configs
+        for config, sender in trabajos
     ]
     try:
         for future in futures:
@@ -407,6 +660,24 @@ if __name__ == "__main__":
         action="store_true",
         help="Borra el historial existente de cada camión una sola vez al iniciar (opción destructiva)",
     )
+    parser.add_argument(
+        "--mode",
+        choices=("user", "device"),
+        default="user",
+        help=(
+            "user: escribe por PUT /trucks/{id}/location. "
+            "device: aprovisiona un dispositivo simulado y escribe por "
+            "POST /devices/ingest, igual que un ESP32."
+        ),
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "En modo device, revoca el dispositivo que ocupa el camión para poder "
+            "simularlo. Vas a tener que volver a aprovisionar ese ESP32."
+        ),
+    )
 
     args = parser.parse_args()
     ejecutar_simulaciones(
@@ -415,4 +686,6 @@ if __name__ == "__main__":
         intervalo=args.interval,
         count=args.count,
         clear_history_on_start=args.clear_history_on_start,
+        mode=args.mode,
+        force=args.force,
     )
