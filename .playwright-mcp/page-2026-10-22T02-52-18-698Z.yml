@@ -1,0 +1,30 @@
+- main [ref=f15e4]:
+  - generic [ref=f15e6]:
+    - img "IterTrack" [ref=f15e7]
+    - text: IterTrack
+  - generic [ref=f15e11]:
+    - heading "Iniciar sesión" [level=1] [ref=f15e12]
+    - paragraph [ref=f15e13]: Ingresá con tu cuenta para ver el panel de la flota.
+    - generic [ref=f15e14]:
+      - generic [ref=f15e15]:
+        - generic [ref=f15e16]: Usuario
+        - textbox "Usuario" [ref=f15e18]:
+          - /placeholder: Tu usuario
+      - generic [ref=f15e19]:
+        - generic [ref=f15e20]: Contraseña
+        - generic [ref=f15e21]:
+          - textbox "Contraseña" [ref=f15e22]:
+            - /placeholder: Tu contraseña
+          - button "Mostrar contraseña" [ref=f15e23] [cursor=pointer]: Mostrar
+      - generic [ref=f15e24]:
+        - generic [ref=f15e25]:
+          - checkbox "Mantener sesión iniciada" [ref=f15e26]
+          - text: Mantener sesión iniciada
+        - link "¿Olvidaste tu contraseña?" [ref=f15e27] [cursor=pointer]:
+          - /url: "#"
+      - button "Iniciar sesión" [ref=f15e28] [cursor=pointer]
+      - status [ref=f15e29]
+    - paragraph [ref=f15e30]:
+      - text: ¿Todavía no tenés cuenta?
+      - link "Crear cuenta" [ref=f15e31] [cursor=pointer]:
+        - /url: /register

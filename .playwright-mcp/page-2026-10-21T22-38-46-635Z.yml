@@ -1,0 +1,115 @@
+- generic [ref=f6e2]:
+  - generic [ref=f6e3]:
+    - generic:
+      - region "Map" [ref=f6e4]
+      - button "Map marker" [ref=f6e5]:
+        - emphasis [ref=f6e200]: ABC123
+      - button "Map marker" [ref=f6e21]:
+        - emphasis [ref=f6e215]: ABC123-03
+      - button "Map marker" [ref=f6e37]:
+        - emphasis [ref=f6e230]: ABC123-02
+    - generic [ref=f6e53]:
+      - button "Zoom in" [ref=f6e54] [cursor=pointer]
+      - button "Zoom out" [ref=f6e56] [cursor=pointer]
+      - button "Drag to rotate map, click to reset north" [ref=f6e58]
+  - complementary [ref=f6e60]:
+    - strong [ref=f6e61]:
+      - generic [ref=f6e66]: IterTrack
+    - navigation [ref=f6e67]:
+      - generic [ref=f6e68]: Panel
+      - generic [ref=f6e73]: Camiones
+      - generic [ref=f6e78]: Rutas
+      - generic [ref=f6e84]: Reportes
+      - generic [ref=f6e88]: Ajustes
+    - button "↪Salir" [ref=f6e93] [cursor=pointer]
+  - banner [ref=f6e94]:
+    - button "Mostrar u ocultar menú" [ref=f6e95] [cursor=pointer]
+    - textbox "Buscar camiones" [ref=f6e98]:
+      - /placeholder: Buscar patente, chofer o ruta
+    - generic [ref=f6e99]: 1 alerta
+    - generic [ref=f6e103]: OC
+  - complementary [ref=f6e104]:
+    - generic [ref=f6e105]:
+      - generic [ref=f6e106]:
+        - button "Toda la flota" [ref=f6e107] [cursor=pointer]
+        - button "Solo alertas" [ref=f6e108] [cursor=pointer]
+      - generic [ref=f6e109]:
+        - button "Todos" [ref=f6e110] [cursor=pointer]
+        - button "En movimiento" [ref=f6e111] [cursor=pointer]
+        - button "Detenidos" [ref=f6e112] [cursor=pointer]
+        - button "Apagados" [ref=f6e113] [cursor=pointer]
+      - generic [ref=f6e114]:
+        - combobox "Ordenar por" [ref=f6e115]:
+          - option "Patente" [selected]
+          - option "Velocidad"
+        - combobox "Dirección" [ref=f6e116]:
+          - option "Ascendente" [selected]
+          - option "Descendente"
+      - generic [ref=f6e117]: 3 de 3 camiones
+      - list [ref=f6e119]:
+        - listitem [ref=f6e120]:
+          - button "ABC123 37 km/h hace 1 s" [ref=f6e231] [cursor=pointer]:
+            - generic [ref=f6e123]: ABC123
+            - generic [ref=f6e124]: 37 km/h
+            - generic [ref=f6e125]: hace 1 s
+        - listitem [ref=f6e126]:
+          - button "ABC123-02 13 km/h hace 1 s" [ref=f6e232] [cursor=pointer]:
+            - generic [ref=f6e129]: ABC123-02
+            - generic [ref=f6e130]: 13 km/h
+            - generic [ref=f6e131]: hace 1 s
+        - listitem [ref=f6e132]:
+          - button "ABC123-03 137 km/h hace 1 s" [ref=f6e233] [cursor=pointer]:
+            - generic [ref=f6e135]: ABC123-03
+            - generic [ref=f6e136]: 137 km/h
+            - generic [ref=f6e137]: hace 1 s
+    - generic [ref=f6e138]:
+      - generic [ref=f6e139]:
+        - strong [ref=f6e140]:
+          - text: ABC123
+          - emphasis [ref=f6e141]: · En movimiento
+        - generic [ref=f6e142]: hace 1 s
+      - generic [ref=f6e143]:
+        - generic [ref=f6e144]:
+          - text: "37"
+          - generic [ref=f6e145]: km/h
+        - generic [ref=f6e146]:
+          - text: —
+          - generic [ref=f6e147]: Combustible
+        - generic [ref=f6e148]:
+          - text: 163°
+          - generic [ref=f6e149]: Rumbo
+      - generic [ref=f6e150]:
+        - term [ref=f6e151]: Chofer
+        - definition [ref=f6e152]: —
+        - term [ref=f6e153]: Ruta
+        - definition [ref=f6e154]: —
+        - term [ref=f6e155]: Posición
+        - definition [ref=f6e156]: "-31.418, -64.172"
+  - generic [ref=f6e157]:
+    - generic [ref=f6e158]:
+      - heading "Velocidad por camión Ahora" [level=3] [ref=f6e159]:
+        - text: Velocidad por camión
+        - generic [ref=f6e160]: Ahora
+      - generic [ref=f6e161]:
+        - button "123" [ref=f6e162] [cursor=pointer]
+        - button "-02" [ref=f6e165] [cursor=pointer]
+        - button "-03" [ref=f6e168] [cursor=pointer]
+        - text: 90 km/h
+    - generic [ref=f6e171]:
+      - heading "Resumen de flota" [level=3] [ref=f6e172]
+      - generic [ref=f6e173]:
+        - generic [ref=f6e174]:
+          - generic [ref=f6e175]: 100%
+          - generic [ref=f6e176]:
+            - text: En ruta
+            - strong [ref=f6e177]: de 3
+        - generic [ref=f6e178]:
+          - generic [ref=f6e179]: —
+          - generic [ref=f6e180]:
+            - text: Combustible
+            - strong [ref=f6e181]: promedio
+        - generic [ref=f6e182]:
+          - generic [ref=f6e183]: 100%
+          - generic [ref=f6e184]:
+            - text: Con señal
+            - strong [ref=f6e185]: de 3

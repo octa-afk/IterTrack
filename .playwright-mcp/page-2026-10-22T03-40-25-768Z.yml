@@ -1,0 +1,95 @@
+- generic [ref=f3e3]:
+  - complementary [ref=f3e4]:
+    - generic [ref=f3e5]:
+      - generic [ref=f3e6]:
+        - img "IterTrack" [ref=f3e7]
+        - text: IterTrack
+      - navigation "Principal" [ref=f3e11]:
+        - generic [ref=f3e12] [cursor=pointer]: Panel
+        - generic [ref=f3e15] [cursor=pointer]: Camiones
+        - generic [ref=f3e18] [cursor=pointer]: Rutas
+        - generic [ref=f3e23] [cursor=pointer]: Reportes
+        - generic [ref=f3e26] [cursor=pointer]: Ajustes
+      - button "Salir" [ref=f3e30] [cursor=pointer]
+  - generic [ref=f3e33]:
+    - generic [ref=f3e34]:
+      - generic [ref=f3e35]:
+        - button "Ocultar panel lateral" [expanded] [ref=f3e36] [cursor=pointer]
+        - searchbox "Buscar camiones" [ref=f3e40]
+      - generic [ref=f3e44]:
+        - button "0 alertas" [ref=f3e45] [cursor=pointer]
+        - generic [ref=f3e48]: DE
+    - generic [ref=f3e49]:
+      - generic [ref=f3e50]:
+        - generic [ref=f3e51]:
+          - generic [ref=f3e52]:
+            - heading "Mapa en vivo" [level=3] [ref=f3e53]
+            - generic [ref=f3e54]: Actualizando
+          - generic [ref=f3e56]:
+            - generic:
+              - generic [ref=f3e58]:
+                - generic:
+                  - region "Map"
+              - button [active] [ref=f3e96] [cursor=pointer]:
+                - emphasis [ref=f3e112]: AF412KD
+            - generic:
+              - generic [ref=f3e59]:
+                - button "Zoom in" [ref=f3e60] [cursor=pointer]: +
+                - button "Zoom out" [ref=f3e61] [cursor=pointer]: −
+              - link "Leaflet" [ref=f3e63] [cursor=pointer]:
+                - /url: https://leafletjs.com
+        - generic [ref=f3e68]:
+          - generic [ref=f3e70]:
+            - heading "Velocidad por camión" [level=3] [ref=f3e71]
+            - generic [ref=f3e72]: Ahora
+          - heading "Resumen de flota" [level=3] [ref=f3e75]
+      - generic [ref=f3e77]:
+        - generic [ref=f3e78]:
+          - generic [ref=f3e79]:
+            - button "Toda la flota" [pressed] [ref=f3e80] [cursor=pointer]
+            - button "Solo alertas" [ref=f3e81] [cursor=pointer]
+          - generic [ref=f3e82]:
+            - button "Todos" [pressed] [ref=f3e83] [cursor=pointer]
+            - button "En movimiento" [ref=f3e84] [cursor=pointer]
+            - button "Detenidos" [ref=f3e85] [cursor=pointer]
+            - button "Apagados" [ref=f3e86] [cursor=pointer]
+          - generic [ref=f3e87]:
+            - combobox "Ordenar por" [ref=f3e88]:
+              - option "Patente" [selected]
+              - option "Velocidad"
+              - option "Combustible"
+              - option "Última señal"
+              - option "Chofer"
+            - combobox "Dirección del orden" [ref=f3e89]:
+              - option "Ascendente" [selected]
+              - option "Descendente"
+          - generic [ref=f3e90]: 1 de 1 camiones
+          - list [ref=f3e91]:
+            - listitem [ref=f3e113]:
+              - button "AF412KD 0 km/h hace 10 s —" [ref=f3e114] [cursor=pointer]:
+                - generic [ref=f3e116]: AF412KD
+                - generic [ref=f3e117]: 0 km/h
+                - generic [ref=f3e118]: hace 10 s
+                - generic [ref=f3e119]: —
+        - generic [ref=f3e94]:
+          - generic [ref=f3e95]:
+            - generic [ref=f3e120]: AF412KD · Detenido
+            - generic [ref=f3e121]: hace 10 s
+          - generic [ref=f3e122]:
+            - generic [ref=f3e123]:
+              - generic [ref=f3e124]: "0"
+              - text: km/h
+            - generic [ref=f3e125]:
+              - generic [ref=f3e126]: —
+              - text: Combustible
+            - generic [ref=f3e127]:
+              - generic [ref=f3e128]: 0°
+              - text: Rumbo
+          - generic [ref=f3e129]:
+            - term [ref=f3e130]: Chofer
+            - definition [ref=f3e131]: —
+            - term [ref=f3e132]: Ruta
+            - definition [ref=f3e133]: —
+            - term [ref=f3e134]: Posición
+            - definition [ref=f3e135]: "-31.420, -64.180"
+          - img "Velocidad reciente" [ref=f3e136]

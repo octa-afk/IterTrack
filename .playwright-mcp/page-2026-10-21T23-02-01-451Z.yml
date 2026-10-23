@@ -1,0 +1,100 @@
+- generic [ref=f20e2]:
+  - generic [ref=f20e3]:
+    - generic:
+      - region "Map" [ref=f20e4]
+      - button "Map marker" [ref=f20e88]:
+        - emphasis [ref=f20e103]: ABC123
+      - button "Map marker" [ref=f20e104]:
+        - emphasis [ref=f20e119]: ABC123-03
+      - button "Map marker" [ref=f20e120]:
+        - emphasis [ref=f20e135]: ABC123-02
+    - generic [ref=f20e5]:
+      - button "Zoom in" [ref=f20e6] [cursor=pointer]
+      - button "Zoom out" [ref=f20e8] [cursor=pointer]
+      - button "Drag to rotate map, click to reset north" [ref=f20e10]
+  - complementary [ref=f20e12]:
+    - strong [ref=f20e13]:
+      - text: ↗
+      - generic [ref=f20e18]: IterTrack
+    - navigation [ref=f20e19]:
+      - generic [ref=f20e20]: Panel
+      - generic [ref=f20e25]: Camiones
+      - generic [ref=f20e30]: Rutas
+      - generic [ref=f20e36]: Reportes
+      - generic [ref=f20e40]: Ajustes
+    - button "Salir" [ref=f20e45] [cursor=pointer]
+  - banner [ref=f20e50]:
+    - button "Mostrar u ocultar menú" [ref=f20e51] [cursor=pointer]
+    - textbox "Buscar camiones" [ref=f20e53]:
+      - /placeholder: Buscar patente, chofer o ruta
+    - generic [ref=f20e56]: 0 alertas
+    - generic [ref=f20e60]: OC
+  - generic [ref=f20e61]:
+    - heading "Mapa en vivo" [level=1] [ref=f20e62]
+    - generic [ref=f20e63]: Actualizando
+  - complementary [ref=f20e64]:
+    - generic [ref=f20e65]:
+      - generic [ref=f20e66]:
+        - button "Toda la flota" [ref=f20e67] [cursor=pointer]
+        - button "Solo alertas" [ref=f20e68] [cursor=pointer]
+      - generic [ref=f20e69]:
+        - button "Todos" [ref=f20e70] [cursor=pointer]
+        - button "En movimiento" [ref=f20e71] [cursor=pointer]
+        - button "Detenidos" [ref=f20e72] [cursor=pointer]
+        - button "Apagados" [ref=f20e73] [cursor=pointer]
+      - generic [ref=f20e74]:
+        - combobox "Ordenar por" [ref=f20e75]:
+          - option "Patente" [selected]
+          - option "Velocidad"
+        - combobox "Dirección" [ref=f20e76]:
+          - option "Ascendente" [selected]
+          - option "Descendente"
+      - generic [ref=f20e77]: 3 de 3 camiones
+      - list [ref=f20e80]:
+        - listitem [ref=f20e136]:
+          - button "ABC123 18 km/h hace instantes" [ref=f20e137] [cursor=pointer]:
+            - generic [ref=f20e139]: ABC123
+            - generic [ref=f20e140]: 18 km/h
+            - generic [ref=f20e141]: hace instantes
+        - listitem [ref=f20e142]:
+          - button "ABC123-02 7 km/h hace instantes" [ref=f20e143] [cursor=pointer]:
+            - generic [ref=f20e145]: ABC123-02
+            - generic [ref=f20e146]: 7 km/h
+            - generic [ref=f20e147]: hace instantes
+        - listitem [ref=f20e148]:
+          - button "ABC123-03 8 km/h hace instantes" [ref=f20e149] [cursor=pointer]:
+            - generic [ref=f20e151]: ABC123-03
+            - generic [ref=f20e152]: 8 km/h
+            - generic [ref=f20e153]: hace instantes
+    - generic [ref=f20e81]:
+      - generic [ref=f20e154]:
+        - strong [ref=f20e155]:
+          - text: ABC123
+          - emphasis [ref=f20e156]: · En movimiento
+        - generic [ref=f20e157]: hace instantes
+      - generic [ref=f20e158]:
+        - generic [ref=f20e159]:
+          - text: "18"
+          - generic [ref=f20e160]: km/h
+        - generic [ref=f20e161]:
+          - text: —
+          - generic [ref=f20e162]: Combustible
+        - generic [ref=f20e163]:
+          - text: 16°
+          - generic [ref=f20e164]: Rumbo
+      - generic [ref=f20e165]:
+        - term [ref=f20e166]: Chofer
+        - definition [ref=f20e167]: —
+        - term [ref=f20e168]: Ruta
+        - definition [ref=f20e169]: —
+        - term [ref=f20e170]: Posición
+        - definition [ref=f20e171]: "-31.410, -64.197"
+  - generic [ref=f20e84]:
+    - heading "Velocidad por camión Ahora" [level=3] [ref=f20e85]:
+      - text: Velocidad por camión
+      - generic [ref=f20e86]: Ahora
+    - generic [ref=f20e87]:
+      - button "123" [ref=f20e172] [cursor=pointer]
+      - button "02" [ref=f20e175] [cursor=pointer]
+      - button "03" [ref=f20e178] [cursor=pointer]
+      - text: Límite 90 km/h

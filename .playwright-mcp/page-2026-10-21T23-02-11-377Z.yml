@@ -1,0 +1,41 @@
+- generic [ref=f21e3]:
+  - generic [ref=f21e4]:
+    - region "Map" [ref=f21e5]
+    - generic [ref=f21e6]:
+      - button "Zoom in" [ref=f21e7] [cursor=pointer]
+      - button "Zoom out" [ref=f21e9] [cursor=pointer]
+      - button "Drag to rotate map, click to reset north" [ref=f21e11]
+  - complementary [ref=f21e13]:
+    - strong [ref=f21e14]:
+      - text: ↗
+      - generic [ref=f21e19]: IterTrack
+  - banner [ref=f21e20]:
+    - button "Mostrar u ocultar menú" [ref=f21e21] [cursor=pointer]
+    - textbox "Buscar camiones" [ref=f21e23]:
+      - /placeholder: Buscar patente, chofer o ruta
+    - generic [ref=f21e26]: OC
+  - generic [ref=f21e27]:
+    - heading "Mapa en vivo" [level=1] [ref=f21e28]
+    - generic [ref=f21e29]: Actualizando
+  - complementary [ref=f21e30]:
+    - generic [ref=f21e31]:
+      - generic [ref=f21e32]:
+        - button "Toda la flota" [ref=f21e33] [cursor=pointer]
+        - button "Solo alertas" [ref=f21e34] [cursor=pointer]
+      - generic [ref=f21e35]:
+        - button "Todos" [ref=f21e36] [cursor=pointer]
+        - button "En movimiento" [ref=f21e37] [cursor=pointer]
+        - button "Detenidos" [ref=f21e38] [cursor=pointer]
+        - button "Apagados" [ref=f21e39] [cursor=pointer]
+      - generic [ref=f21e40]:
+        - combobox "Ordenar por" [ref=f21e41]:
+          - option "Patente" [selected]
+          - option "Velocidad"
+        - combobox "Dirección" [ref=f21e42]:
+          - option "Ascendente" [selected]
+          - option "Descendente"
+      - generic [ref=f21e43]: 0 de 0 camiones
+      - paragraph [ref=f21e45]: No hay camiones que coincidan con el filtro.
+      - list
+    - paragraph [ref=f21e47]: Elegí un camión para ver su detalle.
+  - text: Límite 90 km/h

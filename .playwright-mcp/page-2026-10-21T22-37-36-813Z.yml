@@ -1,0 +1,20 @@
+- main [ref=f2e3]:
+  - generic [ref=f2e4]:
+    - strong [ref=f2e5]: IterTrack
+    - heading "Toda tu flota, en un solo mapa." [level=2] [ref=f2e6]
+    - paragraph [ref=f2e7]: Seguí cada camión en tiempo real desde un solo lugar.
+  - generic [ref=f2e8]:
+    - heading "Iniciar sesión" [level=1] [ref=f2e9]
+    - paragraph [ref=f2e10]: Ingresá con tu cuenta para ver el panel de la flota.
+    - generic [ref=f2e11]:
+      - generic [ref=f2e12]:
+        - generic [ref=f2e13]: Usuario
+        - textbox "Usuario" [ref=f2e14]
+      - generic [ref=f2e15]:
+        - generic [ref=f2e16]: Contraseña
+        - textbox "Contraseña" [ref=f2e17]
+      - button "Iniciar sesión" [ref=f2e18] [cursor=pointer]
+    - paragraph [ref=f2e19]:
+      - text: ¿Todavía no tenés cuenta?
+      - link "Crear cuenta" [ref=f2e20] [cursor=pointer]:
+        - /url: /register

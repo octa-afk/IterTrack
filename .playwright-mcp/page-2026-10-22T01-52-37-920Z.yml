@@ -1,0 +1,48 @@
+- main [ref=f8e2]:
+  - generic [ref=f8e3]:
+    - generic [ref=f8e4]:
+      - img "IterTrack" [ref=f8e5]
+      - text: IterTrack
+    - heading "Toda tu flota, en un solo mapa." [level=2] [ref=f8e9]
+    - paragraph [ref=f8e10]: Seguí cada camión en tiempo real, filtrá por estado y recibí alertas antes de que se conviertan en problemas.
+    - generic [aria-hidden] [ref=f8e11]:
+      - generic [ref=f8e12]: En ruta ahora
+      - list [ref=f8e13]:
+        - listitem [ref=f8e14]:
+          - generic [ref=f8e16]: AF 412 KD
+          - emphasis [ref=f8e17]: 82 km/h
+          - generic [ref=f8e18]: Córdoba → Rosario
+        - listitem [ref=f8e19]:
+          - generic [ref=f8e21]: AG 233 MP
+          - emphasis [ref=f8e22]: Detenido
+          - generic [ref=f8e23]: Córdoba → Tucumán
+        - listitem [ref=f8e24]:
+          - generic [ref=f8e26]: AF 678 NC
+          - emphasis [ref=f8e27]: 105 km/h
+          - generic [ref=f8e28]: Río Cuarto → San Luis
+  - generic [ref=f8e29]:
+    - heading "Iniciar sesión" [level=1] [ref=f8e30]
+    - paragraph [ref=f8e31]: Ingresá con tu cuenta para ver el panel de la flota.
+    - generic [ref=f8e32]:
+      - generic [ref=f8e33]:
+        - generic [ref=f8e34]: Usuario
+        - textbox "Usuario" [ref=f8e36]:
+          - /placeholder: Tu usuario
+      - generic [ref=f8e37]:
+        - generic [ref=f8e38]: Contraseña
+        - generic [ref=f8e39]:
+          - textbox "Contraseña" [ref=f8e40]:
+            - /placeholder: Tu contraseña
+          - button "Mostrar contraseña" [ref=f8e41] [cursor=pointer]: Mostrar
+      - generic [ref=f8e42]:
+        - generic [ref=f8e43]:
+          - checkbox "Mantener sesión iniciada" [ref=f8e44]
+          - text: Mantener sesión iniciada
+        - link "¿Olvidaste tu contraseña?" [ref=f8e45] [cursor=pointer]:
+          - /url: "#"
+      - button "Iniciar sesión" [ref=f8e46] [cursor=pointer]
+      - status [ref=f8e47]
+    - paragraph [ref=f8e48]:
+      - text: ¿Todavía no tenés cuenta?
+      - link "Crear cuenta" [ref=f8e49] [cursor=pointer]:
+        - /url: /register
