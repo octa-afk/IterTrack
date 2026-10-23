@@ -262,4 +262,11 @@ def test_revoke_deactivates_device_and_frees_truck(admin_client, test_truck, db_
 def test_client_cannot_manage_devices(cliente_client, method, path, body):
     response = cliente_client.request(method, path, json=body)
     assert response.status_code == 403
-    assert response.json()["detail"].startswith("Se requiere rol de administrador")
+    # Listing and provisioning admit either admin scope; the lifecycle routes
+    # require an organization administrator, so their detail names the scope.
+    expected = (
+        "Se requiere rol de administrador"
+        if path == "/devices"
+        else "Se requiere rol de administrador de organización"
+    )
+    assert response.json()["detail"] == expected

@@ -88,4 +88,23 @@ Evidencia: RED 11 fallos en `tests/test_tenant_isolation.py`; GREEN 15/15 y suit
 
 Riesgo declarado: ítem 1 (migración sobre datos existentes), ítem 2 (permisos y autorización) e ítem 3 (contrato de API: endpoint nuevo y cambio de alcance en dos rutas existentes).
 
+### L5 — Revisión nativa de la rama (2026-10-23)
+
+`review assess` sobre `877cac7..HEAD` con escalada del ítem 2 (seguridad): tier `high`, `review_due: true`. Consentimiento del usuario: **revisar este cambio**. Lentes: `risk`, `readability`, `reliability`.
+
+El refutador confirmó un hallazgo **CRITICAL** y abrió una corrección acotada (42 líneas): al transferir un camión entre organizaciones, `Device.organization_id` no se resincronizaba, así que el tenant anterior conservaba el dispositivo y podía rotarlo o revocarlo, mientras el nuevo no podía verlo ni aprovisionar un reemplazo. Corregido en `0a41eb1` y cubierto por `test_truck_transfer_moves_assigned_device_to_the_new_organization`.
+
+El validador dirigido aprobó; autoridad quemada con `review.acknowledge-approved`. Suite: 168 tests.
+
+Follow-ups informativos (no bloquean, trabajo posterior):
+- **Bootstrap de `platform_admin`** — tras la migración no existe ninguno, así que `POST /organizations` y el alta cross-org quedan inalcanzables hasta crear la primera cuenta por SQL. Es exactamente el bloque 2: confirma su prioridad.
+- El pass-through de `platform_admin` en `_ensure_device_scope`/`_ensure_truck_scope` es inalcanzable porque `reassign`/`rotate`/`revoke` exigen `org_admin`. Es intencional según la matriz, pero conviene borrar la rama muerta o documentar por qué está.
+- La política "ocultar como 404" está expresada en tres helpers con mecanismos distintos (`HTTPException` en organizaciones, `DeviceNotFoundError` en dispositivos, inline en `create_device`).
+- El enum de roles aparece en cuatro copias (modelo, `CHECK`, y dos `UPDATE` de la migración) y `ROLE_VALUES` no lo consume nadie.
+- `org_router` (alta de camiones) vive en `tracking.py` pero monta bajo el prefijo `/organizations`, que ya administra `organizations.py`.
+- El `downgrade` mapea `platform_admin` a `cliente` (pérdida inevitable: el rol viejo no tiene inverso). Documentado acá.
+
+Ya corregido tras la revisión: las dos aserciones de test debilitadas (detalle exacto del rol y `404` exacto en reassign cross-org) y tres tests nuevos que fijan el `organization_id` al aprovisionar y el rechazo de aprovisionar sobre un camión ajeno.
+
+
 
