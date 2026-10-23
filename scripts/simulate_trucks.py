@@ -2,17 +2,25 @@ import argparse
 import json
 import math
 import os
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from threading import Event, Lock
+from time import monotonic
 from typing import Any, Protocol
 from uuid import uuid4
 
 import requests
 
 SCRIPT_ENV_FILE = Path(__file__).resolve().parent / ".env"
+
+# Cuánto esperar antes de reintentar una recuperación de token que ya falló.
+# Sin esto, un camión tomado por hardware real golpearía los endpoints de
+# administración en cada punto de telemetría.
+RECOVERY_COOLDOWN = 30.0
 
 
 def cargar_env_local(ruta: Path | None = None) -> None:
@@ -420,8 +428,16 @@ def enviar_ingesta(
     recorded_at: datetime,
     sequence: int = 1,
     batch_id: str | None = None,
+    on_unauthorized: Callable[[], str | None] | None = None,
 ) -> bool:
-    """Send one measurement through the same endpoint a real ESP32 uses."""
+    """Send one measurement through the same endpoint a real ESP32 uses.
+
+    Un 401 significa que el token del dispositivo dejó de valer: un reset de la
+    demo recrea los dispositivos y rotar un token invalida el anterior. Si
+    ``on_unauthorized`` devuelve uno nuevo, el punto se reintenta una sola vez,
+    igual que el camino de usuario cuando vence el JWT. Sin eso el worker queda
+    en bucle de 401 y la flota se congela.
+    """
     payload: dict[str, Any] = {
         "batch_id": batch_id or str(uuid4()),
         "points": [
@@ -435,13 +451,20 @@ def enviar_ingesta(
             }
         ],
     }
-    try:
-        response = requests.post(
+    def enviar(autenticacion: str):
+        return requests.post(
             INGEST_URL,
             json=payload,
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {autenticacion}"},
             timeout=5,
         )
+
+    try:
+        response = enviar(token)
+        if response.status_code == 401 and on_unauthorized is not None:
+            renovado = on_unauthorized()
+            if renovado:
+                response = enviar(renovado)
     except requests.RequestException as e:
         print(f"⚠️ Error al enviar ingesta: {e}")
         return False
@@ -456,14 +479,38 @@ def enviar_ingesta(
     return True
 
 
-def constructor_de_sender(token: str):
-    """Bind a device token to the sender contract the route loop expects."""
+def constructor_de_sender(
+    token: str, on_unauthorized: Callable[[], str | None] | None = None
+):
+    """Bind a device token to the sender contract the route loop expects.
+
+    Cuando ``on_unauthorized`` devuelve un token nuevo, se guarda para los
+    puntos siguientes: una recuperación cuesta una rotación, no una por punto.
+    Si la recuperación falla no se reintenta hasta pasar ``RECOVERY_COOLDOWN``,
+    para que un camión tomado por hardware real no golpee la API sin pausa.
+    """
     secuencia = {"n": 0}
+    estado: dict[str, Any] = {"token": token, "ultimo_intento": -RECOVERY_COOLDOWN}
+
+    def renovar() -> str | None:
+        if monotonic() - estado["ultimo_intento"] < RECOVERY_COOLDOWN:
+            return None
+        estado["ultimo_intento"] = monotonic()
+        nuevo = on_unauthorized() if on_unauthorized is not None else None
+        if nuevo:
+            estado["token"] = nuevo
+        return nuevo
 
     def enviar(lat, lon, velocidad, rumbo, medido_en) -> bool:
         secuencia["n"] += 1
+        if on_unauthorized is None:
+            return enviar_ingesta(
+                estado["token"], lat, lon, velocidad, rumbo, medido_en,
+                sequence=secuencia["n"],
+            )
         return enviar_ingesta(
-            token, lat, lon, velocidad, rumbo, medido_en, sequence=secuencia["n"]
+            estado["token"], lat, lon, velocidad, rumbo, medido_en,
+            sequence=secuencia["n"], on_unauthorized=renovar,
         )
 
     return enviar
@@ -602,7 +649,20 @@ def ejecutar_simulaciones(
             token = preparar_dispositivo(config.truck_id, admin_headers, force=force)
             if token is None:
                 continue
-            trabajos.append((config, constructor_de_sender(token)))
+            trabajos.append(
+                (
+                    config,
+                    constructor_de_sender(
+                        token,
+                        # `partial` fija el truck_id: un cierre sobre el bucle
+                        # capturaría el último config y los tres camiones
+                        # compartirían el mismo dispositivo.
+                        on_unauthorized=partial(
+                            preparar_dispositivo, config.truck_id, admin_headers
+                        ),
+                    ),
+                )
+            )
         if not trabajos:
             print("⛔ Ningún camión quedó disponible para simular. Abortando.")
             return False
