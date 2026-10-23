@@ -1,0 +1,197 @@
+"""Bootstrap de plataforma y seed de demo: separación de tenants y reset seguro."""
+
+from typing import Any
+
+import pytest
+
+from scripts.bootstrap_platform import (
+    BootstrapError,
+    PlatformBootstrapConfig,
+    bootstrap_platform,
+)
+from scripts.seed_demo import DemoSeedConfig, SeedError, seed_demo
+from source.models.device import Device, DeviceAssignment
+from source.models.organization import Organization
+from source.models.truck import Truck
+from source.models.user import ROLE_MEMBER, ROLE_ORG_ADMIN, ROLE_PLATFORM_ADMIN, User
+
+PASSWORD = "supersecret12345"
+
+
+def platform_config(**overrides: Any) -> PlatformBootstrapConfig:
+    data: dict[str, Any] = {
+        "org_name": "IterTrack",
+        "username": "owner",
+        "email": "owner@itertrack.local",
+        "full_name": "Platform Owner",
+        "password": PASSWORD,
+    }
+    data.update(overrides)
+    return PlatformBootstrapConfig(**data)
+
+
+def demo_config(**overrides: Any) -> DemoSeedConfig:
+    data: dict[str, Any] = {
+        "org_name": "Demo Corp",
+        "admin_username": "demo-admin",
+        "admin_email": "demo-admin@itertrack.local",
+        "admin_full_name": "Demo Admin",
+        "admin_password": PASSWORD,
+        "member_username": "demo",
+        "member_email": "demo@itertrack.local",
+        "member_full_name": "Demo User",
+        "member_password": PASSWORD,
+        "truck_count": 3,
+        "base_id": 1,
+        "base_plate": "ABC123",
+        "device_prefix": "DEMO-DEVICE",
+    }
+    data.update(overrides)
+    return DemoSeedConfig(**data)
+
+
+# ---- platform bootstrap ----
+
+
+def test_bootstrap_creates_internal_organization_and_platform_admin(db_session):
+    result = bootstrap_platform(db_session, platform_config())
+
+    assert result.organization_created is True
+    assert result.user_created is True
+
+    organization = db_session.query(Organization).filter_by(name="IterTrack").one()
+    # The internal organization must never be joinable through an invitation.
+    assert organization.invitation_revoked_at is not None
+
+    user = db_session.query(User).filter_by(username="owner").one()
+    assert user.role == ROLE_PLATFORM_ADMIN
+    assert user.organization_id == organization.id
+
+
+def test_bootstrap_is_idempotent(db_session):
+    bootstrap_platform(db_session, platform_config())
+    second = bootstrap_platform(db_session, platform_config())
+
+    assert second.organization_created is False
+    assert second.user_created is False
+    assert db_session.query(User).filter_by(username="owner").count() == 1
+    assert db_session.query(Organization).filter_by(name="IterTrack").count() == 1
+
+
+def test_bootstrap_promotes_an_existing_user(db_session):
+    organization = Organization(name="IterTrack", invitation_code="INTERNAL-CODE")
+    db_session.add(organization)
+    db_session.commit()
+    user = User(
+        username="owner",
+        email="owner@itertrack.local",
+        full_name="Owner",
+        hashed_password="x",
+        organization_id=organization.id,
+        role=ROLE_MEMBER,
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    result = bootstrap_platform(db_session, platform_config())
+
+    assert result.user_created is False
+    db_session.refresh(user)
+    assert user.role == ROLE_PLATFORM_ADMIN
+
+
+def test_bootstrap_rejects_short_password(db_session):
+    with pytest.raises(BootstrapError):
+        bootstrap_platform(db_session, platform_config(password="corta"))
+
+
+# ---- demo seed ----
+
+
+def test_seed_creates_demo_tenant_with_its_roles_and_fleet(db_session):
+    result = seed_demo(db_session, demo_config())
+
+    organization = db_session.get(Organization, result.organization_id)
+    assert organization.name == "Demo Corp"
+
+    admin = db_session.query(User).filter_by(username="demo-admin").one()
+    member = db_session.query(User).filter_by(username="demo").one()
+    assert admin.role == ROLE_ORG_ADMIN
+    assert member.role == ROLE_MEMBER
+    assert admin.organization_id == organization.id
+    assert member.organization_id == organization.id
+
+    trucks = (
+        db_session.query(Truck)
+        .filter(Truck.organization_id == organization.id)
+        .order_by(Truck.id)
+        .all()
+    )
+    assert [(truck.id, truck.plate) for truck in trucks] == [
+        (1, "ABC123-01"),
+        (2, "ABC123-02"),
+        (3, "ABC123-03"),
+    ]
+
+    devices = db_session.query(Device).filter(Device.identifier.like("DEMO-DEVICE-%")).all()
+    assert len(devices) == 3
+    assert all(device.organization_id == organization.id for device in devices)
+    assert (
+        db_session.query(DeviceAssignment)
+        .filter(DeviceAssignment.valid_to.is_(None))
+        .count()
+        == 3
+    )
+
+
+def test_seed_is_idempotent_without_reset(db_session):
+    seed_demo(db_session, demo_config())
+    result = seed_demo(db_session, demo_config())
+
+    assert result.trucks == 0
+    assert result.devices == 0
+    organization = db_session.get(Organization, result.organization_id)
+    assert db_session.query(Truck).filter(Truck.organization_id == organization.id).count() == 3
+    assert db_session.query(User).filter(User.organization_id == organization.id).count() == 2
+
+
+def test_reset_rebuilds_the_demo_tenant_and_keeps_its_identity(db_session):
+    first = seed_demo(db_session, demo_config())
+    second = seed_demo(db_session, demo_config(), reset=True)
+
+    assert second.reset is True
+    assert second.organization_id == first.organization_id
+    assert second.trucks == 3
+    assert second.devices == 3
+    assert db_session.query(Organization).filter_by(name="Demo Corp").count() == 1
+    assert db_session.query(User).filter(User.organization_id == first.organization_id).count() == 2
+
+
+def test_reset_never_touches_another_organization(db_session, test_org, test_user):
+    foreign_truck = Truck(id=900, plate="FOREIGN900", organization_id=test_org.id)
+    db_session.add(foreign_truck)
+    db_session.commit()
+
+    seed_demo(db_session, demo_config())
+
+    seed_demo(db_session, demo_config(), reset=True)
+
+    assert db_session.get(Organization, test_org.id) is not None
+    assert db_session.get(Truck, 900) is not None
+    assert db_session.get(User, test_user.id) is not None
+
+
+def test_seed_refuses_to_adopt_a_truck_owned_by_another_organization(
+    db_session, test_org, test_truck
+):
+    # test_truck uses id 1, which the demo fleet also wants.
+    with pytest.raises(SeedError):
+        seed_demo(db_session, demo_config())
+
+    db_session.refresh(test_truck)
+    assert test_truck.organization_id == test_org.id
+
+
+def test_seed_rejects_short_demo_password(db_session):
+    with pytest.raises(SeedError):
+        seed_demo(db_session, demo_config(admin_password="corta"))

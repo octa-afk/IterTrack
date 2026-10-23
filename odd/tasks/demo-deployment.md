@@ -106,5 +106,21 @@ Follow-ups informativos (no bloquean, trabajo posterior):
 
 Ya corregido tras la revisión: las dos aserciones de test debilitadas (detalle exacto del rol y `404` exacto en reassign cross-org) y tres tests nuevos que fijan el `organization_id` al aprovisionar y el rechazo de aprovisionar sobre un camión ajeno.
 
+### L6 — Bloque 2: bootstrap y seed separados (2026-10-23)
+
+Decisión del usuario: "el demo es para el cliente y el deploy para mi". Dos scripts con ciclos de vida distintos:
+
+- `scripts/bootstrap_platform.py` → organización interna `IterTrack` + `platform_admin`, **una vez por despliegue**. Converge si se repite (no duplica, promueve el rol si el usuario existía). La invitación de la organización interna queda revocada a propósito: nadie se registra en la plataforma.
+- `scripts/seed_demo.py` → tenant `Demo Corp` con `org_admin`, `member`, camiones y dispositivos asignados. `--reset` lo rebarré sin tocar otras organizaciones ni la cuenta de plataforma.
+
+Las credenciales salen del entorno (`.env.example` documenta el contrato); ninguna va hardcodeada. Se invocan como módulo (`python -m scripts.…`) porque `source` no está en `sys.path` al ejecutar el archivo suelto. Targets nuevos: `make bootstrap`, `make seed-demo`, `make reset-demo`.
+
+Los camiones del seed usan la convención de `build_truck_configs` (`ABC123-01`…, ids desde 1), que es exactamente lo que espera el simulador con sus defaults — así el seed y la simulación no se desincronizan.
+
+Hallazgo durante los tests: con ids fijos, el seed **adoptaba** un camión de otra organización que tuviera el mismo id. Ahora falla con `SeedError` en vez de robar datos ajenos; hay un test que lo fija.
+
+Evidencia: 10 tests en `tests/test_platform_setup_scripts.py`; suite completa **178 passed**; `make check` limpio (40 archivos). Verificación contra la Postgres local: bootstrap creado y repetido sin duplicar; seed creado y luego `--reset`, con `Demo Fleet` (org 2) y sus 3 camiones intactos después del reset.
+
+
 
 
