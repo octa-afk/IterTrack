@@ -110,12 +110,49 @@ def admin_user(db_session, test_org):
         full_name="Admin User",
         hashed_password=hash_password("adminpass123"),
         organization_id=test_org.id,
-        role="admin",
+        role="org_admin",
     )
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
     return user
+
+
+@pytest.fixture()
+def platform_user(db_session, test_org):
+    """Crea un usuario con rol de administrador de plataforma."""
+    user = User(
+        username="platform",
+        email="platform@example.com",
+        full_name="Platform Admin",
+        hashed_password=hash_password("platformpass123"),
+        organization_id=test_org.id,
+        role="platform_admin",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture()
+def platform_client(db_session, platform_user):
+    """Client con usuario administrador de plataforma autenticado."""
+
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    def override_current_user():
+        return platform_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_current_user
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture()

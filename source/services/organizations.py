@@ -1,7 +1,12 @@
 """Administrative organization and invitation management.
 
-Administrators are internal company staff, so every administrator can manage
-every organization. Invitations are a single rotating code per organization.
+Two administrator scopes exist and they are not interchangeable:
+
+- ``platform_admin`` creates organizations and may read any invitation code so it
+  can hand it to the customer during onboarding.
+- ``org_admin`` manages only its own organization. Rotation and revocation never
+  cross that boundary, and another organization's id is reported as not found so
+  its existence is not leaked.
 """
 
 import secrets
@@ -12,7 +17,12 @@ from sqlalchemy.orm import Session
 
 from source import models, schemas
 from source.database.database import get_db
-from source.services.auth import get_current_admin_user
+from source.models.user import ROLE_PLATFORM_ADMIN
+from source.services.auth import (
+    require_org_admin,
+    require_org_admin_or_platform,
+    require_platform_admin,
+)
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
@@ -37,12 +47,28 @@ def _get_organization(db: Session, organization_id: int) -> models.Organization:
     return organization
 
 
+def _ensure_scope(
+    current_user: models.User, organization: models.Organization
+) -> models.Organization:
+    """Reject organizations outside the caller's scope without revealing them."""
+    if current_user.role == ROLE_PLATFORM_ADMIN:
+        return organization
+    if organization.id != current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organización no encontrada"
+        )
+    return organization
+
+
 @router.get("", response_model=list[schemas.OrganizationResponse])
 def list_organizations(
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_admin_user),
+    current_user: models.User = Depends(require_org_admin_or_platform),
 ):
-    return db.query(models.Organization).order_by(models.Organization.id).all()
+    query = db.query(models.Organization).order_by(models.Organization.id)
+    if current_user.role == ROLE_PLATFORM_ADMIN:
+        return query.all()
+    return query.filter(models.Organization.id == current_user.organization_id).all()
 
 
 @router.post(
@@ -51,7 +77,7 @@ def list_organizations(
 def create_organization(
     payload: schemas.OrganizationCreate,
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_admin_user),
+    _current_user: models.User = Depends(require_platform_admin),
 ):
     if db.query(models.Organization).filter(models.Organization.name == payload.name).first():
         raise HTTPException(
@@ -73,9 +99,9 @@ def create_organization(
 def read_invitation(
     organization_id: int,
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_admin_user),
+    current_user: models.User = Depends(require_org_admin_or_platform),
 ):
-    return _get_organization(db, organization_id)
+    return _ensure_scope(current_user, _get_organization(db, organization_id))
 
 
 @router.post(
@@ -86,9 +112,9 @@ def rotate_invitation(
     organization_id: int,
     payload: schemas.InvitationRotate,
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_admin_user),
+    current_user: models.User = Depends(require_org_admin),
 ):
-    organization = _get_organization(db, organization_id)
+    organization = _ensure_scope(current_user, _get_organization(db, organization_id))
     organization.invitation_code = _generate_code()
     organization.invitation_revoked_at = None
     organization.invitation_expires_at = _expires_at(payload.expires_in_days)
@@ -101,9 +127,9 @@ def rotate_invitation(
 def revoke_invitation(
     organization_id: int,
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_admin_user),
+    current_user: models.User = Depends(require_org_admin),
 ):
-    organization = _get_organization(db, organization_id)
+    organization = _ensure_scope(current_user, _get_organization(db, organization_id))
     organization.invitation_revoked_at = datetime.now(UTC)
     db.commit()
     db.refresh(organization)

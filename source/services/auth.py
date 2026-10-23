@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from source import models, schemas
 from source.database.config import settings
 from source.database.database import get_db
+from source.models.user import ROLE_ORG_ADMIN, ROLE_PLATFORM_ADMIN
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -59,8 +60,29 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
-def get_current_admin_user(current_user: models.User = Depends(get_current_user)):
-    if current_user.role != "admin":
+def require_org_admin(current_user: models.User = Depends(get_current_user)):
+    """Require an administrator of a single organization."""
+    if current_user.role != ROLE_ORG_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requiere rol de administrador de organización",
+        )
+    return current_user
+
+
+def require_platform_admin(current_user: models.User = Depends(get_current_user)):
+    """Require IterTrack staff with platform-wide scope."""
+    if current_user.role != ROLE_PLATFORM_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requiere rol de administrador de plataforma",
+        )
+    return current_user
+
+
+def require_org_admin_or_platform(current_user: models.User = Depends(get_current_user)):
+    """Allow either administrator scope when the endpoint narrows by organization."""
+    if current_user.role not in (ROLE_ORG_ADMIN, ROLE_PLATFORM_ADMIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Se requiere rol de administrador",

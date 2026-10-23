@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from source.services.auth import router as auth_router
 from source.services.devices import router as devices_router
 from source.services.organizations import router as organizations_router
+from source.services.tracking import org_router
 from source.services.tracking import router as tracking_router
 
 # Built React app (Vite). Build it with: npm --prefix frontend run build
@@ -15,6 +16,7 @@ FAVICON = Path(__file__).resolve().parent / "static" / "isologo.png"
 
 app = FastAPI()
 app.include_router(tracking_router)
+app.include_router(org_router)
 app.include_router(auth_router)
 app.include_router(devices_router)
 app.include_router(organizations_router)

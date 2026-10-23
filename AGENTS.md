@@ -72,7 +72,9 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * `POST /auth/register` exige un `invitation_code` de una organización con invitación activa (no revocada ni vencida); ya **no** crea organizaciones. El campo `org_name` fue retirado de `UserCreate`.
 
 6. **Organizaciones e invitaciones (`source/services/organizations.py`):**
-   * Solo cuentas con `role = "admin"` (dependencia `get_current_admin_user`) administran organizaciones: `GET /organizations`, `POST /organizations`, `GET /organizations/{id}/invitation`, `POST /organizations/{id}/invitation/rotate` y `DELETE /organizations/{id}/invitation`.
+   * `User.role` tiene tres valores con alcance explícito y un `CHECK CONSTRAINT` (`ck_users_role`) que rechaza cualquier otro: `platform_admin` (dueño de la plataforma), `org_admin` (administrador de una organización) y `member` (lectura). Las dependencias `require_platform_admin`, `require_org_admin` y `require_org_admin_or_platform` nombran el alcance que exige cada endpoint.
+   * `POST /organizations` exige `platform_admin`. `GET /organizations` devuelve solo la propia para `org_admin`. El resto de los endpoints de organización (`GET /organizations/{id}/invitation`, `POST /organizations/{id}/invitation/rotate`, `DELETE /organizations/{id}/invitation`) exigen `org_admin` y responden `404` sobre una organización ajena para no filtrar su existencia.
+   * El alta de camión para un cliente `org_admin` es `POST /trucks` (siempre en su organización). El alta en nombre de otra organización es `POST /organizations/{id}/trucks` y exige `platform_admin`; `PATCH /trucks/{id}/organization` (transferir un camión entre empresas) también es exclusivo de `platform_admin`.
    * Cada organización tiene **un único código rotable** en `organizations.invitation_code`. La vigencia se calcula con `Organization.invitation_active`: revocada (`invitation_revoked_at`) o vencida (`invitation_expires_at`) deja de servir.
    * Rotar genera un código nuevo y limpia la revocación; revocar conserva el código pero lo invalida. Los códigos sin fecha de expiración nunca vencen.
 
@@ -135,7 +137,7 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * Configuración JWT centralizada en `source/database/config.py`: `SECRET_KEY`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES` (60).
   * `auth_router` incluido en `source/main.py`.
   * Todos los endpoints de `tracking.py` (`POST`, `PUT`, `GET` y `DELETE` bajo `/trucks`) requieren `Depends(get_current_user)` y Bearer JWT. La SPA se sirve sin autenticación HTTP; el frontend de `/map` valida el token y envía el Bearer en las llamadas a la API.
-  * Cada usuario pertenece a una organización y los camiones nuevos se asignan a ella; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia. `User.role` distingue `admin` de `cliente`: las operaciones de alta, activación, reasignación y borrado de historial exigen `admin`; las lecturas quedan abiertas a cualquier autenticado de la organización.
+  * Cada usuario pertenece a una organización y los camiones nuevos se asignan a ella; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia. `platform_admin` es el único rol que puede leer datos de todas las organizaciones; `org_admin` administra solo la suya y `member` solo lee. Los dispositivos también guardan `organization_id` (tomado del camión al aprovisionarlos) para poder filtrarlos sin recorrer las asignaciones.
   * `bcrypt` fijado en `4.0.1` en `requirements.txt` por incompatibilidad de passlib 1.7.4 con bcrypt 5.x.
 * **Invitaciones por organización (Completada):**
   * Migración `5426d9d8a15a` agrega `organizations.invitation_expires_at` e `invitation_revoked_at`; `Organization.invitation_active` calcula la vigencia.

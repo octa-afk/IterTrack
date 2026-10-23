@@ -36,7 +36,7 @@ def admin_user(db_session, test_org):
         full_name="Admin User",
         hashed_password=hash_password("adminpass123"),
         organization_id=test_org.id,
-        role="admin",
+        role="org_admin",
     )
     db_session.add(user)
     db_session.commit()
@@ -52,7 +52,7 @@ def client_user(db_session, test_org):
         full_name="Cliente User",
         hashed_password=hash_password("clientepass123"),
         organization_id=test_org.id,
-        role="cliente",
+        role="member",
     )
     db_session.add(user)
     db_session.commit()
@@ -70,6 +70,29 @@ def admin_token(api_client, admin_user):
 @pytest.fixture()
 def client_token(api_client, client_user):
     response = login(api_client, "cliente", "clientepass123")
+    assert response.status_code == 200
+    return response.json()["access_token"]
+
+
+@pytest.fixture()
+def platform_user(db_session, test_org):
+    user = User(
+        username="platform",
+        email="platform@example.com",
+        full_name="Platform Admin",
+        hashed_password=hash_password("platformpass123"),
+        organization_id=test_org.id,
+        role="platform_admin",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture()
+def platform_token(api_client, platform_user):
+    response = login(api_client, "platform", "platformpass123")
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -106,17 +129,28 @@ def test_client_cannot_activate_truck(api_client, client_token, test_truck):
     assert response.status_code == 403
 
 
-def test_admin_can_reassign_truck(api_client, admin_token, test_org2, test_truck, db_session):
+def test_platform_admin_can_reassign_truck(
+    api_client, platform_token, test_org2, test_truck, db_session
+):
     response = api_client.patch(
         f"/trucks/{test_truck.id}/organization",
         json={"organization_id": test_org2.id},
-        headers=auth_header(admin_token),
+        headers=auth_header(platform_token),
     )
     assert response.status_code == 200
     assert response.json()["organization_id"] == test_org2.id
 
     # Devolver a la org original para no romper otros tests
     test_truck.organization_id = test_org2.id  # ya fue reasignado; dejar como está es fine
+
+
+def test_org_admin_cannot_reassign_truck(api_client, admin_token, test_truck, test_org2):
+    response = api_client.patch(
+        f"/trucks/{test_truck.id}/organization",
+        json={"organization_id": test_org2.id},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 403
 
 
 def test_client_cannot_reassign_truck(api_client, client_token, test_truck, test_org2):
@@ -199,7 +233,7 @@ def test_admin_cannot_touch_other_org_truck(api_client, admin_token, test_org2, 
         json={"organization_id": test_org2.id},
         headers=auth_header(admin_token),
     )
-    assert response.status_code == 404
+    assert response.status_code == 403
 
 
 def test_inactive_truck_rejects_location_update(api_client, admin_token, test_org, db_session):

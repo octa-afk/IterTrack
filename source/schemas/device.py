@@ -23,6 +23,7 @@ class DeviceResponse(BaseModel):
     id: int
     identifier: str
     active: bool
+    organization_id: int | None = None
     assignment: DeviceAssignmentInfo | None
 
 

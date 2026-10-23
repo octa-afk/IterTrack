@@ -262,4 +262,4 @@ def test_revoke_deactivates_device_and_frees_truck(admin_client, test_truck, db_
 def test_client_cannot_manage_devices(cliente_client, method, path, body):
     response = cliente_client.request(method, path, json=body)
     assert response.status_code == 403
-    assert response.json()["detail"] == "Se requiere rol de administrador"
+    assert response.json()["detail"].startswith("Se requiere rol de administrador")
