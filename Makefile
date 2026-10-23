@@ -1,4 +1,4 @@
-.PHONY: test dev migrate check simulation frontend
+.PHONY: test dev migrate check simulation frontend bootstrap seed-demo reset-demo
 
 SIMULATION_COUNT ?= 3
 SIMULATION_INTERVAL ?= 2
@@ -29,3 +29,14 @@ simulation:
 		--interval $(SIMULATION_INTERVAL) \
 		--id $(SIMULATION_ID) \
 		--plate $(SIMULATION_PLATE)
+
+# One-time platform owner and internal organization. Never touched by the demo reset.
+bootstrap:
+	env/bin/python -m scripts.bootstrap_platform
+
+# Customer-facing demo tenant. Safe to rebuild at any time.
+seed-demo:
+	env/bin/python -m scripts.seed_demo
+
+reset-demo:
+	env/bin/python -m scripts.seed_demo --reset
