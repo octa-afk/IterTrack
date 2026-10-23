@@ -54,3 +54,47 @@ def test_secret_key_with_padding_whitespace_is_stripped():
     )
 
     assert settings.secret_key == VALID_SECRET
+
+
+def test_demo_enabled_requires_the_flag_and_both_credentials():
+    assert (
+        Settings(
+            _env_file=None,
+            database_url="sqlite:///:memory:",
+            secret_key=VALID_SECRET,
+            demo_mode=True,
+        ).demo_enabled
+        is False
+    )
+    assert (
+        Settings(
+            _env_file=None,
+            database_url="sqlite:///:memory:",
+            secret_key=VALID_SECRET,
+            demo_mode=True,
+            demo_admin_username="demo",
+        ).demo_enabled
+        is False
+    )
+    assert (
+        Settings(
+            _env_file=None,
+            database_url="sqlite:///:memory:",
+            secret_key=VALID_SECRET,
+            demo_mode=True,
+            demo_admin_username="demo",
+            demo_admin_password="demo-2026",
+        ).demo_enabled
+        is True
+    )
+
+
+def test_demo_is_off_by_default():
+    settings = Settings(
+        _env_file=None,
+        database_url="sqlite:///:memory:",
+        secret_key=VALID_SECRET,
+    )
+
+    assert settings.demo_mode is False
+    assert settings.demo_enabled is False

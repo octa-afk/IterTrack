@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from source.database.config import settings
 from source.services.auth import router as auth_router
 from source.services.devices import router as devices_router
 from source.services.organizations import router as organizations_router
@@ -43,6 +44,25 @@ def _index() -> FileResponse:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/config")
+def client_config():
+    """Public client configuration, read before anyone authenticates.
+
+    When `DEMO_MODE` is on this exposes the demo account, which is public by
+    design: it is the whole point of a demo. When it is off, not even the
+    username leaves the server.
+    """
+    if not settings.demo_enabled:
+        return {"demo": {"enabled": False}}
+    return {
+        "demo": {
+            "enabled": True,
+            "username": settings.demo_admin_username,
+            "password": settings.demo_admin_password,
+        }
+    }
 
 
 @app.get("/")
