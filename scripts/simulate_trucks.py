@@ -91,13 +91,13 @@ def _cargar_env_local() -> None:
         load_dotenv(candidate)
 
 
-def autenticar() -> dict:
-    """Hace login y devuelve los headers con el Bearer token JWT."""
+def _login(user_var: str, password_var: str, etiqueta: str) -> dict[str, str]:
+    """Autentica con un par de variables de entorno y devuelve los headers."""
     _cargar_env_local()
-    username = os.getenv("API_USER")
-    password = os.getenv("API_PASSWORD")
+    username = os.getenv(user_var)
+    password = os.getenv(password_var)
     if not username or not password:
-        print("⚠️ Faltan credenciales: definí API_USER y API_PASSWORD en el entorno o en .env.")
+        print(f"⚠️ Faltan {user_var} y {password_var}: definilas en el entorno o en scripts/.env.")
         return {}
     try:
         response = requests.post(
@@ -107,12 +107,22 @@ def autenticar() -> dict:
         )
         if response.status_code == 200:
             token = response.json()["access_token"]
-            print(f"🔑 Login OK como '{username}'.")
+            print(f"🔑 Login OK como '{username}' ({etiqueta}).")
             return {"Authorization": f"Bearer {token}"}
-        print(f"⚠️ Login falló ({response.status_code}): {response.text}")
+        print(f"⚠️ Login {etiqueta} falló ({response.status_code}): {response.text}")
     except requests.RequestException as e:
-        print(f"⚠️ Error de conexión en login: {e}")
+        print(f"⚠️ Error de conexión en login {etiqueta}: {e}")
     return {}
+
+
+def autenticar() -> dict:
+    """Login de telemetría con API_USER / API_PASSWORD."""
+    return _login("API_USER", "API_PASSWORD", "telemetría")
+
+
+def autenticar_admin() -> dict:
+    """Login de administración con ADMIN_API_USER / ADMIN_API_PASSWORD."""
+    return _login("ADMIN_API_USER", "ADMIN_API_PASSWORD", "admin")
 
 def calcular_rumbo(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calcula el rumbo (bearing) en grados (0-360) entre dos puntos geográficos."""
@@ -239,6 +249,7 @@ def simular_ruta(
     stop_event: StopSignal | None = None,
     phase_offset: int = 0,
     clear_history_on_start: bool = False,
+    admin_headers=None,
 ):
     ruta = rotate_route(cargar_ruta(), phase_offset)
     total_puntos = len(ruta)
@@ -250,11 +261,15 @@ def simular_ruta(
     if stop_event is None:
         stop_event = Event()
 
+    # El registro y la limpieza son operaciones de administración; la
+    # telemetría la puede enviar cualquier usuario de la organización.
+    registration_headers = admin_headers if admin_headers else headers
+
     # Registrar el camión en su punto inicial
     lat_inicial, lon_inicial = ruta[0]
-    registrar_camion(truck_id, lat_inicial, lon_inicial, plate, headers=headers)
+    registrar_camion(truck_id, lat_inicial, lon_inicial, plate, headers=registration_headers)
     if clear_history_on_start:
-        limpiar_recorrido(truck_id, headers=headers)
+        limpiar_recorrido(truck_id, headers=registration_headers)
 
     vuelta = 1
     while not stop_event.is_set():
@@ -308,6 +323,10 @@ def ejecutar_simulaciones(
     if not headers:
         print("⛔ Sin token no se puede enviar telemetría. Abortando.")
         return
+    admin_headers = dict(autenticar_admin())
+    if not admin_headers:
+        print("ℹ️ Sin ADMIN_API_USER/ADMIN_API_PASSWORD: el registro usará la cuenta de telemetría.")  # noqa: RUF001
+        admin_headers = headers
     stop_event = Event()
     executor = ThreadPoolExecutor(max_workers=count)
     futures = [
@@ -320,6 +339,7 @@ def ejecutar_simulaciones(
             stop_event,
             config.route_offset,
             clear_history_on_start=clear_history_on_start,
+            admin_headers=admin_headers,
         )
         for config in configs
     ]

@@ -179,6 +179,7 @@ def test_ejecutar_simulaciones_clears_history_once_per_truck_when_requested(monk
 
     monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
     monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: {"Authorization": "Bearer test"})
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar_admin", dict)
     monkeypatch.setattr("scripts.simulate_trucks.Event", StopAfterFirstUpdate)
     monkeypatch.setattr("scripts.simulate_trucks.ThreadPoolExecutor", SynchronousExecutor)
     monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
@@ -200,6 +201,165 @@ def test_ejecutar_simulaciones_clears_history_once_per_truck_when_requested(monk
     )
 
     assert deleted_trucks == [7, 8, 9]
+
+
+def test_simular_ruta_uses_admin_headers_only_for_registration(monkeypatch):
+    route = [[-31.42, -64.18]]
+    seen: dict[str, dict[str, str] | None] = {}
+
+    class StopAfterFirstUpdate:
+        def __init__(self):
+            self.stopped = False
+
+        def is_set(self):
+            return self.stopped
+
+        def wait(self, timeout: float | None = None) -> bool:
+            self.stopped = True
+            return self.stopped
+
+        def set(self):
+            self.stopped = True
+
+    def record_registration(_truck_id, *args, **kwargs):
+        seen["registration_headers"] = kwargs.get("headers")
+
+    def record_update(_truck_id, *args, **kwargs):
+        seen["update_headers"] = kwargs.get("headers")
+        return True
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", record_registration)
+    monkeypatch.setattr("scripts.simulate_trucks.actualizar_ubicacion", record_update)
+
+    admin_headers = {"Authorization": "Bearer admin"}
+    telemetry_headers = {"Authorization": "Bearer telemetry"}
+
+    simular_ruta(
+        7,
+        "ABC123",
+        1,
+        headers=telemetry_headers,
+        admin_headers=admin_headers,
+        stop_event=StopAfterFirstUpdate(),
+    )
+
+    assert seen["registration_headers"] == admin_headers
+    assert seen["update_headers"] == telemetry_headers
+
+
+def test_ejecutar_simulaciones_uses_admin_credentials_for_registration(monkeypatch):
+    route = [[-31.42, -64.18]]
+    seen: dict[str, list[dict[str, str] | None]] = {"registration": [], "update": []}
+
+    class StopAfterFirstUpdate:
+        def __init__(self):
+            self.stopped = False
+
+        def is_set(self):
+            return self.stopped
+
+        def wait(self, timeout: float | None = None) -> bool:
+            self.stopped = True
+            return self.stopped
+
+        def set(self):
+            self.stopped = True
+
+    class CompletedWorker:
+        def result(self):
+            return None
+
+    class SynchronousExecutor:
+        def __init__(self, max_workers):
+            assert max_workers == 1
+
+        def submit(self, worker, *args, **kwargs):
+            worker(*args, **kwargs)
+            return CompletedWorker()
+
+        def shutdown(self, **kwargs):
+            pass
+
+    def record_registration(_truck_id, *args, **kwargs):
+        seen["registration"].append(kwargs.get("headers"))
+
+    def record_update(_truck_id, *args, **kwargs):
+        seen["update"].append(kwargs.get("headers"))
+        return True
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.autenticar", lambda: {"Authorization": "Bearer telemetry"}
+    )
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.autenticar_admin", lambda: {"Authorization": "Bearer admin"}
+    )
+    monkeypatch.setattr("scripts.simulate_trucks.Event", StopAfterFirstUpdate)
+    monkeypatch.setattr("scripts.simulate_trucks.ThreadPoolExecutor", SynchronousExecutor)
+    monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", record_registration)
+    monkeypatch.setattr("scripts.simulate_trucks.actualizar_ubicacion", record_update)
+
+    ejecutar_simulaciones(base_id=7, base_plate="ABC123", intervalo=1, count=1)
+
+    assert seen["registration"] == [{"Authorization": "Bearer admin"}]
+    assert seen["update"] == [{"Authorization": "Bearer telemetry"}]
+
+
+def test_ejecutar_simulaciones_falls_back_to_telemetry_credentials_for_registration(monkeypatch):
+    route = [[-31.42, -64.18]]
+    seen: dict[str, list[dict[str, str] | None]] = {"registration": [], "update": []}
+
+    class StopAfterFirstUpdate:
+        def __init__(self):
+            self.stopped = False
+
+        def is_set(self):
+            return self.stopped
+
+        def wait(self, timeout: float | None = None) -> bool:
+            self.stopped = True
+            return self.stopped
+
+        def set(self):
+            self.stopped = True
+
+    class CompletedWorker:
+        def result(self):
+            return None
+
+    class SynchronousExecutor:
+        def __init__(self, max_workers):
+            assert max_workers == 1
+
+        def submit(self, worker, *args, **kwargs):
+            worker(*args, **kwargs)
+            return CompletedWorker()
+
+        def shutdown(self, **kwargs):
+            pass
+
+    telemetry_headers = {"Authorization": "Bearer telemetry"}
+
+    def record_registration(_truck_id, *args, **kwargs):
+        seen["registration"].append(kwargs.get("headers"))
+
+    def record_update(_truck_id, *args, **kwargs):
+        seen["update"].append(kwargs.get("headers"))
+        return True
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: dict(telemetry_headers))
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar_admin", dict)
+    monkeypatch.setattr("scripts.simulate_trucks.Event", StopAfterFirstUpdate)
+    monkeypatch.setattr("scripts.simulate_trucks.ThreadPoolExecutor", SynchronousExecutor)
+    monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", record_registration)
+    monkeypatch.setattr("scripts.simulate_trucks.actualizar_ubicacion", record_update)
+
+    ejecutar_simulaciones(base_id=7, base_plate="ABC123", intervalo=1, count=1)
+
+    assert seen["registration"] == [telemetry_headers]
+    assert seen["update"] == [telemetry_headers]
 
 
 def test_ejecutar_simulaciones_aborts_without_token(monkeypatch):
