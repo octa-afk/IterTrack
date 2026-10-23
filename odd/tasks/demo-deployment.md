@@ -246,3 +246,17 @@ Estado:
 `docker compose config --quiet` **valida** por primera vez los artefactos Docker: 4 servicios, 3 volúmenes, imagen `:develop` interpolada desde el `.env`. Antes de esto no había Docker en la máquina local y la validación era solo de YAML.
 
 Bloqueante: `docker manifest inspect ghcr.io/octa-afk/itertrack:develop` responde `unauthorized`, que no distingue entre paquete privado y tag inexistente. Falta que el paquete sea público o un PAT con `read:packages`, y confirmar que el run del workflow terminó en verde.
+
+### L13 — Demo en vivo y hallazgos del primer despliegue (2026-10-23)
+
+**https://57-156-58-24.sslip.io** — certificado de Let's Encrypt válido hasta 2027-01-21, `/health` en 200, SPA servida, login de `demo-admin` en 200.
+
+Verificado en producción: 10 migraciones aplicadas, bootstrap de plataforma (`IterTrack` + `owner`), seed de `Demo Corp` con 3 camiones y dispositivos `SIM-001..003`, posiciones moviéndose (`-31.410801,-64.192630` → `-31.411408,-64.190641` en 6 s), y aislamiento correcto: `demo-admin` recibe `403 "Se requiere rol de administrador de plataforma"` al intentar crear una organización. `docker compose config --quiet` valida los cuatro servicios.
+
+**Hallazgo 1 — el reset congela el mapa (bug).** `seed_demo --reset` borra y recrea los dispositivos, lo que invalida sus tokens. El simulador en modo dispositivo no reintenta: `enviar_coordenada` (modo usuario) sí maneja el 401 con `on_unauthorized`, pero `enviar_ingesta` no. Resultado: el worker entra en un bucle de `401 Invalid device credentials` y la flota se detiene hasta reiniciarlo. `docker compose restart worker` lo recupera (18 puntos en 10 s). **El cron diario de reset congelaría la demo todos los días si no se corrige.**
+
+**Hallazgo 2 — `sslip.io` no resuelve en todas las redes.** El router de la red local devuelve `NXDOMAIN` para `57-156-58-24.sslip.io`, mientras `1.1.1.1` y el resolver de la VM lo resuelven. Para un portfolio es un riesgo real: una red corporativa o educativa con DNS filtrado vería la demo caída. Refuerza la necesidad del dominio propio (el `.me` del Student Pack).
+
+**Hallazgo 3 — velocidades irreales.** La ruta tiene 425 puntos, 13,03 km, con espaciado irregular (media 30,7 m, máximo 162,8 m). A un punto cada 2 s, el tramo máximo implica 293 km/h, y 93 de los 424 tramos superan los 90 km/h. Se ve en el panel, que dibuja una línea de límite de 90 km/h.
+
+**Hallazgo 4 — invitación de demo activa.** `Demo Corp` tiene un `invitation_code` activo y sin expiración, impreso en el log del seed. Cualquiera puede crear un usuario en el tenant de demo. `_reset_tenant` borra camiones, dispositivos y puntos, pero **no usuarios**, así que las cuentas creadas se acumulan entre resets.
