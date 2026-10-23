@@ -15,8 +15,7 @@ export interface UserCreate {
   email: string;
   full_name: string;
   password: string;
-  invitation_code?: string | null;
-  org_name?: string | null;
+  invitation_code: string;
 }
 
 export interface UserResponse {

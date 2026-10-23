@@ -30,9 +30,7 @@ function errorMessage(err: unknown): string {
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'create' | 'join'>('create');
   const [fullName, setFullName] = useState('');
-  const [orgName, setOrgName] = useState('');
   const [invitationCode, setInvitationCode] = useState('');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -57,10 +55,7 @@ export default function RegisterPage() {
 
   const checks: Record<string, () => string> = {
     full_name: () => (fullName.trim() ? '' : 'Ingresá tu nombre.'),
-    org_name: () =>
-      mode === 'create' && !orgName.trim() ? 'Ingresá el nombre de tu empresa.' : '',
-    invitation_code: () =>
-      mode === 'join' && !invitationCode.trim() ? 'Ingresá el código de invitación.' : '',
+    invitation_code: () => (invitationCode.trim() ? '' : 'Ingresá el código de invitación.'),
     email: () =>
       !email.trim()
         ? 'Ingresá tu correo.'
@@ -74,16 +69,9 @@ export default function RegisterPage() {
     terms: () => (terms ? '' : 'Tenés que aceptar los términos para continuar.'),
   };
 
-  const switchMode = (next: 'create' | 'join') => {
-    setMode(next);
-    if (next === 'create') setInvitationCode('');
-    else setOrgName('');
-    setErrors({});
-  };
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const order = ['full_name', 'org_name', 'invitation_code', 'email', 'username', 'pass', 'pass2', 'terms'];
+    const order = ['full_name', 'invitation_code', 'email', 'username', 'pass', 'pass2', 'terms'];
     const fieldErrors: Record<string, string> = {};
     for (const key of order) fieldErrors[key] = checks[key]();
     setErrors(fieldErrors);
@@ -99,7 +87,7 @@ export default function RegisterPage() {
       email: email.trim(),
       full_name: fullName.trim(),
       password: pass,
-      ...(mode === 'create' ? { org_name: orgName.trim() } : { invitation_code: invitationCode.trim() }),
+      invitation_code: invitationCode.trim(),
     };
 
     setSubmitting(true);
@@ -144,27 +132,10 @@ export default function RegisterPage() {
 
         <section className="side">
           <h1>Crear cuenta</h1>
-          <p className="lead">Completá tus datos para empezar a usar el panel.</p>
+          <p className="lead">
+            Completá tus datos y el código de invitación que te compartió tu empresa.
+          </p>
           <form id="register-form" noValidate onSubmit={handleSubmit}>
-            <div className="mode" role="group" aria-label="Modo de registro">
-              <button
-                type="button"
-                id="mode-create"
-                className={mode === 'create' ? 'active' : undefined}
-                onClick={() => switchMode('create')}
-              >
-                Crear empresa
-              </button>
-              <button
-                type="button"
-                id="mode-join"
-                className={mode === 'join' ? 'active' : undefined}
-                onClick={() => switchMode('join')}
-              >
-                Unirse a empresa
-              </button>
-            </div>
-
             <div className="row2">
               <div className="f">
                 <label htmlFor="full_name">Nombre completo</label>
@@ -185,45 +156,24 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {mode === 'create' ? (
-                <div className="f">
-                  <label htmlFor="org_name">Empresa</label>
-                  <div className="input">
-                    <input
-                      id="org_name"
-                      type="text"
-                      autoComplete="organization"
-                      placeholder="Transportes del Sur"
-                      value={orgName}
-                      onChange={(e) => setOrgName(e.target.value)}
-                      onBlur={() => setErr('org_name', checks.org_name())}
-                      aria-invalid={errors.org_name ? 'true' : 'false'}
-                    />
-                  </div>
-                  <div className="err" aria-live="polite">
-                    {errors.org_name}
-                  </div>
+              <div className="f">
+                <label htmlFor="invitation_code">Código de invitación</label>
+                <div className="input">
+                  <input
+                    id="invitation_code"
+                    type="text"
+                    autoComplete="off"
+                    placeholder="Código que te compartió tu empresa"
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value)}
+                    onBlur={() => setErr('invitation_code', checks.invitation_code())}
+                    aria-invalid={errors.invitation_code ? 'true' : 'false'}
+                  />
                 </div>
-              ) : (
-                <div className="f">
-                  <label htmlFor="invitation_code">Código de invitación</label>
-                  <div className="input">
-                    <input
-                      id="invitation_code"
-                      type="text"
-                      autoComplete="off"
-                      placeholder="Código que te compartió tu empresa"
-                      value={invitationCode}
-                      onChange={(e) => setInvitationCode(e.target.value)}
-                      onBlur={() => setErr('invitation_code', checks.invitation_code())}
-                      aria-invalid={errors.invitation_code ? 'true' : 'false'}
-                    />
-                  </div>
-                  <div className="err" aria-live="polite">
-                    {errors.invitation_code}
-                  </div>
+                <div className="err" aria-live="polite">
+                  {errors.invitation_code}
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="f">

@@ -152,37 +152,36 @@ def test_protected_endpoint_without_token_returns_401(auth_client):
     assert response.status_code == 401
 
 
-def test_register_with_org_name_creates_new_org(auth_client, db_session):
+def test_register_with_org_name_and_no_code_returns_400(auth_client, db_session):
     payload = {**REGISTER_PAYLOAD, "org_name": "Mi Empresa"}
     del payload["invitation_code"]
     response = register(auth_client, payload)
-    assert response.status_code == 201
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Debe proporcionar un código de invitación"
 
-    from source.models.user import User
-    user = db_session.query(User).filter(User.username == "chofer1").first()
-    assert user is not None
-    assert user.organization_id is not None
-
-    org = db_session.query(Organization).filter(Organization.id == user.organization_id).first()
-    assert org is not None
-    assert org.name == "Mi Empresa"
-    assert org.invitation_code is not None
-    assert len(org.invitation_code) > 0
+    # `org_name` must no longer create organizations.
+    assert db_session.query(Organization).filter(Organization.name == "Mi Empresa").first() is None
 
 
-def test_register_with_neither_invitation_code_nor_org_name_returns_400(auth_client):
+def test_register_without_invitation_code_returns_400(auth_client):
     payload = {**REGISTER_PAYLOAD}
     del payload["invitation_code"]
     response = register(auth_client, payload)
     assert response.status_code == 400
-    assert "código de invitación o un nombre de organización" in response.json()["detail"]
+    assert response.json()["detail"] == "Debe proporcionar un código de invitación"
 
 
-def test_register_with_both_invitation_code_and_org_name_returns_400(auth_client):
+def test_register_ignores_org_name_when_code_is_valid(auth_client, db_session, test_org):
     payload = {**REGISTER_PAYLOAD, "org_name": "Mi Empresa"}
     response = register(auth_client, payload)
-    assert response.status_code == 400
-    assert "No puede proporcionar" in response.json()["detail"]
+    assert response.status_code == 201
+
+    from source.models.user import User
+
+    user = db_session.query(User).filter(User.username == "chofer1").first()
+    assert user is not None
+    assert user.organization_id == test_org.id
+    assert db_session.query(Organization).filter(Organization.name == "Mi Empresa").first() is None
 
 
 def test_register_org_isolation(auth_client, db_session, test_org, test_org2):

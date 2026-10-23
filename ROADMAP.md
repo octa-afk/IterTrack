@@ -33,7 +33,8 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 - Un vehículo se conserva en el sistema y cambia entre activo e inactivo; desactivarlo no elimina su historial de tracking.
 - Los usuarios del cliente se darán de alta mediante un código de invitación; no crearán organizaciones ni vehículos por cuenta propia.
 - Un vehículo dado de baja queda inactivo y deja de transmitir. El backend debe rechazar nuevas ubicaciones para hacer cumplir ese estado, conservando los datos históricos.
-- Estas decisiones definen el objetivo futuro y están implementadas solo en parte: el modelo `Truck` ya tiene estado `active` y tanto `PUT /trucks/{id}/location` (responde `409`) como `/devices/ingest` rechazan camiones inactivos. Todavía no existen endpoints administrativos para dar de alta, desactivar o reasignar vehículos, y los usuarios autenticados aún pueden crear camiones y borrar historiales.
+- Estas decisiones definen el objetivo futuro y están implementadas solo en parte: el modelo `Truck` ya tiene estado `active` y tanto `PUT /trucks/{id}/location` (responde `409`) como `/devices/ingest` rechazan camiones inactivos. Los endpoints administrativos de alta, activación y reasignación de organización existen y están restringidos a cuentas con `role = "admin"`; los usuarios cliente solo consultan.
+- **Invitaciones (implementado):** las organizaciones se crean únicamente con `POST /organizations` (admin) y cada una tiene un único código rotable en `organizations.invitation_code`. `GET /organizations` lista organizaciones; `GET /organizations/{id}/invitation` inspecciona el código; `POST /organizations/{id}/invitation/rotate` genera uno nuevo; `DELETE /organizations/{id}/invitation` lo revoca. `POST /auth/register` exige un código activo: uno revocado o vencido responde `400` `"Código de invitación inválido"`. Los códigos existentes sin fecha de expiración siguen vigentes.
 
 ### Próximo frente backend — ciclo de vida y acceso
 - Agregar estado activo/inactivo al vehículo y operaciones administrativas para alta, asignación a una organización y cambio de estado.
@@ -73,8 +74,8 @@ Motor de alertas con reglas configurables por cliente:
 - Qué cuenta exactamente como "desvío" (km fuera de ruta, tiempo, destino).
 - Umbral de "nafta baja / caída" (nivel absoluto vs. caída brusca).
 - Frecuencia de reporte esperada de los dispositivos GPS.
-- Cómo emitir, expirar, revocar y rotar códigos de invitación.
 - Cómo emitir, aprovisionar, revocar y rotar la credencial individual de cada GPS, y registrar sus reasignaciones entre camiones.
+- Si las invitaciones necesitan múltiples códigos simultáneos por organización o auditoría por código; hoy hay un único código rotable por organización.
 
 ## Principios
 - Todo dato de ubicación es **sensible**: proteger con auth, no exponer endpoints públicos de escritura.

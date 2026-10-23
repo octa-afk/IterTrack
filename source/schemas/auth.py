@@ -9,7 +9,6 @@ class UserCreate(BaseModel):
     full_name: str
     password: str = Field(..., min_length=12, description="Mínimo 12 carácteres")
     invitation_code: str | None = None
-    org_name: str | None = None
 
     @field_validator("password")
     @classmethod

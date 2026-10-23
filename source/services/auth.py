@@ -1,4 +1,3 @@
-import secrets
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -76,28 +75,20 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya está registrado")
 
-    organization = None
-
-    if user.invitation_code and user.org_name:
+    if not user.invitation_code:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No puede proporcionar un código de invitación y un nombre de organización a la vez",
+            detail="Debe proporcionar un código de invitación",
         )
-    elif user.invitation_code:
-        organization = db.query(models.Organization).filter(
-            models.Organization.invitation_code == user.invitation_code
-        ).first()
-        if not organization:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Código de invitación inválido")
-    elif user.org_name:
-        invitation_code = secrets.token_urlsafe(12)
-        organization = models.Organization(name=user.org_name, invitation_code=invitation_code)
-        db.add(organization)
-        db.flush()  # Get the ID without committing yet
-    else:
+
+    organization = (
+        db.query(models.Organization)
+        .filter(models.Organization.invitation_code == user.invitation_code)
+        .first()
+    )
+    if organization is None or not organization.invitation_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Debe proporcionar un código de invitación o un nombre de organización",
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Código de invitación inválido"
         )
 
     db_user = models.User(
