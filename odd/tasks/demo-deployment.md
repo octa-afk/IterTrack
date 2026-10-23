@@ -136,6 +136,30 @@ Se unificó la convención de nombres: el seed ahora nombra los dispositivos `SI
 
 Evidencia: 9 tests en `tests/test_simulate_device_mode.py`; suite completa **187 passed**; `make check` limpio (41 archivos). Prueba end-to-end contra la API local en el puerto 8010: 58 puntos en `ingested_points`, 0 rechazados, `tracking_points` actualizados con velocidad y rumbo; y con un prefijo distinto el simulador salteó el camión ocupado y abortó sin tocar nada.
 
+### L8 — Bloque 4: Dockerfile y entrypoint (2026-10-23)
+
+Antes de escribirlo se resolvieron dos bloqueantes reales:
+
+1. `alembic.ini` está en `.gitignore`, así que el contenedor no podía migrar. El Dockerfile copia `alembic.ini.example`; `alembic/env.py` sobrescribe `sqlalchemy.url` con `settings.database_url`, así que el placeholder nunca se usa y no hay riesgo de filtrar credenciales.
+2. No existía `.dockerignore`: el contexto se llevaba `env/` (235 MB) y `frontend/node_modules` (155 MB), y era la vía para que un `.env` entrara en la imagen. Ahora el contexto son 22 MB.
+
+Diseño:
+- Stage `frontend` (node:22-alpine): `npm ci` + `npm run build`. Se copian primero los manifiestos para cachear dependencias.
+- Stage `runtime` (python:3.12-slim): instala `requirements.txt`, copia `source/`, `scripts/`, `alembic/`, `alembic.ini.example → alembic.ini` y el `dist` del stage anterior. Usuario no root (`appuser`, uid 1001), `HEALTHCHECK` contra `/health` usando `urllib` (sin instalar curl).
+- `scripts/docker_entrypoint.sh`: `alembic upgrade head` si `RUN_MIGRATIONS=true` (default), bootstrap si `BOOTSTRAP_PLATFORM=true`, seed sin reset si `SEED_DEMO_ON_BOOT=true`, y después `exec "$@"`. Sin comando, arranca uvicorn en `${PORT:-8000}`.
+
+El worker de la demo usa la misma imagen con comando propio y `RUN_MIGRATIONS=false`, para que dos procesos no compitan por la migración:
+
+    python -m scripts.simulate_trucks --mode device --count 3 --id 1 --interval 2
+
+Verificado:
+- Build del frontend (`npm --prefix frontend run build`) correcto.
+- `scripts/docker_entrypoint.sh` ejecutado localmente con el venv en el PATH: migra, converge el bootstrap, siembra de forma idempotente y ejecuta el comando recibido.
+- Ensayo de despliegue completo en una base **vacía** y temporal (`itertrack_rehearsal`, creada y eliminada): `alembic upgrade head` → bootstrap (dos veces) → seed → `seed --reset` → app levantada en el puerto 8011 → `/health` OK → login de `demo-admin` y de `owner` → el `org_admin` ve 1 organización, 3 dispositivos y 3 camiones, y recibe `403` al intentar crear una organización → el `platform_admin` ve `Demo Corp` e `IterTrack`. 8/8 verificaciones.
+
+Límite honesto: **Docker no está instalado en esta máquina**, así que la imagen no fue construida ni ejecutada. Lo verificado es la secuencia de arranque y el entrypoint, no `docker build`.
+
+
 
 
 
