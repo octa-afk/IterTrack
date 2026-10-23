@@ -89,16 +89,19 @@ Decisiones asociadas:
 - **Contraseñas con bcrypt.** Nunca se persiste ni se loguea la contraseña en claro.
 - **El hash nunca sale del backend.** Los endpoints responden con un esquema de salida que no incluye el campo de contraseña.
 - **Todas las operaciones requieren token.** No hay endpoints de lectura abiertos: la flota de un cliente no es información pública.
+- **El alcance del rol es explícito, no inferido del nombre.** `User.role` solo admite `platform_admin`, `org_admin` o `member`, con un `CHECK CONSTRAINT` que lo impone en la base. Tres dependencias nombran el alcance exigido (`require_platform_admin`, `require_org_admin`, `require_org_admin_or_platform`), así ningún endpoint nuevo hereda un "admin" ambiguo.
 
 ## 5. Aislamiento entre organizaciones
 
-Cada vehículo pertenece a una organización, y cada usuario pertenece a una. El filtrado no se delega al cliente:
+Cada vehículo y cada dispositivo pertenecen a una organización, y cada usuario pertenece a una. El filtrado no se delega al cliente:
 
 - Los listados se construyen filtrando por la organización del usuario autenticado.
-- Las operaciones sobre un vehículo existente verifican pertenencia **antes** de actuar; un ID válido de otra organización se trata como no encontrado.
-- Un vehículo nuevo se asigna automáticamente a la organización del usuario que lo crea.
+- Las operaciones sobre un recurso existente verifican pertenencia **antes** de actuar; un ID válido de otra organización se responde `404`, no `403`, para no revelar que existe.
+- Un camión nuevo se asigna a la organización del usuario que lo crea. El alta en nombre de otra empresa es una ruta distinta (`POST /organizations/{id}/trucks`), exclusiva de `platform_admin`.
+- `Device.organization_id` se toma del camión al aprovisionar, para no recorrer asignaciones en cada lectura. Cuando un camión cambia de organización, sus dispositivos con asignación abierta se mueven con él: sin eso, el tenant anterior conservaba un equipo que ya no le pertenecía.
+- El `platform_admin` es el único rol que puede leer datos de todas las organizaciones.
 
-La regla es simple: *el cliente nunca elige qué organización consulta; el token ya lo determina.*
+La regla es simple: *el cliente nunca elige qué organización consulta; el token ya lo determina, y el rol determina hasta dónde llega.*
 
 ## 6. Modelo de datos (conceptual)
 

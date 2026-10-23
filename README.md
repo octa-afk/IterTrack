@@ -18,9 +18,11 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 8. [Simulación de Telemetría](#-simulación-de-telemetría)
 9. [Módulo de Hardware (ESP32)](#-módulo-de-hardware-esp32)
 10. [Referencia de la API](#-referencia-de-la-api)
-11. [Seguridad y Buenas Prácticas](#-seguridad-y-buenas-prácticas)
-12. [Instrucciones para Agentes de IA](#-instrucciones-para-agentes-de-ia)
-13. [Licencia](#-licencia)
+11. [Demo Pública](#-demo-pública)
+12. [Despliegue](#️-despliegue)
+13. [Seguridad y Buenas Prácticas](#-seguridad-y-buenas-prácticas)
+14. [Instrucciones para Agentes de IA](#-instrucciones-para-agentes-de-ia)
+15. [Licencia](#-licencia)
 
 ---
 
@@ -31,8 +33,10 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 * **Panel en vivo (SPA React):** Aplicación **React 19 + TypeScript + Vite** servida por FastAPI en `/map`, con mapa **Leaflet + MapLibre** sobre OpenStreetMap, rotación del vehículo según rumbo (*bearing*), flechas direccionales adaptativas al zoom y seguimiento automático.
 * **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
 * **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`); todos los endpoints de camiones, tanto de lectura como de escritura, requieren token Bearer. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
+* **Roles con alcance explícito y aislamiento por organización:** `platform_admin`, `org_admin` y `member`, reforzados por un `CHECK CONSTRAINT` en la base. Ningún listado cruza el límite de una organización y operar sobre un recurso ajeno responde `404` para no revelar que existe.
 * **Persistencia Robusta:** Modelos relacionales con SQLAlchemy 2.0 y control de versiones de esquema con Alembic sobre PostgreSQL.
-* **Simulador integrado con ruta realista:** Script Python con un circuito cerrado de 13 km por Córdoba Capital (425 puntos) para pruebas de avance y orientación en tiempo real.
+* **Simulador integrado con ruta realista:** Script Python con un circuito cerrado de 13 km por Córdoba Capital (425 puntos). Tiene dos modos: escribe como usuario (`PUT /trucks/{id}/location`) o como dispositivo (`POST /devices/ingest`), el mismo camino que un ESP32.
+* **Ciclo de vida de dispositivos GPS:** Alta, reasignación, rotación de token y revocación. Cada equipo tiene su propia credencial (hash SHA-256, mostrada una sola vez) y una sola asignación abierta por camión.
 * **Documentación interactiva automática:** Swagger UI y ReDoc nativos de FastAPI.
 * **Compatibilidad IoT:** Integración diseñada para dispositivos ESP32 sobre PlatformIO.
 
@@ -238,6 +242,17 @@ make frontend   # npm ci && npm run build en frontend/
 
 `frontend/dist` está en `.gitignore`: no se commitea, así que cada clon nuevo necesita este paso una vez.
 
+### 7. Crear el primer administrador y la demo
+
+Una base recién migrada no tiene usuarios, y el registro exige un código de invitación que solo puede emitir un administrador. Ese círculo se rompe con `bootstrap_platform`, que crea la organización interna y la cuenta dueña de la plataforma:
+
+```bash
+env/bin/python -m scripts.bootstrap_platform
+env/bin/python -m scripts.seed_demo        # opcional: tenant de demo
+```
+
+Ambos leen credenciales del entorno (ver `.env.example`) y son idempotentes: correrlos de nuevo no duplica nada. Targets equivalentes: `make bootstrap`, `make seed-demo`, `make reset-demo`.
+
 ---
 
 ## ▶️ Ejecución
@@ -306,7 +321,20 @@ python scripts/simulate_trucks.py -i 1.0
 python scripts/simulate_trucks.py --id 1 --plate "ABC123" -i 1.5
 ```
 
-Si `API_USER` o `API_PASSWORD` no están definidas ni en el entorno ni en `.env`, el simulador aborta con un mensaje explícito en lugar de enviar telemetría sin autenticar.
+Si `API_USER` o `API_PASSWORD` no están definidas ni en el entorno ni en `.env`, el simulador aborta con un mensaje explícito y sale con código 1, para que un orquestador lo vea como un fallo.
+
+### Modos del simulador
+
+| Modo | Camino | Cuándo usarlo |
+|---|---|---|
+| `--mode user` (default) | `PUT /trucks/{id}/location` con credenciales de usuario | Ver el mapa andando en segundos |
+| `--mode device` | `POST /devices/ingest` con token de dispositivo | Flota de desarrollo y demo: ejercita el mismo pipeline que el hardware |
+
+En modo dispositivo el simulador aprovisiona un dispositivo por camión (`SIM-<id>`) y **saltea** los camiones ocupados por un dispositivo que no creó, de modo que un ESP32 real siempre gana. `--force` revoca al ocupante y obliga a re-aprovisionar ese equipo.
+
+```bash
+make simulation SIMULATION_MODE=device
+```
 
 ### Características de la simulación:
 1. **Ruta Urbana Realista:** Recorre un circuito cerrado de 13 km por avenidas de Córdoba Capital (Av. Colón, Costanera, Plaza España, Patio Olmos, etc.) cargado desde [`scripts/cordoba_route.json`](./scripts/cordoba_route.json) (425 puntos georreferenciados).
@@ -341,7 +369,7 @@ git checkout IterTrack-Hardware
 | `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`source/static/isologo.png`) | — | — |
 | `GET` | `/health` | Estado del servicio (`{"status": "ok"}`) | — | — |
 | `GET` | `/assets/{archivo}` | CSS y JS hasheados del build de React | — | — |
-| `POST` | `/auth/register` | Registra un usuario; el JSON incluye `org_name` o `invitation_code` | Ver JSON de registro abajo | — |
+| `POST` | `/auth/register` | Registra un usuario con un `invitation_code` activo | Ver JSON de registro abajo | — |
 | `POST` | `/auth/login` | Login OAuth2 (form-data) y devuelve JWT | `username` / `password` (form) | — |
 | `GET` | `/auth/me` | Datos del usuario autenticado | — | 🔒 Bearer |
 | `POST` | `/trucks` | Registra un nuevo camión y su punto inicial | Ver JSON abajo | 🔒 Bearer |
@@ -352,6 +380,19 @@ git checkout IterTrack-Hardware
 | `GET` | `/trucks` | Lista los camiones de la organización del usuario autenticado | — | 🔒 Bearer |
 | `GET` | `/trucks/ids` | Lista IDs y patentes de los camiones de la organización del usuario autenticado | — | 🔒 Bearer |
 | `POST` | `/devices/ingest` | Ingesta por lotes de telemetría, autenticada con el token del dispositivo (no JWT humano) | `{"v": 1, "batch_id": "<uuid>", "points": [{"sequence": 1, "lat": -31.416, "long": -64.183, "speed": 0, "heading": 0, "recorded_at": "2026-01-01T12:00:00Z"}]}` | 🔑 Token de dispositivo |
+| `GET` | `/organizations` | Lista organizaciones: la propia para `org_admin`, todas para `platform_admin` | — | 🔒 admin |
+| `POST` | `/organizations` | Crea una organización | `{"name": "Fletera Nueva"}` | 🔒 `platform_admin` |
+| `GET` | `/organizations/{id}/invitation` | Consulta el código de invitación | — | 🔒 admin |
+| `POST` | `/organizations/{id}/invitation/rotate` | Genera un código nuevo | `{"expires_in_days": 30}` | 🔒 `org_admin` |
+| `DELETE` | `/organizations/{id}/invitation` | Revoca el código vigente | — | 🔒 `org_admin` |
+| `POST` | `/organizations/{id}/trucks` | Alta de camión en nombre de otra organización | Mismo JSON que `POST /trucks` | 🔒 `platform_admin` |
+| `PATCH` | `/trucks/{id}/activate` | Activa o desactiva un camión | `{"active": false}` | 🔒 `org_admin` |
+| `PATCH` | `/trucks/{id}/organization` | Transfiere un camión entre organizaciones | `{"organization_id": 3}` | 🔒 `platform_admin` |
+| `GET` | `/devices` | Lista dispositivos: los propios o todos según el rol | — | 🔒 admin |
+| `POST` | `/devices` | Alta de dispositivo y asignación a un camión; devuelve el token una sola vez | `{"identifier": "GPS-001", "truck_id": 1}` | 🔒 admin |
+| `POST` | `/devices/{id}/reassign` | Reasigna el dispositivo a otro camión | `{"truck_id": 2}` | 🔒 `org_admin` |
+| `POST` | `/devices/{id}/token/rotate` | Rota el token del dispositivo | — | 🔒 `org_admin` |
+| `POST` | `/devices/{id}/revoke` | Revoca el dispositivo y libera el camión | — | 🔒 `org_admin` |
 
 ### Flujo de autenticación:
 
@@ -359,11 +400,11 @@ git checkout IterTrack-Hardware
 
 **Vía API (alternativa programática):**
 
-1. **Registro:** `POST /auth/register` con usuario, email, nombre completo, contraseña y exactamente uno de `org_name` o `invitation_code` (la contraseña se persiste hasheada con bcrypt).
+1. **Registro:** `POST /auth/register` con usuario, email, nombre completo, contraseña y un `invitation_code` activo (la contraseña se persiste hasheada con bcrypt).
 2. **Login:** `POST /auth/login` con `username` y `password` como *form-data*; devuelve `{"access_token": "...", "token_type": "bearer"}`.
 3. **Uso del token:** incluir el header `Authorization: Bearer <access_token>` en las peticiones a los endpoints protegidos (🔒). El token expira según `ACCESS_TOKEN_EXPIRE_MINUTES` (60 min por defecto).
 
-Ejemplo de registro creando una organización:
+Ejemplo de registro con un código de invitación:
 
 ```json
 {
@@ -371,15 +412,28 @@ Ejemplo de registro creando una organización:
   "email": "usuario@example.com",
   "full_name": "Nombre Apellido",
   "password": "<password>",
-  "org_name": "Mi organización"
+  "invitation_code": "CODIGO-DE-LA-ORGANIZACION"
 }
 ```
 
-Para unirse a una organización existente, usa `invitation_code` en lugar de `org_name`. La API rechaza solicitudes que incluyan ambos campos o ninguno.
+`POST /auth/register` ya no crea organizaciones: exige un código activo de una organización existente. Un código revocado o vencido responde `400` `"Código de invitación inválido"`.
 
-### Membresía y alcance de acceso
+### Roles y alcance
 
-El registro crea una organización con `org_name` o asocia al usuario a una organización existente con `invitation_code`. Los camiones creados pertenecen a la organización del usuario autenticado; los listados se filtran por organización y los endpoints que consultan o modifican un camión verifican esa pertenencia. La membresía y el alcance de datos por organización están implementados; los permisos basados en roles siguen pendientes y se mantienen como trabajo futuro del producto.
+`User.role` tiene tres valores con alcance explícito, reforzados por un `CHECK CONSTRAINT` en la base. Un valor fuera del conjunto es rechazado por PostgreSQL, no solo por la aplicación:
+
+| Rol | Alcance | Puede |
+|---|---|---|
+| `platform_admin` | Toda la plataforma | Crear organizaciones, dar de alta camiones y dispositivos en cualquier organización, leer todas las flotas |
+| `org_admin` | Una sola organización | Camiones, dispositivos, usuarios e invitaciones de la suya |
+| `member` | Una sola organización | Lectura: mapa e historial |
+
+Reglas que el backend hace cumplir en todos los endpoints:
+
+- Un listado nunca devuelve datos de otra organización.
+- Operar sobre un recurso ajeno responde `404`, no `403`: no se filtra que existe.
+- `POST /trucks` siempre crea en la organización del `org_admin`; el alta en nombre de otra empresa es `POST /organizations/{id}/trucks`, exclusivo de `platform_admin`.
+- Transferir un camión entre organizaciones mueve también los dispositivos asignados, para que el tenant anterior no conserve un equipo que ya no le pertenece.
 
 ### Ejemplo de Payload para `POST /trucks`:
 
@@ -400,11 +454,44 @@ El registro crea una organización con `org_name` o asocia al usuario a una orga
 
 ---
 
+## 🎬 Demo Pública
+
+La demo corre en un host aislado con su propia base de datos: nada de lo que haga un visitante alcanza datos de un cliente real.
+
+| Cuenta | Rol | Para qué |
+|---|---|---|
+| `demo-admin` | `org_admin` de `Demo Corp` | Experiencia completa: camiones, dispositivos, invitaciones |
+| `demo` | `member` | Solo lectura del mapa |
+
+Las contraseñas están en [`deploy/.env.example`](./deploy/.env.example). Son públicas por diseño; la de `platform_admin` no lo es y nunca se publica.
+
+Qué mirar: los tres camiones de `Demo Corp` se mueven cada 2 segundos sobre un circuito de 13 km en Córdoba, con velocidad y rumbo reales. El `org_admin` de la demo no puede crear organizaciones ni ver otra empresa: recibe `404`.
+
+Los datos se rebarrer cada 24 h con `env/bin/python -m scripts.seed_demo --reset`, que nunca toca la cuenta de plataforma ni otras organizaciones.
+
+---
+
+## ☁️ Despliegue
+
+La imagen se publica en **GHCR** desde GitHub Actions y corre con **Docker Compose**: Caddy para TLS, `web` con FastAPI y la SPA, `worker` con la flota simulada, y Postgres en un volumen nombrado sin puertos publicados.
+
+```bash
+docker compose up -d
+```
+
+El runbook completo —prerrequisitos, variables, verificación, operación, backup y migración a otro host— está en **[`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)**.
+
+Decisiones que lo mantienen portable: imagen en GHCR y no en un registry del proveedor, dominio fuera del proveedor, Postgres en Docker y cero servicios propietarios. Mudarse de host es copiar `docker-compose.yml`, `Caddyfile` y `.env`, restaurar la base y cambiar el registro `A`.
+
+---
+
 ## 🔒 Seguridad y Buenas Prácticas
 
 1. **Gestión de Secretos:** 
    * **Nunca** subas archivos `.env` ni `alembic.ini` con contraseñas reales a Git. Ambos están protegidos en `.gitignore`.
    * Utiliza siempre los archivos `.example` como base para nuevos despliegues.
+   * `SECRET_KEY` debe tener **al menos 32 caracteres**: con HS256, una clave corta permite falsificar un token de administrador. La aplicación se niega a arrancar si no los tiene.
+   * Las credenciales de la demo (`demo`, `demo-admin`) son públicas a propósito. La de `platform_admin`, `SECRET_KEY` y `POSTGRES_PASSWORD` nunca se publican.
 2. **Validación de Datos:**
    * Las coordenadas GPS deben restringirse en los esquemas Pydantic (`-90 <= lat <= 90` y `-180 <= long <= 180`).
 3. **Autenticación:**

@@ -94,6 +94,13 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Invariantes: una asignación abierta por equipo y por camión (índices parciales en `device_assignments`); rotar el token invalida el anterior al instante; revocar desactiva el equipo y cierra su asignación para liberar el camión.
    * `source/services/devices.py` expone errores de dominio (`DeviceError`, `DeviceNotFoundError`) que los endpoints traducen a `400`/`404`; `scripts/provision_device.py` los imprime como texto.
 
+9. **Arranque, demo y despliegue:**
+   * `scripts/bootstrap_platform.py` crea la organización interna y la cuenta `platform_admin`. Se corre **una vez por despliegue** y converge si se repite. Sin esto, una base vacía no tiene forma de emitir una invitación.
+   * `scripts/seed_demo.py` crea o resetea (`--reset`) el tenant `Demo Corp`: `org_admin`, `member`, camiones y dispositivos `SIM-<id>`. Nunca toca otras organizaciones ni la cuenta de plataforma, y falla si un camión o dispositivo ya pertenece a otra organización.
+   * `Dockerfile` multi-stage: Node compila `frontend/dist`, Python corre la app. El entrypoint (`scripts/docker_entrypoint.sh`) migra, bootstrapea y siembra según `RUN_MIGRATIONS`, `BOOTSTRAP_PLATFORM` y `SEED_DEMO_ON_BOOT`, y después ejecuta el comando recibido.
+   * `docker-compose.yml`: `caddy` (TLS), `web` (migra), `worker` (simulador, `RUN_MIGRATIONS=false`) y `postgres` (volumen nombrado, **sin puertos publicados**). La imagen se publica en GHCR desde `.github/workflows/publish-image.yml`.
+   * El runbook operativo está en `docs/DEPLOYMENT.md`.
+
 ---
 
 ## 5. Reglas Críticas de Seguridad y Secretos
@@ -212,7 +219,20 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   ```
 * **Ejecutar simulación de camiones:**
   ```bash
-  env/bin/python scripts/simulate_trucks.py
+  env/bin/python scripts/simulate_trucks.py              # modo usuario
+  env/bin/python scripts/simulate_trucks.py --mode device  # mismo camino que un ESP32
+  ```
+* **Bootstrap de plataforma y demo (idempotentes):**
+  ```bash
+  env/bin/python -m scripts.bootstrap_platform
+  env/bin/python -m scripts.seed_demo
+  env/bin/python -m scripts.seed_demo --reset
+  ```
+  Se invocan como módulo (`-m`) porque `source` no está en `sys.path` al ejecutar el archivo suelto.
+* **Levantar el stack completo (requiere Docker):**
+  ```bash
+  docker compose up -d
+  docker compose logs -f web
   ```
 
 ---
