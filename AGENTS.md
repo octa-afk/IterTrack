@@ -69,13 +69,19 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Para proteger un endpoint de otro servicio, importar la dependencia: `from source.services.auth import get_current_user`.
    * Las contraseñas nunca se almacenan en texto plano — se hashean con bcrypt antes de persistir en la tabla `users`.
    * El `response_model=UserResponse` en endpoints garantiza que `hashed_password` nunca se expone en respuestas JSON.
+   * `POST /auth/register` exige un `invitation_code` de una organización con invitación activa (no revocada ni vencida); ya **no** crea organizaciones. El campo `org_name` fue retirado de `UserCreate`.
 
-6. **Frontend React (`frontend/`):**
+6. **Organizaciones e invitaciones (`source/services/organizations.py`):**
+   * Solo cuentas con `role = "admin"` (dependencia `get_current_admin_user`) administran organizaciones: `GET /organizations`, `POST /organizations`, `GET /organizations/{id}/invitation`, `POST /organizations/{id}/invitation/rotate` y `DELETE /organizations/{id}/invitation`.
+   * Cada organización tiene **un único código rotable** en `organizations.invitation_code`. La vigencia se calcula con `Organization.invitation_active`: revocada (`invitation_revoked_at`) o vencida (`invitation_expires_at`) deja de servir.
+   * Rotar genera un código nuevo y limpia la revocación; revocar conserva el código pero lo invalida. Los códigos sin fecha de expiración nunca vencen.
+
+7. **Frontend React (`frontend/`):**
    * La UI es una SPA de **React 19 + TypeScript + Vite** en `frontend/`; se compila a `frontend/dist` con `npm --prefix frontend run build` (o `make frontend`).
    * `source/main.py` sirve ese build: `GET /`, `GET /register` y `GET /map` devuelven `frontend/dist/index.html` (React Router resuelve la ruta) y `/assets/*` monta los archivos hasheados con `StaticFiles`. Si el build no existe, esos endpoints responden `503` con el comando para generarlo.
    * El único asset estático restante es `source/static/isologo.png`, servido en `/favicon.ico` con `include_in_schema=False`.
    * El login es client-side: `LoginPage` envía usuario/contraseña a `POST /auth/login` como `application/x-www-form-urlencoded`, guarda el `access_token` en `localStorage` (clave `itertrack_token`) y navega a `/map`.
-   * El registro es client-side: `RegisterPage` envía usuario/email/nombre completo/contraseña a `POST /auth/register` como JSON; ante un `201` hace login automático, guarda el token y navega a `/map`. Muestra el `detail` de la API como texto (nunca `innerHTML`).
+   * El registro es client-side: `RegisterPage` pide nombre completo/usuario/email/contraseña **y el código de invitación** y los envía a `POST /auth/register` como JSON; ante un `201` hace login automático, guarda el token y navega a `/map`. Muestra el `detail` de la API como texto (nunca `innerHTML`).
    * La protección de `/map` es client-side: `DashboardProvider` valida el token contra `GET /auth/me` al montar; sin token o con `401` limpia el storage y redirige a `/`.
    * En desarrollo, Vite (`:5173`) proxya `/auth`, `/trucks`, `/devices` y `/health` a `http://localhost:8000` (ver `frontend/vite.config.ts`). En producción se sirve el build desde FastAPI.
    * `frontend/dist` está en `.gitignore`: no se commitea el build.
@@ -123,8 +129,13 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * Configuración JWT centralizada en `source/database/config.py`: `SECRET_KEY`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES` (60).
   * `auth_router` incluido en `source/main.py`.
   * Todos los endpoints de `tracking.py` (`POST`, `PUT`, `GET` y `DELETE` bajo `/trucks`) requieren `Depends(get_current_user)` y Bearer JWT. La SPA se sirve sin autenticación HTTP; el frontend de `/map` valida el token y envía el Bearer en las llamadas a la API.
-  * Cada usuario pertenece a una organización y los camiones nuevos se asignan a ella; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia. Los permisos basados en roles siguen pendientes.
+  * Cada usuario pertenece a una organización y los camiones nuevos se asignan a ella; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia. `User.role` distingue `admin` de `cliente`: las operaciones de alta, activación, reasignación y borrado de historial exigen `admin`; las lecturas quedan abiertas a cualquier autenticado de la organización.
   * `bcrypt` fijado en `4.0.1` en `requirements.txt` por incompatibilidad de passlib 1.7.4 con bcrypt 5.x.
+* **Invitaciones por organización (Completada):**
+  * Migración `5426d9d8a15a` agrega `organizations.invitation_expires_at` e `invitation_revoked_at`; `Organization.invitation_active` calcula la vigencia.
+  * `source/services/organizations.py` expone `GET/POST /organizations`, `GET /organizations/{id}/invitation`, `POST /organizations/{id}/invitation/rotate` y `DELETE /organizations/{id}/invitation`, todos con `get_current_admin_user`.
+  * `POST /auth/register` ya no crea organizaciones: exige un código activo. Un código revocado o vencido responde `400` `"Código de invitación inválido"`.
+  * Tests en `tests/test_organizations.py` y `tests/test_auth.py`; el detalle de diseño está en `odd/tasks/invitation-codes.md`.
 * **Manejo de Errores Semántico (Completado):**
   * `add_truck` ahora lanza `HTTPException(status_code=400, ...)` en duplicados.
 * **Validación de Coordenadas (Completada):**
