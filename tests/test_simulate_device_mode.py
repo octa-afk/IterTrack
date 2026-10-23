@@ -219,3 +219,111 @@ def test_ejecutar_simulaciones_device_mode_skips_occupied_trucks(monkeypatch):
     # Only trucks 1 and 3 got a sender; truck 2 stayed with its real device.
     assert len(simulated) == 2
     assert all(callable(sender) for sender in simulated)
+
+
+# ---- recuperación del token de dispositivo ----
+# Un reset de la demo recrea los dispositivos e invalida sus tokens. Sin
+# recuperación, el worker queda en bucle de 401 y el mapa se congela.
+
+
+def test_enviar_ingesta_retries_once_with_a_renewed_token(monkeypatch):
+    enviados = []
+
+    def fake_post(url, **kwargs):
+        enviados.append(kwargs["headers"]["Authorization"])
+        if len(enviados) == 1:
+            return FakeResponse(status_code=401, text='{"detail":"Invalid device credentials"}')
+        return FakeResponse(payload={"results": [{"sequence": 1, "status": "accepted"}]})
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.post", fake_post)
+
+    ok = enviar_ingesta(
+        "viejo",
+        -31.42,
+        -64.18,
+        35.0,
+        90.0,
+        datetime(2026, 10, 23, 12, 0, tzinfo=UTC),
+        on_unauthorized=lambda: "nuevo",
+    )
+
+    assert ok
+    assert enviados == ["Bearer viejo", "Bearer nuevo"]
+
+
+def test_enviar_ingesta_without_callback_does_not_retry(monkeypatch):
+    intentos = []
+
+    def fake_post(url, **kwargs):
+        intentos.append(1)
+        return FakeResponse(status_code=401, text="no autorizado")
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.post", fake_post)
+
+    assert not enviar_ingesta(
+        "tok", 0.0, 0.0, 0.0, 0.0, datetime(2026, 10, 23, tzinfo=UTC)
+    )
+    assert len(intentos) == 1
+
+
+def test_enviar_ingesta_gives_up_when_recovery_yields_no_token(monkeypatch):
+    intentos = []
+
+    def fake_post(url, **kwargs):
+        intentos.append(1)
+        return FakeResponse(status_code=401, text="no autorizado")
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.post", fake_post)
+
+    assert not enviar_ingesta(
+        "tok",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        datetime(2026, 10, 23, tzinfo=UTC),
+        on_unauthorized=lambda: None,
+    )
+    assert len(intentos) == 1
+
+
+def test_constructor_de_sender_keeps_the_renewed_token(monkeypatch):
+    enviados = []
+
+    def fake_enviar_ingesta(
+        token, lat, long, speed, heading, recorded_at, sequence=1, batch_id=None,
+        on_unauthorized=None,
+    ):
+        enviados.append(token)
+        if token == "viejo" and on_unauthorized is not None:
+            on_unauthorized()
+        return True
+
+    monkeypatch.setattr("scripts.simulate_trucks.enviar_ingesta", fake_enviar_ingesta)
+
+    sender = constructor_de_sender("viejo", on_unauthorized=lambda: "nuevo")
+    sender(0.0, 0.0, 1.0, 2.0, datetime(2026, 10, 23, tzinfo=UTC))
+    sender(0.0, 0.0, 1.0, 2.0, datetime(2026, 10, 23, tzinfo=UTC))
+
+    assert enviados == ["viejo", "nuevo"]
+
+
+def test_constructor_de_sender_rate_limits_a_failing_recovery(monkeypatch):
+    intentos = []
+
+    def fake_enviar_ingesta(
+        token, lat, long, speed, heading, recorded_at, sequence=1, batch_id=None,
+        on_unauthorized=None,
+    ):
+        if on_unauthorized is not None:
+            on_unauthorized()
+        return False
+
+    monkeypatch.setattr("scripts.simulate_trucks.enviar_ingesta", fake_enviar_ingesta)
+
+    sender = constructor_de_sender("viejo", on_unauthorized=lambda: intentos.append(1))
+    sender(0.0, 0.0, 1.0, 2.0, datetime(2026, 10, 23, tzinfo=UTC))
+    sender(0.0, 0.0, 1.0, 2.0, datetime(2026, 10, 23, tzinfo=UTC))
+
+    # Una recuperación fallida no debe golpear la API en cada punto.
+    assert len(intentos) == 1
