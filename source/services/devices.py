@@ -14,10 +14,29 @@ from source.database.database import get_db
 from source.models.device import Device, DeviceAssignment
 from source.models.ingestion import IngestedPoint, RejectedIngestPoint
 from source.models.truck import TrackingPoint, Truck
+from source.models.user import User
+from source.schemas.device import (
+    DeviceAssignmentInfo,
+    DeviceCreate,
+    DeviceProvisioned,
+    DeviceReassign,
+    DeviceResponse,
+)
 from source.schemas.ingestion import DeviceIngestBatch, DeviceIngestPoint
+from source.services.auth import get_current_admin_user
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 device_bearer = HTTPBearer(auto_error=False)
+
+
+class DeviceError(ValueError):
+    """Domain error that the API maps to an HTTP status code."""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+
+
+class DeviceNotFoundError(DeviceError):
+    status_code = status.HTTP_404_NOT_FOUND
 
 
 def generate_device_token() -> str:
@@ -30,22 +49,46 @@ def hash_device_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def open_assignment_for(db: Session, device_id: int) -> DeviceAssignment | None:
+    """Return the open (not yet closed) assignment of a device, if any."""
+    return (
+        db.query(DeviceAssignment)
+        .filter(DeviceAssignment.device_id == device_id, DeviceAssignment.valid_to.is_(None))
+        .first()
+    )
+
+
+def get_device_or_raise(db: Session, device_id: int) -> Device:
+    device = db.get(Device, device_id)
+    if device is None:
+        raise DeviceNotFoundError("Dispositivo no encontrado")
+    return device
+
+
+def get_available_truck_or_raise(db: Session, truck_id: int) -> Truck:
+    truck = db.get(Truck, truck_id)
+    if truck is None:
+        raise DeviceNotFoundError("Camión no encontrado")
+    if not truck.active:
+        raise DeviceError("El camión está inactivo")
+    return truck
+
+
 def provision_device(db: Session, identifier: str, truck_id: int) -> str:
     """Create a device, assign it to a truck and return its plaintext token."""
     identifier = identifier.strip()
     if not identifier:
-        raise ValueError("Device identifier must not be empty")
+        raise DeviceError("El identificador del dispositivo no puede estar vacío")
     if db.query(Device).filter(Device.identifier == identifier).first() is not None:
-        raise ValueError(f"Device '{identifier}' already exists")
-    if db.get(Truck, truck_id) is None:
-        raise ValueError(f"Truck {truck_id} does not exist")
+        raise DeviceError("Ya existe un dispositivo con ese identificador")
+    get_available_truck_or_raise(db, truck_id)
     open_on_truck = (
         db.query(DeviceAssignment)
         .filter(DeviceAssignment.truck_id == truck_id, DeviceAssignment.valid_to.is_(None))
         .first()
     )
     if open_on_truck is not None:
-        raise ValueError(f"Truck {truck_id} already has an open device assignment")
+        raise DeviceError("El camión ya tiene un dispositivo asignado")
 
     token = generate_device_token()
     device = Device(identifier=identifier, token_hash=hash_device_token(token))
@@ -60,6 +103,72 @@ def provision_device(db: Session, identifier: str, truck_id: int) -> str:
     )
     db.commit()
     return token
+
+
+def reassign_device(db: Session, device_id: int, truck_id: int) -> DeviceAssignment:
+    """Close the current open assignment and open a new one on another truck."""
+    device = get_device_or_raise(db, device_id)
+    if not device.active:
+        raise DeviceError("El dispositivo está revocado")
+    truck = get_available_truck_or_raise(db, truck_id)
+
+    current = open_assignment_for(db, device.id)
+    if current is not None and current.truck_id == truck.id:
+        raise DeviceError("El dispositivo ya está asignado a ese camión")
+    occupied = (
+        db.query(DeviceAssignment)
+        .filter(DeviceAssignment.truck_id == truck.id, DeviceAssignment.valid_to.is_(None))
+        .first()
+    )
+    if occupied is not None:
+        raise DeviceError("El camión ya tiene un dispositivo asignado")
+
+    now = datetime.now(UTC)
+    if current is not None:
+        current.valid_to = now
+        db.flush()
+    assignment = DeviceAssignment(device_id=device.id, truck_id=truck.id, valid_from=now)
+    db.add(assignment)
+    db.commit()
+    db.refresh(assignment)
+    return assignment
+
+
+def rotate_device_token(db: Session, device_id: int) -> str:
+    """Replace a device token, invalidating the previous one. Returns the new plaintext token."""
+    device = get_device_or_raise(db, device_id)
+    if not device.active:
+        raise DeviceError("El dispositivo está revocado")
+    token = generate_device_token()
+    device.token_hash = hash_device_token(token)
+    db.commit()
+    return token
+
+
+def revoke_device(db: Session, device_id: int) -> Device:
+    """Deactivate a device and close its open assignment."""
+    device = get_device_or_raise(db, device_id)
+    device.active = False
+    assignment = open_assignment_for(db, device.id)
+    if assignment is not None:
+        assignment.valid_to = datetime.now(UTC)
+    db.commit()
+    db.refresh(device)
+    return device
+
+
+def device_response(db: Session, device: Device) -> DeviceResponse:
+    assignment = open_assignment_for(db, device.id)
+    return DeviceResponse(
+        id=device.id,
+        identifier=device.identifier,
+        active=device.active,
+        assignment=(
+            DeviceAssignmentInfo(truck_id=assignment.truck_id, valid_from=assignment.valid_from)
+            if assignment is not None
+            else None
+        ),
+    )
 
 
 def get_authenticated_device(
@@ -178,3 +287,71 @@ def ingest_device_batch(
 
     db.commit()
     return {"batch_id": str(batch.batch_id), "results": results}
+
+
+# ---- Administrative device lifecycle ----
+
+
+@router.get("", response_model=list[DeviceResponse])
+def list_devices(
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin_user),
+):
+    devices = db.query(Device).order_by(Device.id).all()
+    return [device_response(db, device) for device in devices]
+
+
+@router.post("", response_model=DeviceProvisioned, status_code=status.HTTP_201_CREATED)
+def create_device(
+    payload: DeviceCreate,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin_user),
+):
+    try:
+        token = provision_device(db, payload.identifier, payload.truck_id)
+    except DeviceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    device = db.query(Device).filter(Device.identifier == payload.identifier).one()
+    return DeviceProvisioned(**device_response(db, device).model_dump(), token=token)
+
+
+@router.post("/{device_id}/reassign", response_model=DeviceResponse)
+def reassign(
+    device_id: int,
+    payload: DeviceReassign,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin_user),
+):
+    try:
+        reassign_device(db, device_id, payload.truck_id)
+    except DeviceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return device_response(db, get_device_or_raise(db, device_id))
+
+
+@router.post("/{device_id}/token/rotate", response_model=DeviceProvisioned)
+def rotate_token(
+    device_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin_user),
+):
+    try:
+        token = rotate_device_token(db, device_id)
+    except DeviceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return DeviceProvisioned(
+        **device_response(db, get_device_or_raise(db, device_id)).model_dump(), token=token
+    )
+
+
+@router.post("/{device_id}/revoke", response_model=DeviceResponse)
+def revoke(
+    device_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin_user),
+):
+    try:
+        device = revoke_device(db, device_id)
+    except DeviceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return device_response(db, device)

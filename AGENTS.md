@@ -86,6 +86,12 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * En desarrollo, Vite (`:5173`) proxya `/auth`, `/trucks`, `/devices` y `/health` a `http://localhost:8000` (ver `frontend/vite.config.ts`). En producción se sirve el build desde FastAPI.
    * `frontend/dist` está en `.gitignore`: no se commitea el build.
 
+8. **Dispositivos GPS (`source/services/devices.py`, `source/schemas/device.py`):**
+   * La autenticación del hardware es independiente del login humano: `Authorization: Bearer <token>` contra `POST /devices/ingest`. El token se muestra una sola vez y se guarda solo como hash SHA-256.
+   * Administración (solo `admin`): `GET /devices`, `POST /devices` (`identifier`, `truck_id`), `POST /devices/{id}/reassign`, `POST /devices/{id}/token/rotate`, `POST /devices/{id}/revoke`.
+   * Invariantes: una asignación abierta por equipo y por camión (índices parciales en `device_assignments`); rotar el token invalida el anterior al instante; revocar desactiva el equipo y cierra su asignación para liberar el camión.
+   * `source/services/devices.py` expone errores de dominio (`DeviceError`, `DeviceNotFoundError`) que los endpoints traducen a `400`/`404`; `scripts/provision_device.py` los imprime como texto.
+
 ---
 
 ## 5. Reglas Críticas de Seguridad y Secretos
@@ -136,6 +142,10 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   * `source/services/organizations.py` expone `GET/POST /organizations`, `GET /organizations/{id}/invitation`, `POST /organizations/{id}/invitation/rotate` y `DELETE /organizations/{id}/invitation`, todos con `get_current_admin_user`.
   * `POST /auth/register` ya no crea organizaciones: exige un código activo. Un código revocado o vencido responde `400` `"Código de invitación inválido"`.
   * Tests en `tests/test_organizations.py` y `tests/test_auth.py`; el detalle de diseño está en `odd/tasks/invitation-codes.md`.
+* **Ciclo de vida de dispositivos GPS (Completada):**
+  * Endpoints admin en `source/services/devices.py`: `GET /devices`, `POST /devices`, `POST /devices/{id}/reassign`, `POST /devices/{id}/token/rotate` y `POST /devices/{id}/revoke`.
+  * El token en claro solo se devuelve al crearlo o rotarlo; la base guarda únicamente su hash SHA-256. Rotar invalida el token anterior y revocar cierra la asignación abierta.
+  * Tests en `tests/test_devices_admin.py`; el detalle de diseño está en `odd/tasks/device-lifecycle.md`.
 * **Manejo de Errores Semántico (Completado):**
   * `add_truck` ahora lanza `HTTPException(status_code=400, ...)` en duplicados.
 * **Validación de Coordenadas (Completada):**
