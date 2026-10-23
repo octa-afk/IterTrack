@@ -159,6 +159,28 @@ Verificado:
 
 Límite honesto: **Docker no está instalado en esta máquina**, así que la imagen no fue construida ni ejecutada. Lo verificado es la secuencia de arranque y el entrypoint, no `docker build`.
 
+### L9 — Bloque 5: compose, TLS y publicación de la imagen (2026-10-23)
+
+Host elegido: **Azure for Students** (VM B1s, 750 h/mes gratis 12 meses, sin tarjeta) con Docker Compose. Se descartó AWS: su free tier 2026 da hasta USD 200 pero **la cuenta se cierra sola a los 6 meses**. Se eligió VM + Docker sobre un PaaS para no quedar atado: la imagen se publica en **GHCR**, no en Azure Container Registry, y el dominio queda fuera de Azure.
+
+`docker-compose.yml` con cuatro servicios:
+
+- `postgres` — volumen nombrado `pgdata`, **sin puertos publicados** (solo red interna). Acceso desde una laptop únicamente por túnel SSH.
+- `web` — la imagen, `RUN_MIGRATIONS=true`, bootstrap y seed de demo activados. Es el único que migra.
+- `worker` — misma imagen, `command` propio con `--mode device`, `RUN_MIGRATIONS=false` para no competir con la migración del web, `API_URL=http://web:8000/trucks` por red interna.
+- `caddy` — 80/443, TLS automático, volúmenes `caddy_data` y `caddy_config`.
+
+`Caddyfile` usa `{$DOMAIN}`: con un dominio real obtiene el certificado solo; con `localhost` cae a CA interna.
+
+`.github/workflows/publish-image.yml` publica en `ghcr.io/<owner>/itertrack` con `GITHUB_TOKEN` y `packages: write`. La VM solo hace `pull`, así el build (que necesita RAM) no ocurre en la B1s de 1 GB.
+
+`scripts/simulate_trucks.py` ahora devuelve `False` y `main()` sale con código 1 cuando no puede autenticarse, para que el orquestador vea un fallo en lugar de un éxito. Hay un test que lo fija.
+
+`deploy/.env.example` documenta todas las variables de la VM, separando las credenciales públicas de la demo de las privadas de plataforma.
+
+Verificado: YAML parseado y estructura afirmada (4 servicios, Postgres sin `ports`, worker en modo device y sin migrar, volúmenes correctos, workflow con `packages: write`); suite completa **187 passed** y `make check` limpio. **No verificado**: `docker compose config` e `docker build`, porque Docker no está instalado.
+
+
 
 
 

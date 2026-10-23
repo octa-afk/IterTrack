@@ -591,7 +591,7 @@ def ejecutar_simulaciones(
     if mode == "device":
         if not admin_headers:
             print("⛔ El modo dispositivo necesita ADMIN_API_USER/ADMIN_API_PASSWORD. Abortando.")
-            return
+            return False
         trabajos = []
         ruta = cargar_ruta()
         lat_inicial, lon_inicial = ruta[0]
@@ -605,12 +605,12 @@ def ejecutar_simulaciones(
             trabajos.append((config, constructor_de_sender(token)))
         if not trabajos:
             print("⛔ Ningún camión quedó disponible para simular. Abortando.")
-            return
+            return False
     else:
         headers = dict(autenticar())
         if not headers:
             print("⛔ Sin token no se puede enviar telemetría. Abortando.")
-            return
+            return False
         admin_headers = admin_headers or headers
         trabajos = [(config, None) for config in configs]
 
@@ -648,6 +648,7 @@ def ejecutar_simulaciones(
     finally:
         stop_event.set()
         executor.shutdown(wait=True, cancel_futures=True)
+    return True
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simulador de camión con ruta urbana realista en Córdoba")
@@ -680,7 +681,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    ejecutar_simulaciones(
+    ok = ejecutar_simulaciones(
         base_id=args.id,
         base_plate=args.plate,
         intervalo=args.interval,
@@ -689,3 +690,4 @@ if __name__ == "__main__":
         mode=args.mode,
         force=args.force,
     )
+    raise SystemExit(0 if ok else 1)
