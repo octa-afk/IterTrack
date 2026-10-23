@@ -319,3 +319,16 @@ Hallazgo 4 de L13 más el hueco de acceso. La página de login no mencionaba la 
 Con el botón en su lugar, la invitación de `Demo Corp` deja de tener sentido. `seed_demo` ahora la crea revocada, igual que `bootstrap_platform` hace con la organización interna. En la instancia que ya existía se revocó por API: `DELETE /organizations/3/invitation` → `invitation_active: false`, y un registro con el código viejo responde `400 "Código de invitación inválido"`.
 
 Verificado en producción: `/config` devuelve las credenciales, la invitación quedó revocada y el registro está cerrado. 206 tests, ruff y mypy limpios.
+
+### L17 — Login de la demo: autofill, animación y mock local (2026-10-23)
+
+Ajustes de la pantalla de login, todos en `develop`:
+
+- **Autofill del navegador**: Chrome/Edge pintaban los campos autocompletados con fondo amarillo/oliva, rompiendo el tema oscuro. Se sobreescribió `:-webkit-autofill` con `box-shadow` inset del color `--field` y `-webkit-text-fill-color: var(--ink)` (commit `05fe0af`).
+- **Animación del botón demo**: pulso suave del borde (`border-color` entre `--line` y `--acc-d`) cada 2,2 s, sin sombras ni halos, con `prefers-reduced-motion` respetado (commit `512edbf`).
+- **Un solo clic, sin prellenado**: se probó prellenar usuario/contraseña desde `/config`, pero se revirtió a pedido del usuario: los campos quedan vacíos y el botón "Entrar a la demo" hace el login directo (commit `9172741`).
+- **Mock de `/config` solo para desarrollo**: Vite no proxea `/config`, así que el botón no aparecía en `localhost:5173`. Se agregó un plugin `configureServer` que responde `{demo:{enabled:true,...}}` únicamente en el dev server (commit `c3d6cdd`). No afecta el build de producción.
+
+Hallazgo local: la base de datos de desarrollo tenía aplicada la migración `c8d9e0f1a2b3` (rama `feat/ingest-alerts`, no mergeada en `develop`), por lo que `alembic upgrade head` fallaba con "Can't locate revision". La solución es recrear la base local y volver a migrar desde `develop`.
+
+Verificado: `make check` (ruff + mypy) y `make test` (206 tests) limpios tras los cambios de frontend.
