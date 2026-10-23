@@ -11,6 +11,14 @@ Runner: `make test` (pytest) + `make check` (ruff + mypy).
 - **S3** — `scripts/.env.example` documenta `API_URL` y `AUTH_URL`. Los valores definidos en `scripts/.env` se aplican a `BASE_URL`/`AUTH_URL`, sin pisar variables ya presentes en el entorno del proceso.
 - **S4** — La simulación sobrevive al vencimiento del token: ante un `401` en `PUT /trucks/{id}/location` renueva el token y reintenta **una** vez. Si el reintento también falla, reporta `False` como hoy.
 - **S5** — El refresco de token se comparte entre los hilos de simulación: un solo re-login actualiza el header que ven todos los camiones.
+- **S6** — `User.role` acepta únicamente `platform_admin`, `org_admin` o `member`, con `CHECK CONSTRAINT` en la base. La migración renombra `admin`→`org_admin` y `cliente`→`member`.
+- **S7** — Un `org_admin` solo ve y administra su propia organización. Operar sobre otra responde `404`, no `403`, para no revelar que existe.
+- **S8** — Un `platform_admin` lista todas las organizaciones y todos los dispositivos, y es el único que puede crear organizaciones.
+- **S9** — El alta de camión en nombre de un cliente usa `POST /organizations/{organization_id}/trucks`, exclusivo de `platform_admin`; una organización inexistente responde `404`. `POST /trucks` sigue creando en la organización del `org_admin`.
+- **S10** — Un `org_admin` no puede rotar ni revocar invitaciones ajenas, ni reasignar, rotar o revocar dispositivos ajenos.
+- **S11** — Transferir un camión entre organizaciones (`PATCH /trucks/{id}/organization`) es exclusivo de `platform_admin`; un `org_admin` recibe `403`.
+- **S12** — `Device.organization_id` se completa desde el camión al aprovisionar el equipo, y la migración lo rellena desde la asignación abierta o la más reciente.
+
 
 ## Tasks
 
@@ -21,6 +29,11 @@ Runner: `make test` (pytest) + `make check` (ruff + mypy).
 | T3 | S4, S5 | inline | hecho | `scripts/simulate_trucks.py`; 4 tests nuevos en `tests/test_simulate_trucks.py` |
 | T4 | S1-S5 | inline | hecho | `make check` limpio; 149 tests pasan |
 | T5 | — | inline | hecho | `SECRET_KEY` local rotado a 64 caracteres |
+| T6 | S6, S12 | inline | hecho | migración `b7c1d2e3f4a5`, round-trip verificado |
+| T7 | S7, S8, S10 | inline | hecho | `source/services/organizations.py`, `source/services/devices.py` |
+| T8 | S9, S11 | inline | hecho | `POST /organizations/{id}/trucks`, `PATCH /trucks/{id}/organization` |
+| T9 | S6-S12 | inline | hecho | `tests/test_tenant_isolation.py` 15/15; suite 165/165 |
+
 
 
 ## Log
@@ -57,4 +70,22 @@ Evidencia:
 - `.env` local rotado a una clave de 64 caracteres (los tokens emitidos antes dejan de valer; basta volver a loguearse).
 
 Pendiente para las próximas etapas: bootstrap del primer admin (ver L2), `Dockerfile` multi-stage, seed de demo, credenciales demo visibles en el login, reset periódico, README en inglés con GIF y URL pública.
+
+### L4 — Bloque 1: roles y aislamiento (2026-10-23)
+
+Decisión del usuario: ambos roles con nombres distintos (`platform_admin` / `org_admin` / `member`), un solo campo con tres valores explícitos, alta de camión cross-org por **endpoint dedicado**, y el `platform_admin` puede monitorear todas las flotas. La demo nunca expone `platform_admin`.
+
+Implementado:
+- `User.role` con `CHECK CONSTRAINT`; migración `b7c1d2e3f4a5` renombra `admin`→`org_admin` y `cliente`→`member`.
+- `Device.organization_id` (nullable para filas previas), poblado desde el camión al aprovisionar.
+- Dependencias `require_org_admin`, `require_platform_admin`, `require_org_admin_or_platform`.
+- Organizaciones y dispositivos filtrados por organización; acceso ajeno responde `404`.
+- `POST /organizations/{id}/trucks` para alta cross-org (`platform_admin`).
+- `PATCH /trucks/{id}/organization` pasa a `platform_admin`: transferir un activo entre empresas no es decisión del cliente.
+- `AGENTS.md` actualizado para que un agente no vuelva a leer "admin" como alcance global.
+
+Evidencia: RED 11 fallos en `tests/test_tenant_isolation.py`; GREEN 15/15 y suite completa **165 passed**; `make check` limpio (ruff + mypy, 37 archivos). Migración aplicada a la DB local y round-trip `downgrade`/`upgrade` verificado (roles vuelven a `admin`/`cliente` y regresan a `org_admin`/`member`, la columna se agrega y se quita).
+
+Riesgo declarado: ítem 1 (migración sobre datos existentes), ítem 2 (permisos y autorización) e ítem 3 (contrato de API: endpoint nuevo y cambio de alcance en dos rutas existentes).
+
 

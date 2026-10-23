@@ -58,8 +58,8 @@ def register(client, **overrides):
 # ---- creation and listing ----
 
 
-def test_admin_creates_organization_with_generated_code(admin_client):
-    response = admin_client.post("/organizations", json={"name": "Fletera Nueva"})
+def test_platform_admin_creates_organization_with_generated_code(platform_client):
+    response = platform_client.post("/organizations", json={"name": "Fletera Nueva"})
     assert response.status_code == 201
     body = response.json()
     assert body["name"] == "Fletera Nueva"
@@ -69,8 +69,8 @@ def test_admin_creates_organization_with_generated_code(admin_client):
     assert body["invitation_active"] is True
 
 
-def test_admin_creates_organization_with_expiry(admin_client):
-    response = admin_client.post(
+def test_platform_admin_creates_organization_with_expiry(platform_client):
+    response = platform_client.post(
         "/organizations", json={"name": "Fletera Temporal", "expires_in_days": 30}
     )
     assert response.status_code == 201
@@ -79,8 +79,8 @@ def test_admin_creates_organization_with_expiry(admin_client):
     assert body["invitation_active"] is True
 
 
-def test_duplicate_organization_name_returns_400(admin_client, test_org):
-    response = admin_client.post("/organizations", json={"name": test_org.name})
+def test_duplicate_organization_name_returns_400(platform_client, test_org):
+    response = platform_client.post("/organizations", json={"name": test_org.name})
     assert response.status_code == 400
     assert response.json()["detail"] == "Ya existe una organización con ese nombre"
 

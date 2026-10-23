@@ -13,6 +13,12 @@ class Device(Base):
     identifier: Mapped[str] = mapped_column(String(64), unique=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     active: Mapped[bool] = mapped_column(default=True)
+    # A device belongs to the organization that owns the truck it was provisioned
+    # for. Nullable only for rows created before this column existed; provisioning
+    # always sets it from the assigned truck.
+    organization_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organizations.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

@@ -14,7 +14,7 @@ from source.database.database import get_db
 from source.models.device import Device, DeviceAssignment
 from source.models.ingestion import IngestedPoint, RejectedIngestPoint
 from source.models.truck import TrackingPoint, Truck
-from source.models.user import User
+from source.models.user import ROLE_PLATFORM_ADMIN, User
 from source.schemas.device import (
     DeviceAssignmentInfo,
     DeviceCreate,
@@ -23,7 +23,7 @@ from source.schemas.device import (
     DeviceResponse,
 )
 from source.schemas.ingestion import DeviceIngestBatch, DeviceIngestPoint
-from source.services.auth import get_current_admin_user
+from source.services.auth import require_org_admin, require_org_admin_or_platform
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 device_bearer = HTTPBearer(auto_error=False)
@@ -81,7 +81,7 @@ def provision_device(db: Session, identifier: str, truck_id: int) -> str:
         raise DeviceError("El identificador del dispositivo no puede estar vacío")
     if db.query(Device).filter(Device.identifier == identifier).first() is not None:
         raise DeviceError("Ya existe un dispositivo con ese identificador")
-    get_available_truck_or_raise(db, truck_id)
+    truck = get_available_truck_or_raise(db, truck_id)
     open_on_truck = (
         db.query(DeviceAssignment)
         .filter(DeviceAssignment.truck_id == truck_id, DeviceAssignment.valid_to.is_(None))
@@ -91,7 +91,11 @@ def provision_device(db: Session, identifier: str, truck_id: int) -> str:
         raise DeviceError("El camión ya tiene un dispositivo asignado")
 
     token = generate_device_token()
-    device = Device(identifier=identifier, token_hash=hash_device_token(token))
+    device = Device(
+        identifier=identifier,
+        token_hash=hash_device_token(token),
+        organization_id=truck.organization_id,
+    )
     db.add(device)
     db.flush()
     db.add(
@@ -163,12 +167,31 @@ def device_response(db: Session, device: Device) -> DeviceResponse:
         id=device.id,
         identifier=device.identifier,
         active=device.active,
+        organization_id=device.organization_id,
         assignment=(
             DeviceAssignmentInfo(truck_id=assignment.truck_id, valid_from=assignment.valid_from)
             if assignment is not None
             else None
         ),
     )
+
+
+def _ensure_device_scope(current_user: User, device: Device) -> Device:
+    """Hide devices outside the caller's organization instead of revealing them."""
+    if current_user.role == ROLE_PLATFORM_ADMIN:
+        return device
+    if device.organization_id != current_user.organization_id:
+        raise DeviceNotFoundError("Dispositivo no encontrado")
+    return device
+
+
+def _ensure_truck_scope(current_user: User, truck: Truck) -> Truck:
+    """Hide trucks outside the caller's organization instead of revealing them."""
+    if current_user.role == ROLE_PLATFORM_ADMIN:
+        return truck
+    if truck.organization_id != current_user.organization_id:
+        raise DeviceNotFoundError("Camión no encontrado")
+    return truck
 
 
 def get_authenticated_device(
@@ -295,18 +318,32 @@ def ingest_device_batch(
 @router.get("", response_model=list[DeviceResponse])
 def list_devices(
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_org_admin_or_platform),
 ):
-    devices = db.query(Device).order_by(Device.id).all()
-    return [device_response(db, device) for device in devices]
+    query = db.query(Device).order_by(Device.id)
+    if current_user.role != ROLE_PLATFORM_ADMIN:
+        query = query.filter(Device.organization_id == current_user.organization_id)
+    return [device_response(db, device) for device in query.all()]
 
 
 @router.post("", response_model=DeviceProvisioned, status_code=status.HTTP_201_CREATED)
 def create_device(
     payload: DeviceCreate,
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_org_admin_or_platform),
 ):
+    truck = db.get(Truck, payload.truck_id)
+    if truck is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Camión no encontrado"
+        )
+    if (
+        current_user.role != ROLE_PLATFORM_ADMIN
+        and truck.organization_id != current_user.organization_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Camión no encontrado"
+        )
     try:
         token = provision_device(db, payload.identifier, payload.truck_id)
     except DeviceError as exc:
@@ -320,10 +357,14 @@ def reassign(
     device_id: int,
     payload: DeviceReassign,
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_org_admin),
 ):
     try:
-        reassign_device(db, device_id, payload.truck_id)
+        device = _ensure_device_scope(current_user, get_device_or_raise(db, device_id))
+        truck = db.get(Truck, payload.truck_id)
+        if truck is not None:
+            _ensure_truck_scope(current_user, truck)
+        reassign_device(db, device.id, payload.truck_id)
     except DeviceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return device_response(db, get_device_or_raise(db, device_id))
@@ -333,10 +374,11 @@ def reassign(
 def rotate_token(
     device_id: int,
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_org_admin),
 ):
     try:
-        token = rotate_device_token(db, device_id)
+        device = _ensure_device_scope(current_user, get_device_or_raise(db, device_id))
+        token = rotate_device_token(db, device.id)
     except DeviceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return DeviceProvisioned(
@@ -348,10 +390,11 @@ def rotate_token(
 def revoke(
     device_id: int,
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_org_admin),
 ):
     try:
-        device = revoke_device(db, device_id)
+        device = _ensure_device_scope(current_user, get_device_or_raise(db, device_id))
+        device = revoke_device(db, device.id)
     except DeviceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return device_response(db, device)
