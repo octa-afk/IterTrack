@@ -263,3 +263,31 @@ def test_org_admin_cannot_move_truck_to_another_organization(
     assert response.status_code == 403
     db_session.refresh(test_truck)
     assert test_truck.organization_id == test_org.id
+
+
+def test_truck_transfer_moves_assigned_device_to_the_new_organization(
+    client_as, db_session, test_org, test_org2, test_truck
+):
+    owner = make_user(db_session, test_org, "platform6", "platform_admin")
+    device = make_device(db_session, test_org, "DEV-TRANSFER")
+    db_session.add(DeviceAssignment(device_id=device.id, truck_id=test_truck.id))
+    db_session.commit()
+
+    with client_as(owner) as client:
+        response = client.patch(
+            f"/trucks/{test_truck.id}/organization", json={"organization_id": test_org2.id}
+        )
+
+    assert response.status_code == 200
+    db_session.refresh(device)
+    assert device.organization_id == test_org2.id
+
+    previous_tenant_admin = make_user(db_session, test_org, "orgadmin10", "org_admin")
+    with client_as(previous_tenant_admin) as client:
+        assert client.post(f"/devices/{device.id}/revoke").status_code == 404
+
+    new_tenant_admin = make_user(db_session, test_org2, "orgadmin11", "org_admin")
+    with client_as(new_tenant_admin) as client:
+        listed = client.get("/devices")
+
+    assert [entry["id"] for entry in listed.json()] == [device.id]
