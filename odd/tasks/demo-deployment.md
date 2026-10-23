@@ -202,3 +202,23 @@ Cambios:
 
 
 
+
+### L11 — Auditoría y reescritura de historia antes de publicar (2026-10-23)
+
+Antes de abrir el repositorio se auditó **todo el historial**, no el árbol actual: lo que se borró en un commit sigue siendo público en un repo publicado. Un script recorrió los 1.504 blobs de texto alcanzables desde las 12 refs, buscando claves privadas, tokens (GitHub, AWS, Slack, OpenAI), URLs con credenciales, JWTs, SAS de Azure, `secret_key`, passwords asignadas, emails y rutas absolutas.
+
+**Resultado: ningún secreto real.** Todos los hallazgos fueron placeholders (`postgres://usuario:tu_password@host`, `postgres:password@host/railway`), código (`password: string`, `password = os.getenv(...)`), fixtures de test (`password="insecure"`) o rutas `/home/octa/` que coinciden con el handle público. Confirmado además: ningún `.env` real fue commiteado nunca; `.gitignore` cubre `.env`, `.env.*` y `alembic.ini`; sin volcados ni binarios; el firmware ESP32 no tiene WiFi hardcodeado; la captura `mapa-en-vivo.png` del historial (mapa de Córdoba, sin navegador ni datos) se inspeccionó a ojo.
+
+**Lo único que sí quedaba expuesto:** el email institucional en el campo author de 185 de 188 commits.
+
+Decisión: **reescribir la historia** para reemplazarlo por el noreply de GitHub. Procedimiento:
+
+1. `git bundle create` de respaldo con las 8 ramas (`/tmp/opencode/pre-rewrite.bundle`, 2,1 MB).
+2. Clon espejo de `origin` y `git filter-repo --email-callback` mapeando `octavio.lautaro.torres@mi.unc.edu.ar` → `208891597+octa-afk@users.noreply.github.com`.
+3. Verificación: **los árboles de las 8 ramas son idénticos** (mismo `^{tree}` antes y después) y los 188 commits se conservan. El contenido no cambió, solo los SHA.
+4. `git push --mirror` y resincronización de las ramas locales.
+5. `git config user.email` del repo apuntado al noreply; sin eso, el siguiente commit reintroducía la fuga.
+
+Costo aceptado: todos los SHA cambian y el clon de otra máquina queda incompatible (hay que re-clonar o `reset --hard origin/<rama>`). El email ya no aparece en ningún commit, autor, committer ni mensaje.
+
+Pendiente de decidir: 2 commits conservan el **nombre real** `Octavio Lautaro Torres` (el resto son `octa-afk`). El email ya no está, así que no compromete nada; cambiarlo exige otra reescritura.
