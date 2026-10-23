@@ -1,8 +1,10 @@
+import os
 from datetime import UTC, datetime, timedelta
 
 from scripts.simulate_trucks import (
     actualizar_ubicacion,
     build_truck_configs,
+    cargar_env_local,
     ejecutar_simulaciones,
     rotate_route,
     route_offset,
@@ -377,3 +379,146 @@ def test_ejecutar_simulaciones_aborts_without_token(monkeypatch):
     ejecutar_simulaciones(base_id=1, base_plate="ABC123", intervalo=1, count=1)
 
     assert calls == []
+
+
+class _FakeResponse:
+    """Minimal `requests.Response` stand-in with a configurable status code."""
+
+    def __init__(self, status_code: int, payload: dict | None = None):
+        self.status_code = status_code
+        self.headers = {"content-type": "application/json"}
+        self._payload = payload or {}
+
+    def json(self):
+        return self._payload
+
+
+def test_actualizar_ubicacion_renews_token_once_on_unauthorized(monkeypatch):
+    seen_headers = []
+    responses = [_FakeResponse(401), _FakeResponse(200)]
+
+    def fake_put(_url, **kwargs):
+        seen_headers.append(kwargs["headers"])
+        return responses.pop(0)
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.put", fake_put)
+
+    stale = {"Authorization": "Bearer stale"}
+    fresh = {"Authorization": "Bearer fresh"}
+
+    assert actualizar_ubicacion(
+        7,
+        -31.42,
+        -64.18,
+        speed=10,
+        heading=90,
+        recorded_at=datetime(2026, 10, 13, 12, 0, tzinfo=UTC),
+        headers=stale,
+        on_unauthorized=lambda: fresh,
+    )
+    assert seen_headers == [stale, fresh]
+
+
+def test_actualizar_ubicacion_reports_failure_when_renewed_token_is_rejected(monkeypatch):
+    responses = [_FakeResponse(401), _FakeResponse(401)]
+    calls = []
+
+    def fake_put(_url, **kwargs):
+        calls.append(kwargs["headers"])
+        return responses.pop(0)
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.put", fake_put)
+
+    assert not actualizar_ubicacion(
+        7,
+        -31.42,
+        -64.18,
+        speed=10,
+        heading=90,
+        recorded_at=datetime(2026, 10, 13, 12, 0, tzinfo=UTC),
+        headers={"Authorization": "Bearer stale"},
+        on_unauthorized=lambda: {"Authorization": "Bearer fresh"},
+    )
+    assert len(calls) == 2
+
+
+def test_actualizar_ubicacion_does_not_retry_without_renewal_callback(monkeypatch):
+    calls = []
+
+    def fake_put(_url, **kwargs):
+        calls.append(kwargs["headers"])
+        return _FakeResponse(401)
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.put", fake_put)
+
+    assert not actualizar_ubicacion(
+        7,
+        -31.42,
+        -64.18,
+        speed=10,
+        heading=90,
+        recorded_at=datetime(2026, 10, 13, 12, 0, tzinfo=UTC),
+        headers={"Authorization": "Bearer stale"},
+    )
+    assert len(calls) == 1
+
+
+def test_simular_ruta_propagates_renewed_headers_to_the_shared_dict(monkeypatch):
+    route = [[-31.42, -64.18], [-31.43, -64.19]]
+    shared_headers = {"Authorization": "Bearer stale"}
+    seen = []
+    renewed_once = {"done": False}
+
+    class StopAfterRoute:
+        def __init__(self):
+            self.waits = 0
+            self.stopped = False
+
+        def is_set(self):
+            return self.stopped
+
+        def wait(self, timeout: float | None = None) -> bool:
+            self.waits += 1
+            if self.waits >= len(route):
+                self.stopped = True
+            return self.stopped
+
+    def fake_update(_truck_id, *_args, **kwargs):
+        seen.append(dict(kwargs["headers"]))
+        if not renewed_once["done"]:
+            renewed_once["done"] = True
+            kwargs["on_unauthorized"]()
+        return True
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
+    monkeypatch.setattr("scripts.simulate_trucks.actualizar_ubicacion", fake_update)
+
+    simular_ruta(
+        7,
+        "ABC123",
+        1,
+        headers=shared_headers,
+        stop_event=StopAfterRoute(),
+        refresh_headers=lambda: {"Authorization": "Bearer fresh"},
+    )
+
+    assert seen[0] == {"Authorization": "Bearer stale"}
+    assert seen[-1] == {"Authorization": "Bearer fresh"}
+    assert shared_headers == {"Authorization": "Bearer fresh"}
+
+
+def test_cargar_env_local_loads_values_without_overriding_process_env(monkeypatch, tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text("ITERTRACK_PROBE_KEEP=from_file\nITERTRACK_PROBE_NEW=from_file\n")
+
+    monkeypatch.setenv("ITERTRACK_PROBE_KEEP", "from_process")
+    monkeypatch.delenv("ITERTRACK_PROBE_NEW", raising=False)
+
+    cargar_env_local(env_file)
+
+    assert os.environ["ITERTRACK_PROBE_KEEP"] == "from_process"
+    assert os.environ["ITERTRACK_PROBE_NEW"] == "from_file"
+
+    monkeypatch.delenv("ITERTRACK_PROBE_NEW", raising=False)
+
