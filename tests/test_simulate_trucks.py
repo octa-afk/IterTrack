@@ -376,7 +376,9 @@ def test_ejecutar_simulaciones_aborts_without_token(monkeypatch):
         "scripts.simulate_trucks.actualizar_ubicacion", lambda *args, **kwargs: calls.append("actualizar")
     )
 
-    ejecutar_simulaciones(base_id=1, base_plate="ABC123", intervalo=1, count=1)
+    # A container must exit non-zero here, otherwise the orchestrator treats
+    # the run as successful and stops restarting it.
+    assert ejecutar_simulaciones(base_id=1, base_plate="ABC123", intervalo=1, count=1) is False
 
     assert calls == []
 

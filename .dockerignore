@@ -31,3 +31,8 @@ docs/
 .idea/
 extras/
 opencode.json
+
+# Deployment artifacts run on the host, not inside the image
+deploy/
+docker-compose.yml
+Caddyfile

@@ -1,0 +1,87 @@
+name: itertrack
+
+# Runs the demo on a single host: Caddy terminates TLS, the web service runs
+# FastAPI (and migrates on boot), the worker feeds the demo fleet through the
+# same ingest endpoint an ESP32 uses, and Postgres keeps its data in a named
+# volume.
+#
+# Postgres publishes no port on purpose. It is reachable only from this Compose
+# network; to inspect it from your laptop, open an SSH tunnel instead.
+
+x-app: &app
+  image: ${IMAGE:-ghcr.io/octa-afk/itertrack:latest}
+  restart: unless-stopped
+  env_file: .env
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-itertrack_db}
+      POSTGRES_USER: ${POSTGRES_USER:-itertrack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definí POSTGRES_PASSWORD en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    <<: *app
+    environment:
+      RUN_MIGRATIONS: "true"
+      BOOTSTRAP_PLATFORM: ${BOOTSTRAP_PLATFORM:-true}
+      SEED_DEMO_ON_BOOT: ${SEED_DEMO_ON_BOOT:-true}
+      PORT: "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    # Same image, different command. RUN_MIGRATIONS=false so the worker never
+    # races the web service on the same migration.
+    command:
+      - python
+      - -m
+      - scripts.simulate_trucks
+      - --mode
+      - device
+      - --count
+      - ${DEMO_TRUCK_COUNT:-3}
+      - --id
+      - ${DEMO_TRUCK_BASE_ID:-1}
+      - --plate
+      - ${DEMO_TRUCK_BASE_PLATE:-ABC123}
+      - --interval
+      - "2"
+    environment:
+      RUN_MIGRATIONS: "false"
+      API_URL: http://web:8000/trucks
+      AUTH_URL: http://web:8000/auth/login
+    depends_on:
+      web:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?definí DOMAIN en .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
