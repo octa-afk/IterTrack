@@ -305,9 +305,13 @@
 /* El boton de demo solo existe cuando el servidor lo habilita (GET /config). */
 .auth-page .btn.demo {
   margin-top: 10px;
-  background: transparent;
-  color: var(--acc-d);
-  border: 1px solid var(--line);
+  background: linear-gradient(135deg, #6b8cff, #8a5cf6);
+  color: #fff;
+  border: 0;
+  box-shadow: 0 6px 20px rgba(90, 126, 230, 0.35);
 }
-.auth-page .btn.demo:hover { background: rgba(90, 126, 230, 0.08); }
+.auth-page .btn.demo:hover {
+  background: linear-gradient(135deg, #5a7ee6, #7a4cf0);
+  box-shadow: 0 8px 24px rgba(90, 126, 230, 0.45);
+}
 .auth-page .hint.centered { text-align: center; }
