@@ -260,3 +260,31 @@ Verificado en producción: 10 migraciones aplicadas, bootstrap de plataforma (`I
 **Hallazgo 3 — velocidades irreales.** La ruta tiene 425 puntos, 13,03 km, con espaciado irregular (media 30,7 m, máximo 162,8 m). A un punto cada 2 s, el tramo máximo implica 293 km/h, y 93 de los 424 tramos superan los 90 km/h. Se ve en el panel, que dibuja una línea de límite de 90 km/h.
 
 **Hallazgo 4 — invitación de demo activa.** `Demo Corp` tiene un `invitation_code` activo y sin expiración, impreso en el log del seed. Cualquiera puede crear un usuario en el tenant de demo. `_reset_tenant` borra camiones, dispositivos y puntos, pero **no usuarios**, así que las cuentas creadas se acumulan entre resets.
+
+### L14 — El reset ya no congela la flota, y el cron quedó instalado (2026-10-23)
+
+Corregido el hallazgo 1 de L13. Primero el test (4 casos en RED), después el arreglo:
+
+- `enviar_ingesta` acepta `on_unauthorized` y reintenta el punto **una sola vez** con el token que devuelve el callback, igual que el camino de usuario.
+- `constructor_de_sender` **persiste** ese token, así una recuperación cuesta una rotación y no una por punto.
+- La recuperación reusa `preparar_dispositivo`, que ya sabía reaprovisionar un dispositivo faltante o rotar el existente, y respeta un camión tomado por hardware real.
+- Una recuperación fallida se reintenta como mucho cada 30 s, para que un ESP32 real no haga que el simulador golpee la administración en cada punto.
+
+El primer intento tenía un defecto propio: el cooldown se aplicaba también a las recuperaciones exitosas, así que **dos resets seguidos dejaban la flota parada hasta 30 s**. Corregido: solo un fallo arranca el cooldown.
+
+Verificación en producción, con la imagen `d112f47`:
+
+| Prueba | Resultado |
+|---|---|
+| Reset simple, sin reiniciar el worker | flota sigue |
+| Dos resets seguidos | 3 dispositivos nuevos, **1 rotación cada uno**, flota sigue |
+| Estado estable | 33 puntos OK / 0 FAIL en 20 s |
+| Cron con entorno mínimo (`env -i`) | exit 0 y reset aplicado |
+
+Cron instalado en el host (`crontab`, no systemd timer):
+
+```
+0 4 * * * cd /home/octa/itertrack && /usr/bin/docker compose exec -T web python -m scripts.seed_demo --reset >> /home/octa/reset.log 2>&1
+```
+
+Nota para el futuro: `crontab -` dentro de un script con `set -e` falló en silencio; `crontab archivo` sí funciona. Es el tipo de detalle que hace que un cron "esté instalado" y no corra nunca.
