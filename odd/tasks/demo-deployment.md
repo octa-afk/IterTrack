@@ -121,6 +121,22 @@ Hallazgo durante los tests: con ids fijos, el seed **adoptaba** un camión de ot
 
 Evidencia: 10 tests en `tests/test_platform_setup_scripts.py`; suite completa **178 passed**; `make check` limpio (40 archivos). Verificación contra la Postgres local: bootstrap creado y repetido sin duplicar; seed creado y luego `--reset`, con `Demo Fleet` (org 2) y sus 3 camiones intactos después del reset.
 
+### L7 — Bloque 3: modo dispositivo del simulador (2026-10-23)
+
+Motivo: el usuario aclaró que el simulador es la flota de desarrollo (no solo la demo) y que convive con ESP32 reales. El modo anterior escribía por `PUT /trucks/{id}/location`, que **no** pasa por el pipeline del hardware: sin token de dispositivo, sin resolución de asignación, sin dedupe por `batch_id`+`sequence`, sin puntos rechazados ni alertas, sin auditoría en `ingested_points`.
+
+Diseño: el loop de ruta recibe un *sender* (`enviar(lat, lon, velocidad, rumbo, medido_en) -> bool`) y deja de conocer el transporte.
+
+- `--mode user` (default, sin cambios de comportamiento): sender = `actualizar_ubicacion` con renovación de token.
+- `--mode device`: `preparar_dispositivo()` + `constructor_de_sender(token)`; emite por `POST /devices/ingest` con `batch_id` UUID y `sequence` incremental.
+
+Coexistencia: un camión tiene una sola asignación abierta (`uq_device_assignments_open_truck`). El simulador reconoce sus dispositivos por `SIMULATED_DEVICE_PREFIX` + id de camión (`SIM-001`) y **saltea** cualquier camión ocupado por otro dispositivo, así el ESP32 real siempre gana. `--force` revoca al ocupante, con advertencia explícita de que hay que volver a aprovisionar ese equipo.
+
+Se unificó la convención de nombres: el seed ahora nombra los dispositivos `SIM-<truck_id:03d>` (antes `DEMO-DEVICE-<índice>`), que es exactamente lo que calcula el simulador. Sin eso, el modo dispositivo habría considerado los dispositivos del seed como hardware ajeno y habría salteado toda la demo.
+
+Evidencia: 9 tests en `tests/test_simulate_device_mode.py`; suite completa **187 passed**; `make check` limpio (41 archivos). Prueba end-to-end contra la API local en el puerto 8010: 58 puntos en `ingested_points`, 0 rechazados, `tracking_points` actualizados con velocidad y rumbo; y con un prefijo distinto el simulador salteó el camión ocupado y abortó sin tocar nada.
+
+
 
 
 

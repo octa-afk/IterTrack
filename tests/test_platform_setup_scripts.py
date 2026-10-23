@@ -44,7 +44,7 @@ def demo_config(**overrides: Any) -> DemoSeedConfig:
         "truck_count": 3,
         "base_id": 1,
         "base_plate": "ABC123",
-        "device_prefix": "DEMO-DEVICE",
+        "device_prefix": "SIM",
     }
     data.update(overrides)
     return DemoSeedConfig(**data)
@@ -133,7 +133,7 @@ def test_seed_creates_demo_tenant_with_its_roles_and_fleet(db_session):
         (3, "ABC123-03"),
     ]
 
-    devices = db_session.query(Device).filter(Device.identifier.like("DEMO-DEVICE-%")).all()
+    devices = db_session.query(Device).filter(Device.identifier.like("SIM-%")).all()
     assert len(devices) == 3
     assert all(device.organization_id == organization.id for device in devices)
     assert (

@@ -4,6 +4,7 @@ SIMULATION_COUNT ?= 3
 SIMULATION_INTERVAL ?= 2
 SIMULATION_ID ?= 1
 SIMULATION_PLATE ?= ABC123
+SIMULATION_MODE ?= user
 
 test:
 	env/bin/python -m pytest tests/ -v
@@ -28,7 +29,8 @@ simulation:
 		--count $(SIMULATION_COUNT) \
 		--interval $(SIMULATION_INTERVAL) \
 		--id $(SIMULATION_ID) \
-		--plate $(SIMULATION_PLATE)
+		--plate $(SIMULATION_PLATE) \
+		--mode $(SIMULATION_MODE)
 
 # One-time platform owner and internal organization. Never touched by the demo reset.
 bootstrap:
