@@ -221,15 +221,66 @@ export function appendPath(path: PathPoint[], point: TrackingPoint): PathPoint[]
   return [...path, { lat: point.lat, lng: point.long, at }].slice(-TRIP_LIMIT);
 }
 
+/**
+ * Velocidad que ningún camión alcanza. Por encima de esto dos puntos seguidos
+ * no son un recorrido: son un corte (el simulador reinició en otro punto del
+ * circuito, el equipo se reasignó, el GPS saltó). Unirlos dibuja una recta que
+ * cruza la ciudad y que el camión nunca hizo.
+ */
+export const MAX_TRAIL_KMH = 200;
+
+/** Velocidad implícita entre dos puntos del recorrido, en km/h. */
+function impliedKmh(first: PathPoint, second: PathPoint): number {
+  const seconds = (second.at - first.at) / 1000;
+  const meters = haversineM(first.lat, first.lng, second.lat, second.lng);
+  if (seconds <= 0) return meters > 0 ? Number.POSITIVE_INFINITY : 0;
+  return (meters / seconds) * 3.6;
+}
+
+/** True cuando el tramo entre dos puntos es un corte, no un recorrido. */
+export function isTrailJump(
+  first: PathPoint,
+  second: PathPoint,
+  maxKmh = MAX_TRAIL_KMH,
+): boolean {
+  return impliedKmh(first, second) > maxKmh;
+}
+
+/**
+ * Parte el recorrido donde hay un corte.
+ *
+ * El mapa dibuja un segmento por tramo continuo: sin esto, un solo corte
+ * atraviesa el recorrido con una recta larga. Un tramo de un solo punto no se
+ * dibuja (no hay línea que trazar).
+ */
+export function splitPath(path: PathPoint[], maxKmh = MAX_TRAIL_KMH): PathPoint[][] {
+  const segments: PathPoint[][] = [];
+  let current: PathPoint[] = [];
+  for (const point of path) {
+    const last = current[current.length - 1];
+    if (last && isTrailJump(last, point, maxKmh)) {
+      if (current.length > 1) segments.push(current);
+      current = [];
+    }
+    current.push(point);
+  }
+  if (current.length > 1) segments.push(current);
+  return segments;
+}
+
 /** Distance and duration of a trail; null when there is nothing to measure. */
 export function tripSummary(path: PathPoint[]): TripSummary | null {
-  if (path.length < 2) return null;
+  // Sólo el último tramo continuo: si hubo un corte, el resumen del recorrido
+  // actual no puede sumar kilómetros de un trazado anterior.
+  const segments = splitPath(path);
+  const current = segments[segments.length - 1];
+  if (!current || current.length < 2) return null;
   let meters = 0;
-  for (let i = 1; i < path.length; i++) {
-    meters += haversineM(path[i - 1].lat, path[i - 1].lng, path[i].lat, path[i].lng);
+  for (let i = 1; i < current.length; i++) {
+    meters += haversineM(current[i - 1].lat, current[i - 1].lng, current[i].lat, current[i].lng);
   }
-  const minutes = Math.max(0, (path[path.length - 1].at - path[0].at) / 60000);
-  return { km: meters / 1000, minutes, points: path.length };
+  const minutes = Math.max(0, (current[current.length - 1].at - current[0].at) / 60000);
+  return { km: meters / 1000, minutes, points: current.length };
 }
 
 /** Compact duration for the trip summary: 45 min, 2.3 h. */
