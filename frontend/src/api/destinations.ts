@@ -22,8 +22,9 @@ export function listDepots(): Promise<Depot[]> {
 }
 
 /** GET /trips — viajes de la organización, más reciente primero. */
-export function listTrips(): Promise<Trip[]> {
-  return apiRequest<Trip[]>('/trips');
+export function listTrips(truckId?: number): Promise<Trip[]> {
+  const query = truckId === undefined ? '' : `?truck_id=${truckId}`;
+  return apiRequest<Trip[]>(`/trips${query}`);
 }
 
 /** GET /trips/available-trucks — activos y sin viaje abierto. */

@@ -4,10 +4,11 @@ import 'leaflet/dist/leaflet.css';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@maplibre/maplibre-gl-leaflet';
+import { listTrips } from '../api/destinations';
 import { useDashboard } from '../state/useDashboard';
 import { createTruckIcon } from '../lib/truckIcon';
 import { createMovementController, type ActiveMove } from '../lib/movement';
-import { POLL_MS, haversineM } from '../lib/trucks';
+import { POLL_MS, haversineM, splitPath } from '../lib/trucks';
 
 /*
  * Ported from source/static/js/map.js (map boot + marker rendering) plus
@@ -20,6 +21,13 @@ const MOVE_MIN_MS = 400;
 const MOVE_MAX_MS = 6000;
 const MOVE_EASE = (k: number) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
 const OPEN_ZOOM = 12;
+/* Córdoba Capital: encuadre inicial antes de ajustar a la flota. */
+const CITY_CENTER: [number, number] = [-31.4135, -64.1811];
+/*
+ * Azul cósmico para todos los recorridos. El trazado es el mismo para cualquier
+ * camión y se mira de a uno, así que el color no tiene que distinguir la flota.
+ */
+const TRAIL_COLOR = '#1f3a93';
 
 /*
  * Escala del marcador según el zoom. A zoom ciudad (12+) se dibuja a tamaño
@@ -51,7 +59,9 @@ export default function MapView() {
   const lastPosRef = useRef(new Map<number, { lat: number; lng: number; updated: number }>());
   const movesRef = useRef(new Map<number, ActiveMove>());
   const movementRef = useRef<ReturnType<typeof createMovementController> | null>(null);
-  const trailRef = useRef<L.Polyline | null>(null);
+  const trailRef = useRef<L.LayerGroup | null>(null);
+  const tripRef = useRef<L.LayerGroup | null>(null);
+  const fittedRef = useRef(false);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
 
@@ -65,7 +75,7 @@ export default function MapView() {
     const el = containerRef.current;
     if (!el) return;
 
-    const map = L.map(el).setView([-31.9, -64.0], 7);
+    const map = L.map(el).setView(CITY_CENTER, OPEN_ZOOM);
     mapRef.current = map;
     const markers = markersRef.current;
     const lastPos = lastPosRef.current;
@@ -183,6 +193,8 @@ export default function MapView() {
       movementRef.current = null;
       trailRef.current?.remove();
       trailRef.current = null;
+      tripRef.current?.remove();
+      tripRef.current = null;
       markers.clear();
       lastPos.clear();
       moves.clear();
@@ -190,6 +202,22 @@ export default function MapView() {
       mapRef.current = null;
     };
   }, []);
+
+  /*
+   * Encuadre inicial: al recargar, el mapa se abre sobre la flota con el zoom
+   * justo para ver los tres camiones, no en la provincia entera. Se hace una
+   * sola vez; después manda la selección.
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || fittedRef.current || selectedId !== null) return;
+    const puntos = trucks
+      .filter((truck) => truck.lat !== null && truck.lng !== null)
+      .map((truck) => [truck.lat as number, truck.lng as number] as [number, number]);
+    if (!puntos.length) return;
+    fittedRef.current = true;
+    map.fitBounds(L.latLngBounds(puntos), { padding: [70, 70], maxZoom: OPEN_ZOOM });
+  }, [trucks, selectedId]);
 
   /* Reconcile markers with the current fleet state. */
   useEffect(() => {
@@ -252,35 +280,108 @@ export default function MapView() {
     }
   }, [trucks, visibleTrucks, selectedId]);
 
-  /* Draw the selected truck's recent trail under the markers. */
+  /*
+   * Draw the selected truck's recent trail under the markers. Se dibuja sólo el
+   * último tramo continuo (ver `splitPath`): el recorrido de una corrida
+   * anterior —simulador reiniciado, camión que cambió de ruta, GPS que saltó—
+   * no es el recorrido actual, y unirlo dibuja calles que el camión no hizo.
+   */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const truck = trucks.find((t) => t.id === selectedId);
-    const latlngs = (truck?.path ?? []).map(
-      (point) => [point.lat, point.lng] as [number, number],
-    );
+    const tramos = truck ? splitPath(truck.path) : [];
+    const actual = tramos[tramos.length - 1];
 
-    if (!truck || latlngs.length < 2) {
+    if (!truck || !actual) {
       trailRef.current?.remove();
       trailRef.current = null;
+      tripRef.current?.remove();
+      tripRef.current = null;
       return;
     }
 
-    if (!trailRef.current) {
-      trailRef.current = L.polyline(latlngs, {
-        color: truck.color,
+    if (!trailRef.current) trailRef.current = L.layerGroup().addTo(map);
+    const capa = trailRef.current;
+    capa.clearLayers();
+    L.polyline(
+      actual.map((point) => [point.lat, point.lng] as [number, number]),
+      {
+        color: TRAIL_COLOR,
         weight: 4,
-        opacity: 0.8,
+        opacity: 0.9,
         lineJoin: 'round',
         lineCap: 'round',
-      }).addTo(map);
+      },
+    ).addTo(capa);
+
+    /* Dónde empezó la corrida que se está mirando. */
+    const inicio = actual[0];
+    L.circleMarker([inicio.lat, inicio.lng], {
+      radius: 5,
+      color: '#fff',
+      weight: 2,
+      fillColor: TRAIL_COLOR,
+      fillOpacity: 1,
+    })
+      .bindTooltip('Inicio del recorrido')
+      .addTo(capa);
+  }, [trucks, selectedId]);
+
+  /*
+   * Destinos del viaje abierto del camión seleccionado. Es el único trabajo que
+   * no está en el polling de la flota: los viajes cambian por decisiones
+   * humanas, así que se piden al cambiar la selección.
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (selectedId === null) {
+      tripRef.current?.clearLayers();
       return;
     }
-    trailRef.current.setLatLngs(latlngs);
-    trailRef.current.setStyle({ color: truck.color });
-  }, [trucks, selectedId]);
+
+    let cancelado = false;
+    void (async () => {
+      const viajes = await listTrips(selectedId).catch(() => []);
+      if (cancelado) return;
+      const activo = viajes.find(
+        (viaje) => viaje.status === 'planned' || viaje.status === 'in_progress',
+      );
+      if (!tripRef.current) tripRef.current = L.layerGroup().addTo(map);
+      const capa = tripRef.current;
+      capa.clearLayers();
+      if (!activo) return;
+
+      const puntos: [number, number][] = [];
+      for (const stop of activo.stops) {
+        if (stop.lat === null || stop.lng === null) continue;
+        puntos.push([stop.lat, stop.lng]);
+        L.marker([stop.lat, stop.lng], {
+          icon: L.divIcon({
+            className: '',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+            html: `<span class="stop-pin${stop.needs_review ? ' pending' : ''}">${stop.seq}</span>`,
+          }),
+          title: stop.address,
+        }).addTo(capa);
+      }
+      if (puntos.length > 1) {
+        L.polyline(puntos, {
+          color: '#3f6fe0',
+          weight: 2,
+          opacity: 0.7,
+          dashArray: '7 6',
+        }).addTo(capa);
+      }
+    })();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [selectedId]);
 
   /* Fly to the selected truck when the selection changes. */
   useEffect(() => {
