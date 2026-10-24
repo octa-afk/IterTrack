@@ -1,8 +1,17 @@
+import { NavLink } from 'react-router-dom';
 import { Mark } from './Mark';
 
-const NAV_ITEMS = [
-  { label: 'Panel', active: true, icon: <path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z" /> },
-  { label: 'Camiones', icon: <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /> },
+/*
+ * `to` navega; sin `to` la sección todavía no existe y se muestra deshabilitada
+ * (S5). Nada de páginas vacías: el usuario ve que no está, no un placeholder.
+ */
+const NAV_ITEMS: {
+  label: string;
+  to?: string;
+  icon: React.ReactNode;
+}[] = [
+  { label: 'Panel', to: '/map', icon: <path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z" /> },
+  { label: 'Camiones', to: '/fleet', icon: <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /> },
   {
     label: 'Rutas',
     icon: (
@@ -34,12 +43,28 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
           IterTrack
         </div>
         <nav aria-label="Principal">
-          {NAV_ITEMS.map((item) => (
-            <a key={item.label} className={item.active ? 'on' : undefined} tabIndex={0}>
-              <svg viewBox="0 0 24 24">{item.icon}</svg>
-              {item.label}
-            </a>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.to ? (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                className={({ isActive }) => (isActive ? 'on' : undefined)}
+              >
+                <svg viewBox="0 0 24 24">{item.icon}</svg>
+                {item.label}
+              </NavLink>
+            ) : (
+              <a
+                key={item.label}
+                aria-disabled="true"
+                title="Próximamente"
+                className="soon"
+              >
+                <svg viewBox="0 0 24 24">{item.icon}</svg>
+                {item.label}
+              </a>
+            ),
+          )}
         </nav>
         <button className="logout" id="btn-logout" type="button" onClick={onLogout}>
           <svg viewBox="0 0 24 24">

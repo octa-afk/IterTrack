@@ -31,6 +31,7 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 * **Registro y gestión de camiones:** Identificación única por ID y patente vehicular única.
 * **Telemetría GPS en tiempo real:** Recepción continua de coordenadas, velocidad, rumbo y timestamp.
 * **Panel en vivo (SPA React):** Aplicación **React 19 + TypeScript + Vite** servida por FastAPI en `/map`, con mapa **Leaflet + MapLibre** sobre OpenStreetMap, marcador cenital del camión que rota según el rumbo, se escala con el zoom y sigue automáticamente al vehículo seleccionado.
+* **Navegación por secciones:** sidebar con `Panel` (mapa en vivo) y `Camiones` (tabla de flota con filtros, orden y detalle). `Rutas`, `Reportes` y `Ajustes` están visibles como próximas, sin páginas de relleno.
 * **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
 * **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`); todos los endpoints de camiones, tanto de lectura como de escritura, requieren token Bearer. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
 * **Roles con alcance explícito y aislamiento por organización:** `platform_admin`, `org_admin` y `member`, reforzados por un `CHECK CONSTRAINT` en la base. Ningún listado cruza el límite de una organización y operar sobre un recurso ajeno responde `404` para no revelar que existe.
@@ -120,7 +121,7 @@ IterTrack/
 │   ├── script.py.mako             # Template para generación de revisiones
 │   └── versions/                  # Historial de migraciones de la base de datos
 └── source/
-    ├── main.py                    # FastAPI: routers, SPA en /, /register y /map, y /assets
+    ├── main.py                    # FastAPI: routers, SPA en /, /register, /map y /fleet, y /assets
     ├── static/
     │   └── isologo.png            # Ícono del sitio (/favicon.ico)
     ├── database/
@@ -234,7 +235,7 @@ alembic upgrade head
 
 ### 6. Compilar el Frontend
 
-FastAPI sirve el build de React desde `frontend/dist`. Sin ese build, `/`, `/register` y `/map` responden `503`.
+FastAPI sirve el build de React desde `frontend/dist`. Sin ese build, `/`, `/register`, `/map` y `/fleet` responden `503`.
 
 ```bash
 make frontend   # npm ci && npm run build en frontend/
@@ -383,6 +384,7 @@ git checkout IterTrack-Hardware
 | `GET` | `/` | SPA React (`frontend/dist/index.html`) — login | — | — |
 | `GET` | `/register` | SPA React — registro | — | — |
 | `GET` | `/map` | SPA React — panel; valida la sesión antes de consultar la API | — | — |
+| `GET` | `/fleet` | SPA React — sección Camiones (tabla de flota) | — | — |
 | `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`source/static/isologo.png`) | — | — |
 | `GET` | `/health` | Estado del servicio (`{"status": "ok"}`) | — | — |
 | `GET` | `/assets/{archivo}` | CSS y JS hasheados del build de React | — | — |
