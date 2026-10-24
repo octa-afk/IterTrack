@@ -1,6 +1,25 @@
-from datetime import date, datetime
+from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+class DepotCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(..., min_length=2, max_length=120)
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+    radius_m: int = Field(default=150, ge=10, le=5000)
+
+
+class DepotResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    lat: float
+    lng: float
+    radius_m: int
 
 
 class ChargerCreate(BaseModel):
@@ -40,12 +59,21 @@ class TripCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     charger_id: int
-    scheduled_for: date
+    departure_at: datetime
     external_ref: str | None = Field(default=None, max_length=64)
     truck_id: int | None = None
+    depot_id: int | None = None
     driver_name: str | None = Field(default=None, max_length=120)
     notes: str | None = None
     stops: list[StopCreate] = Field(..., min_length=1, max_length=200)
+
+    @field_validator("departure_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        """Sin zona, "07:30" puede ser Córdoba o UTC y la salida se corre 3 h."""
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("departure_at must include timezone")
+        return value
 
 
 class StopResponse(BaseModel):
@@ -70,7 +98,8 @@ class TripResponse(BaseModel):
     charger_id: int
     truck_id: int | None
     driver_name: str | None
-    scheduled_for: date
+    departure_at: datetime
+    depot_id: int | None
     status: str
     external_ref: str | None
     notes: str | None

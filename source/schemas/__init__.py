@@ -4,6 +4,8 @@ from .auth import Token, UserCreate, UserResponse
 from .destination import (
     ChargerCreate,
     ChargerResponse,
+    DepotCreate,
+    DepotResponse,
     StopCoordinates,
     StopCreate,
     StopResponse,
@@ -24,6 +26,8 @@ from .truck import Truck
 __all__ = [
     "ChargerCreate",
     "ChargerResponse",
+    "DepotCreate",
+    "DepotResponse",
     "DeviceAssignmentInfo",
     "DeviceCreate",
     "DeviceIngestBatch",

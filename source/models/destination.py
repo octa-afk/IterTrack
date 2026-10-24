@@ -1,9 +1,8 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
-    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -57,6 +56,32 @@ class Charger(Base):
     trips: Mapped[list["Trip"]] = relationship(back_populates="charger")
 
 
+class Depot(Base):
+    """Depósito de donde salen los camiones.
+
+    Guarda la ubicación desde el arranque aunque la elegibilidad todavía no la
+    use: el chequeo de radio ("está en el depósito") es el paso siguiente y sin
+    lat/lng habría que migrar de nuevo.
+    """
+
+    __tablename__ = "depots"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "name", name="uq_depots_org_name"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(120))
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+    radius_m: Mapped[int] = mapped_column(default=150, server_default=text("150"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
 class Trip(Base):
     """Un envío con fecha. El chofer vive acá, no en el camión: en
     tercerización el mismo camión rota de chofer según el viaje."""
@@ -81,7 +106,11 @@ class Trip(Base):
         ForeignKey("trucks.id"), nullable=True, index=True
     )
     driver_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    scheduled_for: Mapped[date] = mapped_column(Date, index=True)
+    # Fecha y hora de salida: "salir a las 07:30" no entra en un `date`.
+    departure_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    depot_id: Mapped[int | None] = mapped_column(
+        ForeignKey("depots.id"), nullable=True, index=True
+    )
     status: Mapped[str] = mapped_column(String(16), default="planned")
     # Idempotencia: el cliente reenvía lo que le mandaron y un mismo envío no
     # puede entrar dos veces. NULL se repite sin conflicto.
