@@ -257,9 +257,10 @@ export default function MapView() {
   }, [trucks, visibleTrucks, selectedId]);
 
   /*
-   * Draw the selected truck's recent trail under the markers. El recorrido se
-   * parte donde hay un corte (ver `splitPath`): unirlos dibujaría una recta que
-   * cruza la ciudad y que el camión nunca recorrió.
+   * Draw the selected truck's recent trail under the markers. Se dibuja sólo el
+   * último tramo continuo (ver `splitPath`): el recorrido de una corrida
+   * anterior —simulador reiniciado, camión que cambió de ruta, GPS que saltó—
+   * no es el recorrido actual, y unirlo dibuja calles que el camión no hizo.
    */
   useEffect(() => {
     const map = mapRef.current;
@@ -267,8 +268,9 @@ export default function MapView() {
 
     const truck = trucks.find((t) => t.id === selectedId);
     const tramos = truck ? splitPath(truck.path) : [];
+    const actual = tramos[tramos.length - 1];
 
-    if (!truck || !tramos.length) {
+    if (!truck || !actual) {
       trailRef.current?.remove();
       trailRef.current = null;
       tripRef.current?.remove();
@@ -279,18 +281,16 @@ export default function MapView() {
     if (!trailRef.current) trailRef.current = L.layerGroup().addTo(map);
     const capa = trailRef.current;
     capa.clearLayers();
-    for (const tramo of tramos) {
-      L.polyline(
-        tramo.map((point) => [point.lat, point.lng] as [number, number]),
-        {
-          color: truck.color,
-          weight: 4,
-          opacity: 0.8,
-          lineJoin: 'round',
-          lineCap: 'round',
-        },
-      ).addTo(capa);
-    }
+    L.polyline(
+      actual.map((point) => [point.lat, point.lng] as [number, number]),
+      {
+        color: truck.color,
+        weight: 4,
+        opacity: 0.8,
+        lineJoin: 'round',
+        lineCap: 'round',
+      },
+    ).addTo(capa);
   }, [trucks, selectedId]);
 
   /*

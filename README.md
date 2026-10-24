@@ -361,6 +361,7 @@ make simulation SIMULATION_COUNT=1   # un camión, para probar el marcador
 1. **Rutas Urbanas Reales:** Cada camión recorre su propio circuito cerrado por Córdoba Capital: centro / Nueva Córdoba ([`cordoba_route.json`](./scripts/cordoba_route.json), 14 km), Cerro de las Rosas / Argüello ([`cordoba_route_norte.json`](./scripts/cordoba_route_norte.json), 18 km) y Jardín / Av. Cruz Roja ([`cordoba_route_sur.json`](./scripts/cordoba_route_sur.json), 14 km). Los tres están georreferenciados punto por punto y se generan con [`scripts/generate_demo_routes.py`](./scripts/generate_demo_routes.py) usando OSRM; los datos derivan de OpenStreetMap (ODbL).
 2. **Telemetría Completa:** Muestra en tiempo real el rumbo en grados (°), punto cardinal (N, SE, etc.), velocidad calculada en km/h y estado HTTP (`200 OK`).
 3. **Bucle Continuo:** Al completar su circuito, cada camión reinicia la vuelta siguiente sin interrupciones.
+4. **Corrida Limpia:** Al arrancar, el simulador borra el recorrido previo de sus propios camiones (los que tienen un ESP32 real se saltean antes, así que su historial nunca se toca). Sin eso, los puntos de la corrida anterior quedan a kilómetros de la nueva y el mapa dibuja un recorrido que el camión no hizo. `--keep-history` conserva la telemetría acumulada.
 
 ---
 
