@@ -24,10 +24,10 @@ const OPEN_ZOOM = 12;
 /* Córdoba Capital: encuadre inicial antes de ajustar a la flota. */
 const CITY_CENTER: [number, number] = [-31.4135, -64.1811];
 /*
- * Celeste claro para todos los recorridos. El trazado es el mismo para cualquier
+ * Azul cósmico para todos los recorridos. El trazado es el mismo para cualquier
  * camión y se mira de a uno, así que el color no tiene que distinguir la flota.
  */
-const TRAIL_COLOR = '#7fc8f0';
+const TRAIL_COLOR = '#1f3a93';
 
 /*
  * Escala del marcador según el zoom. A zoom ciudad (12+) se dibuja a tamaño
