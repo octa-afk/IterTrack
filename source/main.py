@@ -6,6 +6,8 @@ from fastapi.staticfiles import StaticFiles
 
 from source.database.config import settings
 from source.services.auth import router as auth_router
+from source.services.destinations import destinations_router, trips_router
+from source.services.destinations import router as chargers_router
 from source.services.devices import router as devices_router
 from source.services.organizations import router as organizations_router
 from source.services.tracking import org_router
@@ -21,6 +23,9 @@ app.include_router(org_router)
 app.include_router(auth_router)
 app.include_router(devices_router)
 app.include_router(organizations_router)
+app.include_router(chargers_router)
+app.include_router(trips_router)
+app.include_router(destinations_router)
 
 # Only the hashed build assets are exposed as files; every route is answered
 # with index.html so React Router owns the client-side routing.

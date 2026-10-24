@@ -109,6 +109,16 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * `docker-compose.yml`: `caddy` (TLS), `web` (migra), `worker` (simulador, `RUN_MIGRATIONS=false`) y `postgres` (volumen nombrado, **sin puertos publicados**). La imagen se publica en GHCR desde `.github/workflows/publish-image.yml`.
    * El runbook operativo está en `docs/DEPLOYMENT.md`.
 
+10. **Destinos y viajes tercerizados (`source/services/destinations.py`, `source/models/destination.py`):**
+   * `chargers` es el dador de carga (la empresa que terceriza el envío). Es una dimensión de la organización, **no** un inquilino: no tiene login ni invitaciones.
+   * `trips` une dador, fecha, camión y chofer. **El chofer va en el viaje, no en el camión**: en tercerización el mismo camión rota de chofer por envío.
+   * `external_ref` es idempotente por organización: un envío reenviado dos veces responde `409` en lugar de duplicarse.
+   * **La coordenada es la fuente de verdad; la dirección es texto para mostrar.** Se resuelve una sola vez al importar y se guarda en `address_cache` por dirección normalizada (sin acentos, minúsculas). Reimportar la misma dirección no consulta al proveedor.
+   * Lo que el geocoder no encuentra queda `needs_review=true` en `GET /destinations/pending`. No se inventa un centroide: un pin equivocado manda al chofer al lugar incorrecto.
+   * El pin manual (`PATCH /trips/{id}/stops/{stop_id}`) resuelve el destino y **escribe la caché** con `resolved_by_user_id`.
+   * El proveedor vive detrás de la interfaz `Geocoder` (`source/services/geocoding.py`), inyectada con `Depends(get_geocoder)`. `GEOCODER_PROVIDER` acepta `none` (default, no llama a nadie) y `nominatim`. Los tests siempre la sobrescriben y nunca salen a la red.
+   * La instancia pública de Nominatim no sirve en producción: 1 request/segundo y 4 por minuto para scripts periódicos. El análisis y las alternativas están en `odd/tasks/destinations.md`.
+
 ---
 
 ## 5. Reglas Críticas de Seguridad y Secretos
