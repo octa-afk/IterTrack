@@ -469,12 +469,7 @@
      nada detrás de las tarjetas, así que el vidrio no tenía qué difuminar.
      Un gradiente con manchas suaves le da material al `backdrop-filter` sin
      competir con el contenido: contrastes bajos y sin bordes duros. */
-  .app.app-section{
-    background:
-      radial-gradient(900px 620px at 18% -4%,rgba(31,42,61,.035),transparent 70%),
-      radial-gradient(760px 560px at 100% 104%,rgba(31,42,61,.035),transparent 70%),
-      linear-gradient(180deg,#ffffff 0%,#fbfcfd 46%,#f4f6fa 100%);
-  }
+  .app.app-section{background:#dfe8f6}
   /* Vidrio más translúcido sólo acá: contra el mapa ese ajuste no aplica. */
   @media (min-width:641px){
     .app.app-section{
@@ -484,5 +479,5 @@
     }
   }
   @media (max-width:1265px){
-    .app.app-section{background:linear-gradient(180deg,#ffffff,#f5f7fb)}
+    .app.app-section{background:#dfe8f6}
   }
