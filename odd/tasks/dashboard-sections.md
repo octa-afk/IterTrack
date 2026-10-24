@@ -32,6 +32,10 @@ S8. La sección Camiones acompaña el compactado del sidebar con la misma
 lógica que la barra de búsqueda: `left` anima con `.3s ease` al cambiar
 `--lx`, en ambos sentidos. Sin animación de entrada de contenido.
 
+S9. Las secciones sin mapa (Camiones y las que vengan) tienen un fondo propio
+con gradiente sutil, y sus tarjetas bajan la opacidad del vidrio para que el
+`backdrop-filter` se perciba.
+
 S6. `extras/nuevo html(prueba)` **no** se usa como referencia de diseño: es
 material local de otra rama, ignorado por git. Borrarlo queda a decisión del
 usuario porque no está respaldado en ninguna rama.
@@ -134,3 +138,20 @@ controles de Leaflet: ahora ambos sentidos animan y en sincronía.
 Medición (x en px, mismo instante): compactando 271 → 151.6 → 53.6 → 17.8 para
 la sección y para la barra; expandiendo 16 → 135.4 → 233.3 → 263.2, idénticos.
 `prefers-reduced-motion: reduce` deja los seis sin transición.
+
+L13 (usuario, textual): "hagamos que el fondode las secciones que no son la
+principal, es decir camiones, luego rutas ajustes ye tc cuando la
+implementemos. tengan alguna especie de gradiente sutil para que se vean los
+paneles glas"
+
+L14: `DashboardLayout` agrega la clase `app-section` cuando la ruta no es
+`/map`. `.app.app-section` trae cuatro capas (tres radiales suaves + un
+`linear-gradient`) y, sólo arriba de 641 px, baja el vidrio a
+`--g-bg:rgba(255,255,255,.70)`. Hallazgo: el `.app` terminaba con
+`background:var(--mint)` sólido de la capa v10, pisando los gradientes previos
+—por eso el fondo se veía plano aunque el CSS parecía tenerlos—. La regla nueva
+va al final y gana por orden.
+Bug de tabla encontrado al verificar: con rumbos de tres dígitos (`243°`) la
+columna de acción desbordaba el ancho útil (541 > 527) y "Ver mapa" se cortaba.
+Pasó a un botón de icono de 30 px; la tabla ahora mide exactamente lo mismo que
+su contenedor (527 = 527).

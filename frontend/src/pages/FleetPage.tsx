@@ -137,14 +137,17 @@ export default function FleetPage() {
                   <td>
                     <button
                       type="button"
-                      className="chip ver"
+                      className="ir-mapa"
+                      title="Ver en el mapa"
                       aria-label={`Ver ${truck.plate} en el mapa`}
                       onClick={(event) => {
                         event.stopPropagation();
                         verEnMapa(truck.id);
                       }}
                     >
-                      Ver mapa
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 12h13M13 6l6 6-6 6" />
+                      </svg>
                     </button>
                   </td>
                 </tr>
