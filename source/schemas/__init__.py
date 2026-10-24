@@ -1,6 +1,17 @@
 """Pydantic request/response schemas."""
 
 from .auth import Token, UserCreate, UserResponse
+from .destination import (
+    ChargerCreate,
+    ChargerResponse,
+    DepotCreate,
+    DepotResponse,
+    StopCoordinates,
+    StopCreate,
+    StopResponse,
+    TripCreate,
+    TripResponse,
+)
 from .device import (
     DeviceAssignmentInfo,
     DeviceCreate,
@@ -13,6 +24,10 @@ from .organization import InvitationRotate, OrganizationCreate, OrganizationResp
 from .truck import Truck
 
 __all__ = [
+    "ChargerCreate",
+    "ChargerResponse",
+    "DepotCreate",
+    "DepotResponse",
     "DeviceAssignmentInfo",
     "DeviceCreate",
     "DeviceIngestBatch",
@@ -23,7 +38,12 @@ __all__ = [
     "InvitationRotate",
     "OrganizationCreate",
     "OrganizationResponse",
+    "StopCoordinates",
+    "StopCreate",
+    "StopResponse",
     "Token",
+    "TripCreate",
+    "TripResponse",
     "Truck",
     "UserCreate",
     "UserResponse",

@@ -6,7 +6,7 @@ import { TruckDetail } from '../components/TruckDetail';
 /*
  * Camiones: la flota completa en tabla. Reusa el store y los filtros del
  * panel (búsqueda del topbar, estado, orden) en lugar de crear otro estado.
- * Usa `.fleet-page` y no `.grid`: el layout del panel es `display:contents`
+ * Usa `.section-page` y no `.grid`: el layout del panel es `display:contents`
  * para el mapa full-screen y dejaría esta tarjeta en la columna del sidebar.
  */
 const CHIP_OPTIONS = [
@@ -43,7 +43,7 @@ export default function FleetPage() {
   };
 
   return (
-    <div className="fleet-page">
+    <div className="section-page">
       <div className="card fleetcard">
         <div className="card-h">
           <h3>Camiones</h3>
