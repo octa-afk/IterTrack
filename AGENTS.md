@@ -101,6 +101,7 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Administración (solo `admin`): `GET /devices`, `POST /devices` (`identifier`, `truck_id`), `POST /devices/{id}/reassign`, `POST /devices/{id}/token/rotate`, `POST /devices/{id}/revoke`.
    * Invariantes: una asignación abierta por equipo y por camión (índices parciales en `device_assignments`); rotar el token invalida el anterior al instante; revocar desactiva el equipo y cierra su asignación para liberar el camión.
    * `source/services/devices.py` expone errores de dominio (`DeviceError`, `DeviceNotFoundError`) que los endpoints traducen a `400`/`404`; `scripts/provision_device.py` los imprime como texto.
+   * **Alertas de ingesta (`source/models/alert.py`, `source/services/alerts.py`):** cada punto rechazado se agrupa en la alerta abierta de `(dispositivo, tipo de problema)` y queda como `alert_occurrence` con su evidencia. Una alerta cerrada que vuelve a fallar abre una nueva enlazada por `previous_alert_id`. `GET /alerts` lista las abiertas de la organización (todas para `platform_admin`); `POST /alerts/{id}/close` exige `org_admin` y responde `404` sobre una alerta ajena. La organización se copia del dispositivo, así que una alerta de `no_assignment` también queda scoped.
 
 9. **Arranque, demo y despliegue:**
    * `scripts/bootstrap_platform.py` crea la organización interna y la cuenta `platform_admin`. Se corre **una vez por despliegue** y converge si se repite. Sin esto, una base vacía no tiene forma de emitir una invitación.

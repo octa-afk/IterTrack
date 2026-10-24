@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from source.database.database import get_db
+from source.models.alert import Alert, AlertOccurrence
 from source.models.device import Device, DeviceAssignment
 from source.models.ingestion import IngestedPoint, RejectedIngestPoint
 from source.models.truck import TrackingPoint, Truck
@@ -225,8 +226,53 @@ def _assignment_for_point(db: Session, device_id: int, recorded_at: datetime) ->
     )
 
 
-def persist_ingest_alert(*, db: Session, device: Device, reason: str, raw_payload: str) -> None:
-    """Alert seam: the current schema has no alert model, so rejection evidence is persisted here."""
+def persist_ingest_alert(
+    *, db: Session, device: Device, reason: str, rejected_point: RejectedIngestPoint
+) -> None:
+    """Agrupa un punto rechazado en la alerta abierta de (equipo, problema).
+
+    Un equipo mal aprovisionado rechaza en cada batch: una alerta con veinte
+    ocurrencias dice más que veinte alertas. Si la última se cerró y el problema
+    vuelve, se abre una nueva enlazada a la anterior para no perder la recurrencia.
+    """
+    # El rechazo tiene que existir para que la ocurrencia lo referencie.
+    db.flush()
+    now = datetime.now(UTC)
+    alert = (
+        db.query(Alert)
+        .filter(
+            Alert.device_id == device.id,
+            Alert.problem_type == reason,
+            Alert.status == "open",
+        )
+        .first()
+    )
+    if alert is None:
+        previous = (
+            db.query(Alert)
+            .filter(
+                Alert.device_id == device.id,
+                Alert.problem_type == reason,
+                Alert.status == "closed",
+            )
+            .order_by(Alert.closed_at.desc())
+            .first()
+        )
+        alert = Alert(
+            organization_id=device.organization_id,
+            device_id=device.id,
+            problem_type=reason,
+            status="open",
+            previous_alert_id=previous.id if previous is not None else None,
+        )
+        db.add(alert)
+        db.flush()
+    alert.latest_occurrence_at = now
+    db.add(
+        AlertOccurrence(
+            alert_id=alert.id, rejected_point_id=rejected_point.id, occurred_at=now
+        )
+    )
 
 
 @router.post("/ingest")
@@ -256,7 +302,7 @@ def ingest_device_batch(
                 raw_payload=_raw_payload(raw_point),
             )
             db.add(rejected)
-            persist_ingest_alert(db=db, device=device, reason=reason, raw_payload=rejected.raw_payload)
+            persist_ingest_alert(db=db, device=device, reason=reason, rejected_point=rejected)
             results.append({"sequence": sequence, "status": "rejected", "reason": reason})
             continue
 
@@ -300,12 +346,13 @@ def ingest_device_batch(
         if duplicate:
             results.append({"sequence": sequence, "status": "rejected", "reason": duplicate.reason, "replayed": True})
             continue
-        db.add(RejectedIngestPoint(
+        rejected = RejectedIngestPoint(
             device_id=device.id, assignment_id=assignment.id if assignment else None,
             batch_id=str(batch.batch_id), sequence=sequence if isinstance(sequence, int) else None,
             reason=reason, raw_payload=raw,
-        ))
-        persist_ingest_alert(db=db, device=device, reason=reason, raw_payload=raw)
+        )
+        db.add(rejected)
+        persist_ingest_alert(db=db, device=device, reason=reason, rejected_point=rejected)
         results.append({"sequence": sequence, "status": "rejected", "reason": reason, "replayed": False})
 
     db.commit()
