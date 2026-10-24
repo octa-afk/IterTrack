@@ -527,3 +527,11 @@
   .aviso{margin:0 0 9.2px;padding:8px 10px;border-radius:9.2px;font-size:12.5px}
   .aviso.ok{background:rgba(90,126,230,.10);color:var(--ink)}
   .aviso.error{background:rgba(224,103,92,.14);color:#8c2f28}
+
+  /* Marcador de destino del viaje en curso (el número es el orden de parada). */
+  .stop-pin{
+    display:grid;place-items:center;width:22px;height:22px;border-radius:50%;
+    background:#1f2a3d;color:#fff;font:600 11px Poppins;
+    box-shadow:0 2px 6px rgba(15,25,50,.35);border:2px solid #fff;
+  }
+  .stop-pin.pending{background:var(--alert)}
