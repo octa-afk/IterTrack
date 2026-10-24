@@ -89,8 +89,16 @@ export function FleetList() {
         {visibleTrucks.map((truck) => (
           <li key={truck.id} className={truck.id === selectedId ? 'sel' : undefined}>
             <button type="button" onClick={() => select(truck.id)}>
-              <span className="dot" style={{ background: STATUS[truck.status].color }} />
-              <span className="nm">{truck.plate}</span>
+              <span
+                className="dot"
+                style={{
+                  background: truck.active ? STATUS[truck.status].color : 'var(--muted)',
+                }}
+              />
+              <span className="nm">
+                {truck.plate}
+                {!truck.active && <span className="badge-off">Inactivo</span>}
+              </span>
               <span className="sp">
                 {truck.speed}
                 <small> km/h</small>

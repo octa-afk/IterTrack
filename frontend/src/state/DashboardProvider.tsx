@@ -6,8 +6,11 @@ import { getHistory, getLocation, listTrucks } from '../api/trucks';
 import {
   DEFAULT_FILTERS,
   POLL_MS,
+  TRIP_LIMIT,
+  appendPath,
   aplicarPunto,
   buildHistory,
+  buildPath,
   crearEstadoCamion,
   filterAndSortTrucks,
   type Filters,
@@ -38,10 +41,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           const existing = new Map(prev.map((t) => [t.id, t]));
           return data.map((truck) => {
             const known = existing.get(truck.id);
-            const base = known ? { ...known, plate: truck.plate } : crearEstadoCamion(truck);
+            const base = known
+              ? { ...known, plate: truck.plate, active: truck.active }
+              : crearEstadoCamion(truck);
             const point = locations.find((p) => p && p.truck_id === truck.id);
             if (!point) return base;
-            const clone = { ...base, history: [...base.history] };
+            const clone = {
+              ...base,
+              history: [...base.history],
+              path: appendPath(base.path, point),
+            };
             aplicarPunto(clone, point);
             return clone;
           });
@@ -87,16 +96,27 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const visibleTrucks = filterAndSortTrucks(trucks, filters);
   const selectedTruck = trucks.find((t) => t.id === selectedId) ?? null;
 
-  /* GET /trucks/{id}/iter -> real speed history for the detail sparkline. */
+  /*
+   * GET /trucks/{id}/iter -> real speed history for the detail sparkline and
+   * the trail drawn on the map. Polling appends new points to the same trail.
+   */
   const select = (id: number) => {
     setSelectedId(id);
     void (async () => {
       try {
-        const points = await getHistory(id);
+        const points = await getHistory(id, TRIP_LIMIT);
         const history = buildHistory(points);
-        if (!history.length) return;
+        const path = buildPath(points);
         setTrucks((prev) =>
-          prev.map((truck) => (truck.id === id ? { ...truck, history } : truck)),
+          prev.map((truck) =>
+            truck.id === id
+              ? {
+                  ...truck,
+                  history: history.length ? history : truck.history,
+                  path,
+                }
+              : truck,
+          ),
         );
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
