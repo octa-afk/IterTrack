@@ -54,7 +54,7 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 - Frontend web para seguir la flota en tiempo real.
 - **SPA React entregada:** React 19 + TypeScript + Vite (`frontend/`), compilada a `frontend/dist` y servida por FastAPI. Rutas `/` (login), `/register` (registro) y `/map` (panel con guard de token).
 - **Estrategia revisada:** el plan original era vanilla primero y SPA solo al cumplirse ciertos criterios. Se cumplieron (a) rutas propias con varias vistas y (b) estado compartido entre vistas, así que la migración se ejecutó completa y la UI vanilla se retiró. Detalle en `odd/tasks/react-frontend-migration.md`.
-- **Pendiente de esta fase:** mostrar el estado activo/inactivo del camión en la UI e historial de viajes por camión.
+- **Pendiente de esta fase:** completada. El listado y el detalle muestran el estado activo/inactivo del camión (`Inactivo`, punto gris y marcador atenuado) y el recorrido reciente: al seleccionar un camión se dibuja su traza sobre el mapa con km, duración y cantidad de puntos. Detalle en `odd/tasks/fase3-dashboard.md`.
 
 ### Fase 4 — Estadísticas logísticas
 - Km recorridos por período, consumo estimado, tiempos de viaje, paradas.
@@ -70,12 +70,12 @@ Motor de alertas con reglas configurables por cliente:
 - **Exceso de velocidad** (el campo `speed` ya está disponible en `Location`; quedan pendientes la regla de alerta y su umbral).
 - Notificaciones: email / webhook / push (a definir).
 
-### Fase 6 — Demo pública y despliegue 🚧
+### Fase 6 — Demo pública y despliegue ✅
 - Dockerfile multi-stage (Node compila la SPA, Python corre la app) con entrypoint idempotente.
 - `docker-compose` con Caddy (TLS), `web`, `worker` (flota simulada por el pipeline real de dispositivos) y Postgres en volumen nombrado.
 - Imagen publicada en GHCR; despliegue en una VM de Azure for Students.
 - Simulador con dos modos: usuario y dispositivo. En modo dispositivo saltea los camiones ocupados por hardware real.
-- Pendiente: botón de acceso demo en el login, reset automático cada 24 h y dominio definitivo.
+- Botón de acceso demo en el login, reset automático cada 24 h (cron en el host) y dominio definitivo (`itertrack-demo.duckdns.org` con TLS de Caddy): completados.
 - Runbook: `docs/DEPLOYMENT.md`.
 
 ## Definiciones a validar con el cliente
