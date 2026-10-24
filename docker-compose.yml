@@ -48,8 +48,6 @@ services:
       - python
       - -m
       - scripts.simulate_trucks
-      - --mode
-      - device
       - --count
       - ${DEMO_TRUCK_COUNT:-3}
       - --id
