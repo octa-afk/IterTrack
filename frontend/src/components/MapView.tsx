@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@maplibre/maplibre-gl-leaflet';
+import { listTrips } from '../api/destinations';
 import { useDashboard } from '../state/useDashboard';
 import { createTruckIcon } from '../lib/truckIcon';
 import { createMovementController, type ActiveMove } from '../lib/movement';
@@ -52,6 +53,7 @@ export default function MapView() {
   const movesRef = useRef(new Map<number, ActiveMove>());
   const movementRef = useRef<ReturnType<typeof createMovementController> | null>(null);
   const trailRef = useRef<L.Polyline | null>(null);
+  const tripRef = useRef<L.LayerGroup | null>(null);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
 
@@ -183,6 +185,8 @@ export default function MapView() {
       movementRef.current = null;
       trailRef.current?.remove();
       trailRef.current = null;
+      tripRef.current?.remove();
+      tripRef.current = null;
       markers.clear();
       lastPos.clear();
       moves.clear();
@@ -265,6 +269,8 @@ export default function MapView() {
     if (!truck || latlngs.length < 2) {
       trailRef.current?.remove();
       trailRef.current = null;
+      tripRef.current?.remove();
+      tripRef.current = null;
       return;
     }
 
@@ -281,6 +287,60 @@ export default function MapView() {
     trailRef.current.setLatLngs(latlngs);
     trailRef.current.setStyle({ color: truck.color });
   }, [trucks, selectedId]);
+
+  /*
+   * Destinos del viaje abierto del camión seleccionado. Es el único trabajo que
+   * no está en el polling de la flota: los viajes cambian por decisiones
+   * humanas, así que se piden al cambiar la selección.
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (selectedId === null) {
+      tripRef.current?.clearLayers();
+      return;
+    }
+
+    let cancelado = false;
+    void (async () => {
+      const viajes = await listTrips(selectedId).catch(() => []);
+      if (cancelado) return;
+      const activo = viajes.find(
+        (viaje) => viaje.status === 'planned' || viaje.status === 'in_progress',
+      );
+      if (!tripRef.current) tripRef.current = L.layerGroup().addTo(map);
+      const capa = tripRef.current;
+      capa.clearLayers();
+      if (!activo) return;
+
+      const puntos: [number, number][] = [];
+      for (const stop of activo.stops) {
+        if (stop.lat === null || stop.lng === null) continue;
+        puntos.push([stop.lat, stop.lng]);
+        L.marker([stop.lat, stop.lng], {
+          icon: L.divIcon({
+            className: '',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+            html: `<span class="stop-pin${stop.needs_review ? ' pending' : ''}">${stop.seq}</span>`,
+          }),
+          title: stop.address,
+        }).addTo(capa);
+      }
+      if (puntos.length > 1) {
+        L.polyline(puntos, {
+          color: '#3f6fe0',
+          weight: 2,
+          opacity: 0.7,
+          dashArray: '7 6',
+        }).addTo(capa);
+      }
+    })();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [selectedId]);
 
   /* Fly to the selected truck when the selection changes. */
   useEffect(() => {
