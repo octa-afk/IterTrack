@@ -224,8 +224,14 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   ```bash
   env/bin/uvicorn source.main:app --reload --port 8000
   ```
+* **Ver la flota moviéndose (migra, siembra demo, levanta API y simula):**
+  ```bash
+  make demo    # un solo comando; Ctrl+C corta la simulación
+  ```
+  Reutiliza la API si ya responde en `:8000` y toma `ADMIN_API_USER`/`ADMIN_API_PASSWORD` del `.env` raíz.
 * **Ejecutar simulación de camiones:**
   ```bash
+  make simulation                             # contra una API ya levantada
   env/bin/python scripts/simulate_trucks.py   # emite por /devices/ingest, mismo camino que un ESP32
   ```
 * **Bootstrap de plataforma y demo (idempotentes):**
