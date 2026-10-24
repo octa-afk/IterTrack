@@ -411,3 +411,39 @@
     .side nav a:hover{background:rgba(31,42,61,.05)}
     .side .logout{background:rgba(255,255,255,.85);border:0;color:var(--ink)}
   }
+
+  /* ===== Sección Camiones: tabla de la flota ===== */
+  nav a.soon{opacity:.5;cursor:not-allowed}
+  .fleetcard{display:flex;flex-direction:column;min-height:0;flex:1}
+  .fleetcard .chips{margin-bottom:9.2px}
+  .fleet-wrap{flex:1;min-height:0;overflow:auto}
+  .fleet-table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .fleet-table th{
+    position:sticky;top:0;z-index:1;text-align:left;white-space:nowrap;
+    font-weight:500;font-size:12px;color:var(--muted);
+    padding:8px 12px;background:var(--card);border-bottom:1px solid var(--line);
+  }
+  .fleet-table th button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4.6px;border-radius:6px}
+  .fleet-table th button:focus-visible{outline:2.3px solid var(--green);outline-offset:2.3px}
+  .fleet-table th.num,.fleet-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+    .fleet-table td{padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .fleet-table tbody tr{cursor:pointer}
+  .fleet-table tbody tr:hover{background:rgba(31,42,61,.04)}
+  .fleet-table tbody tr.sel{background:rgba(90,126,230,.10)}
+  .fleet-table .plate{font-weight:600}
+  .fleet-table .estado{display:inline-flex;align-items:center;gap:6.9px}
+  .fleet-table .dot{grid-row:auto;flex:none}
+  .fleet-table .empty{cursor:default;text-align:center}
+  .fleet-table .ver{padding:4.6px 9.2px;font-size:12px;white-space:nowrap}
+
+  /* Geometría de la sección: mismas coordenadas que los paneles flotantes
+     (topbar 16+64, paneles desde 97px) en vez del `.grid` del mapa. */
+  .fleet-page{
+    position:absolute;z-index:5;left:var(--lx);right:16px;top:97px;bottom:39px;
+    display:grid;grid-template-columns:minmax(0,1fr) var(--rp);gap:14px;min-height:0;
+  }
+  @media (max-width:1265px){
+    .fleet-page{position:relative;inset:auto;display:block;padding:14px}
+    .fleetcard{margin-bottom:14px}
+    .fleet-wrap{max-height:60vh}
+  }
