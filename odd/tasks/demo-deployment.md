@@ -369,3 +369,33 @@ Recuperación inmediata aplicada: `docker compose restart worker`. Telemetría c
 Arreglo durable: `_reaprovisionar_dispositivo(truck_id, admin_headers)` re-loguea el administrador, actualiza el dict compartido y recién entonces re-aprovisiona. Es el `on_unauthorized` que recibe el sender de dispositivo, así que la recuperación deja de depender de un JWT de 8 horas. Tests: `test_recovery_renews_the_admin_jwt_before_reprovisioning` y `test_device_mode_recovery_reauthenticates_the_admin` (antes del arreglo, el callback no volvía a loguear y el test fallaba).
 
 Verificado durante el incidente, sobre la imagen vieja: `55,4 m en 2,0 s = 99 km/h` con `speed=55` reportado, o sea el bug de cadencia de L18 también estaba presente en producción.
+
+### L20 — Estado al cierre del 2026-10-24 (retomar acá)
+
+**La demo está viva**, pero corre la imagen vieja: la flota se recuperó con un `docker compose restart worker` manual. Si no se despliega antes de las próximas 04:00 UTC (01:00 de Argentina), el reset diario la congela exactamente igual que en L19.
+
+Commits locales sin pushear (6):
+
+```
+e856958 feat(dashboard): show truck active state and recent trail on the map
+f3c317e docs(odd): close phase 3 with active state and trip trail
+92de0a2 fix(simulator): wait for the next segment so the real speed stays at the target
+71faa89 docs(odd): record the simulator cadence off-by-one
+278a952 fix(simulator): renew the admin JWT before recovering a device
+0d81ca1 docs(odd): record the frozen fleet after the daily reset
+```
+
+Pasos para retomar:
+
+1. `git push origin develop` y esperar el run de `publish-image.yml` en verde (tag `:develop`).
+2. En la VM: `cd ~/itertrack && docker compose pull && docker compose up -d`.
+3. Verificar con el bloque «¿Está viva la demo?» de `docs/DEPLOYMENT.md`: puntos entrando y antigüedad por camión de pocos segundos.
+4. `docker compose logs -f worker`: tramos largos con espera proporcional (100 m en ~6,5 s) y ningún camión en «Alerta» yendo a 55.
+5. En el panel: el recorrido del camión seleccionado, y el estado `Inactivo` si se desactiva uno (`PATCH /trucks/{id}/activate`).
+
+Pendientes abiertos, fuera de este deploy:
+
+- `feat/ingest-alerts` (rama local, no mergeada) tiene el modelo de alertas y la agrupación de rechazos de ingesta; en `develop` solo existe el seam vacío `persist_ingest_alert`.
+- Fase 2: buffer offline de la ESP32 (diseño) y que el firmware informe `recorded_at` desde su GPS.
+- Fases 4 y 5: estadísticas logísticas y motor de alertas.
+- Ramas locales `feat/roles-and-admin`, `feat/device-reassign-revoke` y `feat/human-measurement-hardening` ya están en `develop` por otro camino: se pueden borrar.

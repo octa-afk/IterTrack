@@ -29,7 +29,7 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 ### Decisiones confirmadas — administración de vehículos
 - La empresa instala el hardware GPS y es responsable de registrar y retirar los vehículos; el cliente no crea ni elimina vehículos.
 - Cada integrante autorizado de la empresa tendrá su propia cuenta con permisos de administrador. No se usará una cuenta compartida, para conservar la trazabilidad de quién realizó cada cambio.
-- Cada unidad GPS tendrá una credencial propia, separada de las cuentas humanas. Los equipos se instalan por largo tiempo, pero pueden reutilizarse en otro camión; el mecanismo de autenticación está implementado (token por equipo contra `POST /devices/ingest`), el proceso de reasignación sigue pendiente.
+- Cada unidad GPS tendrá una credencial propia, separada de las cuentas humanas. Los equipos se instalan por largo tiempo, pero pueden reutilizarse en otro camión; el mecanismo de autenticación (token por equipo contra `POST /devices/ingest`) y la reasignación (`POST /devices/{id}/reassign`) están implementados.
 - Un vehículo se conserva en el sistema y cambia entre activo e inactivo; desactivarlo no elimina su historial de tracking.
 - Los usuarios del cliente se darán de alta mediante un código de invitación; no crearán organizaciones ni vehículos por cuenta propia.
 - Un vehículo dado de baja queda inactivo y deja de transmitir. El backend debe rechazar nuevas ubicaciones para hacer cumplir ese estado, conservando los datos históricos.
