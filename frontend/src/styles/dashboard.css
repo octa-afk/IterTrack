@@ -318,34 +318,32 @@
   .side .logout{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff}
   .side-in{width:100%;height:100%;padding:40px 0 23px}
   .logo{margin-bottom:39px}
-  .top{position:absolute;z-index:5;left:var(--lx);right:16px;top:16px;height:64px;padding:0 10px 0 9px;border-radius:32px}
+  .top{position:absolute;z-index:5;left:var(--lx);right:16px;top:16px;height:64px;padding:0 10px 0 9px;border-radius:32px;transition:left .3s ease}
   .search{background:var(--g-fill);box-shadow:none;height:44px}
   .search:focus-within{box-shadow:0 0 0 2px var(--ac)}
   .pill{background:none;padding:0;height:auto;color:var(--ink)}
   .pill .al{background:var(--g-fill2);color:var(--ink)} .pill .bell{fill:var(--ink)}
   .avatar{background:var(--ac);color:#fff}
-  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:97px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px}
+  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:97px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px;transition:left .3s ease}
   .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
   .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:97px;bottom:39px;width:var(--rp);gap:14px}
   .card{border-radius:28px}
-  .bottom{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;height:202px;gap:14px}
+  .bottom{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;height:202px;gap:14px;transition:left .3s ease}
   .dn{gap:6px}.dn svg{width:52px;height:52px}.dn .t{font-size:10.5px}.dn .t b{font-size:13px}.dn .pc{font-size:12px}
   .detail,.detail .st,.detail .trip{background:var(--g-fill)}
   .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
   .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
   .bar i{background:var(--g-fill2)}.bar:hover i,.bar.sel i{background:var(--green-l)}
   .bars .limit span{background:transparent}.dn circle:first-child{stroke:var(--g-fill2)}
-  .leaflet-top.leaflet-left{left:var(--lx);top:147px}.leaflet-left .leaflet-control{margin-left:0}
+  .leaflet-top.leaflet-left{left:var(--lx);top:147px;transition:left .3s ease}.leaflet-left .leaflet-control{margin-left:0}
   .leaflet-bar,.leaflet-touch .leaflet-bar{border:1px solid var(--g-bd)!important;border-radius:18px;overflow:hidden}
   .leaflet-bar a{background:transparent;color:var(--ink);border-bottom:1px solid var(--g-bd);width:39px;height:39px;line-height:39px}
   .leaflet-bar a:hover{background:var(--g-fill)}
-  .leaflet-bottom.leaflet-right{right:auto;left:var(--lx);bottom:0}
+  .leaflet-bottom.leaflet-right{right:auto;left:var(--lx);bottom:0;transition:left .3s ease}
   .leaflet-control-attribution{border-radius:12px 12px 0 0;color:var(--muted);box-shadow:none;border-bottom:0}
   .leaflet-control-attribution a{color:var(--green-d)}
   .app.nav-off .side{width:0;opacity:0;pointer-events:none;border:0}
   .app.nav-off{--lx:16px}
-  .app.nav-off .top,.app.nav-off .mapcard .card-h,.app.nav-off .bottom,
-  .app.nav-off .leaflet-top.leaflet-left,.app.nav-off .leaflet-bottom.leaflet-right{transition:left .3s ease}
   .mobile-tabs{display:none}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
   @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
@@ -397,7 +395,7 @@
     body[data-mobile-view="map"] .mapcard .card-h{position:absolute;left:12px;top:82px}
     body[data-mobile-view="map"] .bottom,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
   }
-  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom{transition:none!important}}
+  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom,.fleet-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
   @media (min-width:641px){
     :root{
       --g-bg:rgba(255,255,255,.90);--g-solid:rgba(248,250,254,.97);
@@ -441,6 +439,7 @@
   .fleet-page{
     position:absolute;z-index:5;left:var(--lx);right:16px;top:97px;bottom:39px;
     display:grid;grid-template-columns:minmax(0,1fr) var(--rp);gap:14px;min-height:0;
+    transition:left .3s ease;
   }
   @media (max-width:1265px){
     .fleet-page{position:relative;inset:auto;display:block;padding:14px}
@@ -458,21 +457,3 @@
     .mapbox-off{display:none}
   }
 
-  /* ===== Entrada de sección =====
-     Sólo opacidad y desplazamiento corto: lo compone el compositor, no relayout.
-     Se aplica a las tarjetas, nunca a `.mapbox`, que ahora persiste entre
-     secciones y parpadearía. Sin JS: la animación corre al montar el nodo. */
-  @keyframes section-in{
-    from{opacity:0;transform:translateY(18px) scale(.985)}
-    to{opacity:1;transform:translateY(0) scale(1)}
-  }
-  @keyframes fade-in{ from{opacity:0} to{opacity:1} }
-  .grid .card,.mapcard .card-h,.fleet-page{
-    animation:section-in .34s cubic-bezier(.22,.61,.36,1) both;
-  }
-  .side nav a{transition:background-color .15s ease,color .15s ease}
-  .side nav a.on{animation:fade-in .24s ease-out both}
-  @media (prefers-reduced-motion:reduce){
-    .grid .card,.mapcard .card-h,.fleet-page,.side nav a.on{animation:none}
-    .side nav a{transition:none}
-  }
