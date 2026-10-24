@@ -10,6 +10,7 @@ from scripts.bootstrap_platform import (
     bootstrap_platform,
 )
 from scripts.seed_demo import DemoSeedConfig, SeedError, seed_demo
+from source.models.destination import Trip
 from source.models.device import Device, DeviceAssignment
 from source.models.organization import Organization
 from source.models.truck import Truck
@@ -142,6 +143,48 @@ def test_seed_creates_demo_tenant_with_its_roles_and_fleet(db_session):
         .count()
         == 3
     )
+
+
+def test_seed_gives_each_truck_its_own_trip(db_session):
+    """Cada camión lleva un viaje propio: si comparten paradas, el mapa muestra
+    los mismos destinos para los tres y la sección Rutas no distingue nada."""
+    result = seed_demo(db_session, demo_config())
+
+    trips = (
+        db_session.query(Trip)
+        .filter(Trip.organization_id == result.organization_id)
+        .order_by(Trip.external_ref)
+        .all()
+    )
+
+    assert [trip.external_ref for trip in trips] == ["DEMO-001", "DEMO-002", "DEMO-003"]
+    assert [trip.truck_id for trip in trips] == [1, 2, 3]
+    assert [trip.status for trip in trips] == ["in_progress", "in_progress", "done"]
+    paradas = [(stop.lat, stop.lng) for trip in trips for stop in trip.stops]
+    assert len(paradas) == 9
+    assert len(set(paradas)) == 9
+    assert all(
+        stop.geo_source == "provided" and stop.needs_review is False
+        for trip in trips
+        for stop in trip.stops
+    )
+
+
+def test_seed_rebuilds_demo_trip_stops_that_went_stale(db_session):
+    """El seed es dueño de los viajes DEMO-*: si la ruta cambia, reescribe sus
+    paradas en vez de dejar coordenadas de una corrida anterior."""
+    seed_demo(db_session, demo_config())
+    trip = db_session.query(Trip).filter(Trip.external_ref == "DEMO-001").one()
+    original = trip.stops[0].lat
+    trip.stops[0].lat = 0.0
+    db_session.commit()
+
+    result = seed_demo(db_session, demo_config())
+
+    assert result.trips == 0
+    assert result.trips_rebuilt == 1
+    db_session.refresh(trip)
+    assert trip.stops[0].lat == original
 
 
 def test_seed_is_idempotent_without_reset(db_session):

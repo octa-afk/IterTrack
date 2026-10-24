@@ -309,7 +309,7 @@ El repositorio incluye un simulador para verificar la recepción y visualizació
 make demo
 ```
 
-Migra la base, bootstrapea la plataforma, siembra el tenant demo (incluye el dador de carga `Colchones Sur` y el `Depósito Centro`), levanta la API en `:8000` si no está respondiendo y arranca el simulador con la flota completa. Abrí `http://localhost:8000/map` y los camiones se mueven por Córdoba; `Ctrl+C` corta la simulación (y la API, si la levantó ese mismo target). Las credenciales salen del `.env` raíz (`ADMIN_API_USER` / `ADMIN_API_PASSWORD`); si ya tenés un `uvicorn` corriendo, lo reutiliza en vez de pelear por el puerto.
+Migra la base, bootstrapea la plataforma, siembra el tenant demo (incluye dadores de carga, el `Depósito Centro` y un viaje por camión), levanta la API en `:8000` si no está respondiendo y arranca el simulador con la flota completa. Abrí `http://localhost:8000/map` y los camiones se mueven por Córdoba; `Ctrl+C` corta la simulación (y la API, si la levantó ese mismo target). Las credenciales salen del `.env` raíz (`ADMIN_API_USER` / `ADMIN_API_PASSWORD`); si ya tenés un `uvicorn` corriendo, lo reutiliza en vez de pelear por el puerto.
 
 Para ajustar la flota sin tocar el archivo:
 
