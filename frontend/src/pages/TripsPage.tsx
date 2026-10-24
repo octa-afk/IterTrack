@@ -31,9 +31,9 @@ const HORA_LOCAL = (iso: string) =>
   });
 
 const COLOR_ESTADO: Record<string, string> = {
-  planned: 'var(--muted)',
-  in_progress: 'var(--green)',
-  done: 'var(--green-d)',
+  planned: 'var(--idle)',
+  in_progress: 'var(--move)',
+  done: 'var(--stop)',
   cancelled: 'var(--alert)',
 };
 
