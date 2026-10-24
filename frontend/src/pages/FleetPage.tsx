@@ -133,7 +133,7 @@ export default function FleetPage() {
                     {truck.active && truck.updated ? `${truck.speed} km/h` : '—'}
                   </td>
                   <td>{truck.updated ? ago(truck.updated) : 'Sin señal'}</td>
-                  <td className="num">{truck.updated ? `${truck.heading}°` : '—'}</td>
+                  <td className="num">{truck.updated ? `${Math.round(truck.heading)}°` : '—'}</td>
                   <td>
                     <button
                       type="button"

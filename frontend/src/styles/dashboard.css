@@ -447,3 +447,13 @@
     .fleetcard{margin-bottom:14px}
     .fleet-wrap{max-height:60vh}
   }
+
+  /* ===== Mapa persistente entre secciones =====
+     El mapa vive en el layout y se monta una sola vez. Fuera del panel se
+     oculta sin cambiar su tamaño, así Leaflet conserva la vista y el estilo
+     de MapLibre no se vuelve a pedir. Debajo de 1265 px el mapa está en flujo
+     normal, así que ahí sí tiene que dejar de ocupar alto. */
+  .mapbox-off{visibility:hidden;pointer-events:none}
+  @media (max-width:1265px){
+    .mapbox-off{display:none}
+  }

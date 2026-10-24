@@ -25,6 +25,9 @@ S5. `Rutas`, `Reportes` y `Ajustes` **no** entran en esta entrega y eso se
 declara: se muestran deshabilitadas con `title="Próximamente"`, sin páginas
 falsas ni contenido inventado.
 
+S7. El mapa no se recrea al cambiar de sección: se monta una vez y se oculta
+mientras no estás en el panel.
+
 S6. `extras/nuevo html(prueba)` **no** se usa como referencia de diseño: es
 material local de otra rama, ignorado por git. Borrarlo queda a decisión del
 usuario porque no está respaldado en ninguna rama.
@@ -67,3 +70,23 @@ L5: T1 y T2 implementados. Hallazgos de implementación:
 Verificación: `/fleet` 200 HTML y `/trucks` 401 JSON, tabla con 3 filas,
 selección de fila poblando el detalle, "Ver mapa" navegando a `/map` con los
 3 marcadores, `make check` y `make test` (199) en verde.
+
+L6 (pedido del usuario, textual): "veo que al pasar a la seccion de camiones y
+volver al panel principal tarda en cargar el mapa, y no es un problema de
+rendimiento de mi pc. como podemos solucionarlo?"
+
+L7: causa medida, no supuesta. Con el mapa en `MapPage`, al navegar a `/fleet`
+`#map` desaparecía del DOM: `MapView` se desmontaba y en cada vuelta se creaban
+otra vez `L.map()` y la capa de MapLibre, se pedía y parseaba el estilo de
+OpenFreeMap y se rearmaban los tres marcadores. El overlay `.map-style-loading`
+volvía a tapar el panel mientras tanto.
+Solución (S7): el mapa pasa a `DashboardLayout` y se monta una sola vez; fuera
+del panel se oculta con `.mapbox-off` — `visibility:hidden` en escritorio para
+no cambiar el tamaño (Leaflet no necesita `invalidateSize`) y `display:none`
+por debajo de 1265 px, donde el mapa está en flujo normal y no debe dejar un
+hueco de 64vh.
+Verificación: tras /map → /fleet → /map el nodo `#map` y el `<canvas>` son los
+mismos objetos (`===`), `.mapbox` está `hidden` en flota y sin `map-style-loading`
+al volver; 3 marcadores presentes. A 1024 px el mapa oculto no ocupa alto.
+Bug menor encontrado en la tabla: el rumbo salía crudo (225.44311469526514°)
+porque `bearing()` devuelve float y sólo `TruckDetail` redondeaba.
