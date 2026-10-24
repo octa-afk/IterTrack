@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from source.database.config import settings
 from source.services.auth import router as auth_router
-from source.services.destinations import destinations_router, trips_router
+from source.services.destinations import depots_router, destinations_router, trips_router
 from source.services.destinations import router as chargers_router
 from source.services.devices import router as devices_router
 from source.services.organizations import router as organizations_router
@@ -24,6 +24,7 @@ app.include_router(auth_router)
 app.include_router(devices_router)
 app.include_router(organizations_router)
 app.include_router(chargers_router)
+app.include_router(depots_router)
 app.include_router(trips_router)
 app.include_router(destinations_router)
 
@@ -85,6 +86,12 @@ def view_map():
 @app.get("/fleet")
 def view_fleet():
     """Sección Camiones. No puede vivir en /trucks: ese path es la API JSON."""
+    return _index()
+
+
+@app.get("/viajes")
+def view_trips():
+    """Sección Rutas. `/trips` es la API de viajes, por eso la página usa /viajes."""
     return _index()
 
 

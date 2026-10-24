@@ -49,7 +49,7 @@ def _stop(address, **extra):
 def _trip_payload(charger_id, stops, **extra):
     return {
         "charger_id": charger_id,
-        "scheduled_for": "2026-10-25",
+        "departure_at": "2026-10-25T07:30:00-03:00",
         "stops": stops,
         **extra,
     }
@@ -212,3 +212,65 @@ def test_member_no_puede_importar_viajes(client, test_user, test_org, db_session
 def test_normalize_address_ignora_acentos_mayusculas_y_puntuacion():
     assert normalize_address("Av. Colón 1234, Córdoba") == "av colon 1234 cordoba"
     assert normalize_address("  AV   COLON 1234 cordoba ") == "av colon 1234 cordoba"
+
+
+def test_salida_sin_zona_horaria_responde_422(admin_client, charger, usar_geocoder):
+    usar_geocoder()
+    payload = _trip_payload(charger.id, [_stop("Av. Colón 1234")])
+    payload["departure_at"] = "2026-10-25T07:30:00"
+    assert admin_client.post("/trips", json=payload).status_code == 422
+
+
+def test_el_unico_deposito_de_la_organizacion_se_usa_sin_elegirlo(
+    admin_client, charger, usar_geocoder
+):
+    usar_geocoder({"Av. Colón 1234": (-31.4135, -64.1811)})
+    depot = admin_client.post(
+        "/depots",
+        json={"name": "Depósito Centro", "lat": -31.4135, "lng": -64.1811},
+    )
+    assert depot.status_code == 201
+
+    creado = admin_client.post(
+        "/trips", json=_trip_payload(charger.id, [_stop("Av. Colón 1234")])
+    )
+    assert creado.status_code == 201
+    assert creado.json()["depot_id"] == depot.json()["id"]
+
+
+def test_deposito_de_otra_organizacion_no_se_puede_usar(
+    admin_client, charger, db_session, test_org2, usar_geocoder
+):
+    from source.models.destination import Depot
+
+    usar_geocoder()
+    ajeno = Depot(organization_id=test_org2.id, name="Ajeno", lat=-31.4, lng=-64.1)
+    db_session.add(ajeno)
+    db_session.commit()
+
+    payload = _trip_payload(charger.id, [_stop("Av. Colón 1234")], depot_id=ajeno.id)
+    assert admin_client.post("/trips", json=payload).status_code == 404
+
+
+def test_camiones_disponibles_excluye_los_que_tienen_viaje_abierto(
+    admin_client, charger, db_session, test_truck, usar_geocoder
+):
+    from source.models.truck import Truck
+
+    usar_geocoder({"Av. Colón 1234": (-31.4135, -64.1811), "Ruta 9": (-31.5, -64.2)})
+    libre = Truck(id=2, plate="LIBRE2", organization_id=test_truck.organization_id)
+    db_session.add(libre)
+    db_session.commit()
+
+    assert [t["plate"] for t in admin_client.get("/trips/available-trucks").json()] == [
+        "LIBRE2",
+        "TEST123",
+    ]
+
+    admin_client.post(
+        "/trips",
+        json=_trip_payload(charger.id, [_stop("Av. Colón 1234")], truck_id=test_truck.id),
+    )
+    assert [t["plate"] for t in admin_client.get("/trips/available-trucks").json()] == [
+        "LIBRE2"
+    ]

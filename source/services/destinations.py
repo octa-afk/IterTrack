@@ -14,10 +14,11 @@ from sqlalchemy.orm import Session
 
 from source import models, schemas
 from source.database.database import get_db
-from source.services.auth import require_org_admin
+from source.services.auth import get_current_user, require_org_admin
 from source.services.geocoding import Geocoder, get_geocoder, normalize_address
 
 router = APIRouter(prefix="/chargers", tags=["chargers"])
+depots_router = APIRouter(prefix="/depots", tags=["depots"])
 trips_router = APIRouter(prefix="/trips", tags=["trips"])
 destinations_router = APIRouter(prefix="/destinations", tags=["destinations"])
 
@@ -120,7 +121,7 @@ def _get_trip(db: Session, organization_id: int, trip_id: int) -> models.Trip:
 @router.get("", response_model=list[schemas.ChargerResponse])
 def list_chargers(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_org_admin),
+    current_user: models.User = Depends(get_current_user),
 ):
     return (
         db.query(models.Charger)
@@ -156,12 +157,89 @@ def create_charger(
     return charger
 
 
+@depots_router.get("", response_model=list[schemas.DepotResponse])
+def list_depots(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return (
+        db.query(models.Depot)
+        .filter(models.Depot.organization_id == current_user.organization_id)
+        .order_by(models.Depot.name)
+        .all()
+    )
+
+
+@depots_router.post(
+    "", response_model=schemas.DepotResponse, status_code=status.HTTP_201_CREATED
+)
+def create_depot(
+    payload: schemas.DepotCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_org_admin),
+):
+    depot = models.Depot(
+        organization_id=current_user.organization_id,
+        name=payload.name,
+        lat=payload.lat,
+        lng=payload.lng,
+        radius_m=payload.radius_m,
+    )
+    db.add(depot)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya existe un depósito con ese nombre",
+        ) from None
+    db.refresh(depot)
+    return depot
+
+
+OPEN_TRIP_STATUSES = ("planned", "in_progress")
+
+
+@trips_router.get("/available-trucks")
+def list_available_trucks(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Camiones que pueden tomar un viaje hoy: activos y sin viaje abierto.
+
+    El radio del depósito todavía no se chequea: depende de telemetría fresca y
+    un camión sin señal quedaría excluido sin motivo. `depots.lat/lng/radius_m`
+    ya existen para cuando se agregue.
+    """
+    busy = (
+        db.query(models.Trip.truck_id)
+        .filter(
+            models.Trip.organization_id == current_user.organization_id,
+            models.Trip.truck_id.isnot(None),
+            models.Trip.status.in_(OPEN_TRIP_STATUSES),
+        )
+        .subquery()
+    )
+    trucks = (
+        db.query(models.Truck)
+        .filter(
+            models.Truck.organization_id == current_user.organization_id,
+            models.Truck.active.is_(True),
+            models.Truck.id.notin_(db.query(busy.c.truck_id)),
+        )
+        .order_by(models.Truck.plate)
+        .all()
+    )
+    return [{"id": truck.id, "plate": truck.plate} for truck in trucks]
+
+
 @trips_router.get("", response_model=list[schemas.TripResponse])
 def list_trips(
     charger_id: int | None = Query(default=None),
     truck_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_org_admin),
+    current_user: models.User = Depends(get_current_user),
 ):
     query = db.query(models.Trip).filter(
         models.Trip.organization_id == current_user.organization_id
@@ -171,7 +249,7 @@ def list_trips(
     if truck_id is not None:
         query = query.filter(models.Trip.truck_id == truck_id)
     return query.order_by(
-        models.Trip.scheduled_for.desc(), models.Trip.id.desc()
+        models.Trip.departure_at.desc(), models.Trip.id.desc()
     ).all()
 
 
@@ -213,6 +291,30 @@ def create_trip(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Camión no encontrado"
             )
 
+    depot_id = payload.depot_id
+    if depot_id is not None:
+        depot = (
+            db.query(models.Depot)
+            .filter(
+                models.Depot.id == depot_id,
+                models.Depot.organization_id == organization_id,
+            )
+            .first()
+        )
+        if depot is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Depósito no encontrado"
+            )
+    else:
+        # Un solo depósito por organización es el caso normal: no obligamos a
+        # elegirlo en cada viaje.
+        unico = (
+            db.query(models.Depot)
+            .filter(models.Depot.organization_id == organization_id)
+            .all()
+        )
+        depot_id = unico[0].id if len(unico) == 1 else None
+
     if payload.external_ref is not None:
         existing = (
             db.query(models.Trip)
@@ -233,7 +335,8 @@ def create_trip(
         charger_id=charger.id,
         truck_id=payload.truck_id,
         driver_name=payload.driver_name,
-        scheduled_for=payload.scheduled_for,
+        departure_at=payload.departure_at,
+        depot_id=depot_id,
         external_ref=payload.external_ref,
         notes=payload.notes,
     )
@@ -267,7 +370,7 @@ def create_trip(
 def get_trip(
     trip_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_org_admin),
+    current_user: models.User = Depends(get_current_user),
 ):
     return _get_trip(db, current_user.organization_id, trip_id)
 
@@ -322,7 +425,7 @@ def resolve_stop(
 @destinations_router.get("/pending", response_model=list[schemas.StopResponse])
 def list_pending_stops(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_org_admin),
+    current_user: models.User = Depends(get_current_user),
 ):
     """Cola de revisión: destinos que no tienen coordenada."""
     return (
@@ -332,6 +435,6 @@ def list_pending_stops(
             models.Trip.organization_id == current_user.organization_id,
             models.TripStop.needs_review.is_(True),
         )
-        .order_by(models.Trip.scheduled_for, models.TripStop.seq)
+        .order_by(models.Trip.departure_at, models.TripStop.seq)
         .all()
     )
