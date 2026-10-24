@@ -13,16 +13,18 @@ Required environment variables (see .env.example):
 """
 
 import argparse
+import json
 import os
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
 from scripts.simulate_trucks import build_truck_configs
 from source.database.database import SessionLocal
-from source.models.destination import Charger, Depot
+from source.models.destination import Charger, Depot, Trip, TripStop
 from source.models.device import Device, DeviceAssignment
 from source.models.ingestion import IngestedPoint, RejectedIngestPoint
 from source.models.organization import Organization
@@ -42,6 +44,12 @@ DEFAULT_DEPOT = "Depósito Centro"
 # Plaza San Martín, centro de Córdoba.
 DEFAULT_DEPOT_LAT = -31.4135
 DEFAULT_DEPOT_LNG = -64.1811
+# Viaje de demo: tres paradas tomadas del mismo circuito que recorre el
+# simulador, con coordenadas ya resueltas. Sin esto la sección Rutas queda
+# vacía y el mapa no tiene destinos que mostrar.
+DEMO_TRIP_REF = "DEMO-001"
+DEMO_TRIP_STOP_INDEXES = (40, 200, 380)
+ROUTE_FILE = Path(__file__).resolve().parent / "cordoba_route.json"
 
 
 class SeedError(ValueError):
@@ -74,6 +82,7 @@ class DemoSeedResult:
     invitation_code: str
     charger: bool
     depot: bool
+    trip: bool
 
 
 def _required(name: str) -> str:
@@ -275,34 +284,73 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
 
     # Un viaje siempre pertenece a un dador de carga y sale de un depósito. Sin
     # esto la sección Rutas queda vacía y sin forma de crear el primero.
-    charger_created = False
-    if (
+    charger = (
         db.query(Charger)
         .filter(
             Charger.organization_id == organization.id, Charger.name == DEFAULT_CHARGER
         )
         .first()
-        is None
-    ):
-        db.add(Charger(organization_id=organization.id, name=DEFAULT_CHARGER))
+    )
+    charger_created = False
+    if charger is None:
+        charger = Charger(organization_id=organization.id, name=DEFAULT_CHARGER)
+        db.add(charger)
+        db.flush()
         charger_created = True
 
-    depot_created = False
-    if (
+    depot = (
         db.query(Depot)
         .filter(Depot.organization_id == organization.id, Depot.name == DEFAULT_DEPOT)
         .first()
-        is None
-    ):
-        db.add(
-            Depot(
-                organization_id=organization.id,
-                name=DEFAULT_DEPOT,
-                lat=DEFAULT_DEPOT_LAT,
-                lng=DEFAULT_DEPOT_LNG,
-            )
+    )
+    depot_created = False
+    if depot is None:
+        depot = Depot(
+            organization_id=organization.id,
+            name=DEFAULT_DEPOT,
+            lat=DEFAULT_DEPOT_LAT,
+            lng=DEFAULT_DEPOT_LNG,
         )
+        db.add(depot)
+        db.flush()
         depot_created = True
+
+    trip_created = False
+    viaje = (
+        db.query(Trip)
+        .filter(
+            Trip.organization_id == organization.id,
+            Trip.external_ref == DEMO_TRIP_REF,
+        )
+        .first()
+    )
+    if viaje is None and charger is not None:
+        primera_ruta = json.loads(ROUTE_FILE.read_text(encoding="utf-8"))
+        viaje = Trip(
+            organization_id=organization.id,
+            charger_id=charger.id,
+            truck_id=truck_configs[0].truck_id,
+            departure_at=datetime.now(UTC),
+            status="in_progress",
+            external_ref=DEMO_TRIP_REF,
+            depot_id=depot.id if depot is not None else None,
+        )
+        db.add(viaje)
+        db.flush()
+        for seq, indice in enumerate(DEMO_TRIP_STOP_INDEXES, start=1):
+            lat, lng = primera_ruta[indice]
+            db.add(
+                TripStop(
+                    trip_id=viaje.id,
+                    seq=seq,
+                    address=f"Parada {seq} · recorrido demo",
+                    lat=lat,
+                    lng=lng,
+                    geo_source="provided",
+                    needs_review=False,
+                )
+            )
+        trip_created = True
 
     db.commit()
     db.refresh(organization)
@@ -314,6 +362,7 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
         invitation_code=organization.invitation_code,
         charger=charger_created,
         depot=depot_created,
+        trip=trip_created,
     )
 
 
@@ -340,6 +389,8 @@ def main() -> int:
     modo = "reset" if result.reset else "sin reset"
     print(f"🏢 Demo '{config.org_name}' (id {result.organization_id}) — {modo}")
     print(f"🚚 Camiones creados: {result.trucks} | 📡 Dispositivos: {result.devices}")
+    if result.trip:
+        print(f"🧭 Viaje demo: {'creado' if result.trip else 'existía'}")
     if result.charger or result.depot:
         print(
             f"🚚 Dador de carga: {'creado' if result.charger else 'existía'} | "
