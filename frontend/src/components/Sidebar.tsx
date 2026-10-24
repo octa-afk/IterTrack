@@ -11,7 +11,21 @@ const NAV_ITEMS: {
   icon: React.ReactNode;
 }[] = [
   { label: 'Panel', to: '/map', icon: <path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z" /> },
-  { label: 'Camiones', to: '/fleet', icon: <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /> },
+  {
+    label: 'Camiones',
+    to: '/fleet',
+    // Camión de perfil con caja, cabina y ruedas (Lucide `truck`): sin ruedas el
+    // contorno se lee como una carpeta a 21 px.
+    icon: (
+      <>
+        <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+        <path d="M15 18H9" />
+        <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14" />
+        <circle cx="17" cy="18" r="2" />
+        <circle cx="7" cy="18" r="2" />
+      </>
+    ),
+  },
   {
     label: 'Rutas',
     to: '/viajes',
@@ -26,10 +40,12 @@ const NAV_ITEMS: {
   { label: 'Reportes', icon: <path d="M3 12h4l3-8 4 16 3-8h4" /> },
   {
     label: 'Ajustes',
+    // Engranaje de ocho dientes (Lucide `settings`). El path anterior tenía la
+    // geometría cruzada y a 21 px se veía como un borrón.
     icon: (
       <>
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
         <circle cx="12" cy="12" r="3" />
-        <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4-2 1.6a7 7 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.4-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.2-.8.2-1.2z" />
       </>
     ),
   },
