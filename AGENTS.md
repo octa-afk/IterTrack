@@ -37,6 +37,12 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
 * `develop`: Rama activa de desarrollo e integración (backend HTTP, base de datos, esquemas y frontend).
 * `IterTrack-Hardware`: Rama dedicada exclusivamente al firmware ESP32 y código PlatformIO (`Iter-Hard/`).
 
+### Mensajes de commit
+
+* **Siempre en español.** El prefijo conventional (`feat`, `fix`, `docs`, `refactor`, `chore`, `test`) queda en inglés porque lo consume el tooling; la descripción va en español neutro y en modo imperativo: `fix(simulador): renovar el JWT de admin antes de recuperar un dispositivo`.
+* Sin atribución de IA y sin `Co-Authored-By`.
+* Un commit por unidad de trabajo revisable: el código con sus tests y su documentación juntos.
+
 ---
 
 ## 4. Estándares de Arquitectura y Separación de Capas
