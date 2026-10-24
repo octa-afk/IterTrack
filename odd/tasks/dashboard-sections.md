@@ -32,9 +32,9 @@ S8. La sección Camiones acompaña el compactado del sidebar con la misma
 lógica que la barra de búsqueda: `left` anima con `.3s ease` al cambiar
 `--lx`, en ambos sentidos. Sin animación de entrada de contenido.
 
-S9. Las secciones sin mapa (Camiones y las que vengan) tienen un fondo propio
-con gradiente sutil, y sus tarjetas bajan la opacidad del vidrio para que el
-`backdrop-filter` se perciba.
+S9. Las secciones sin mapa (Camiones y las que vengan) tienen **fondo blanco**
+con un gradiente apenas perceptible hacia gris muy claro, y sus tarjetas bajan
+la opacidad del vidrio. Nada de celeste.
 
 S6. `extras/nuevo html(prueba)` **no** se usa como referencia de diseño: es
 material local de otra rama, ignorado por git. Borrarlo queda a decisión del
@@ -155,3 +155,10 @@ Bug de tabla encontrado al verificar: con rumbos de tres dígitos (`243°`) la
 columna de acción desbordaba el ancho útil (541 > 527) y "Ver mapa" se cortaba.
 Pasó a un botón de icono de 30 px; la tabla ahora mide exactamente lo mismo que
 su contenedor (527 = 527).
+
+L15 (usuario, textual): "pero que el fondo sea blanco y no celeste"
+Se cambió el fondo de sección: `linear-gradient(180deg,#fff 0%,#fbfcfd 46%,
+#f4f6fa 100%)` con dos radiales de gris (`rgba(31,42,61,.035)`) en lugar de las
+manchas azul/celeste/lavanda. Verificado por `getComputedStyle`. Consecuencia
+aceptada: sobre blanco el vidrio casi no tiene qué difuminar; la separación de
+los paneles queda en la sombra y el borde, no en la transparencia.

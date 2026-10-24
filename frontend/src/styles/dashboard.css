@@ -471,10 +471,9 @@
      competir con el contenido: contrastes bajos y sin bordes duros. */
   .app.app-section{
     background:
-      radial-gradient(680px 460px at 10% 2%,rgba(110,150,235,.46),transparent 72%),
-      radial-gradient(760px 520px at 94% -8%,rgba(150,205,245,.52),transparent 72%),
-      radial-gradient(620px 520px at 66% 108%,rgba(124,131,201,.34),transparent 72%),
-      linear-gradient(152deg,#eaf1fd 0%,#dbe6f7 58%,#cfdff3 100%);
+      radial-gradient(900px 620px at 18% -4%,rgba(31,42,61,.035),transparent 70%),
+      radial-gradient(760px 560px at 100% 104%,rgba(31,42,61,.035),transparent 70%),
+      linear-gradient(180deg,#ffffff 0%,#fbfcfd 46%,#f4f6fa 100%);
   }
   /* Vidrio más translúcido sólo acá: contra el mapa ese ajuste no aplica. */
   @media (min-width:641px){
@@ -485,5 +484,5 @@
     }
   }
   @media (max-width:1265px){
-    .app.app-section{background:linear-gradient(160deg,#eef3fc,#d9e4f5)}
+    .app.app-section{background:linear-gradient(180deg,#ffffff,#f5f7fb)}
   }
