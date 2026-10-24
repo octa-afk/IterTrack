@@ -12,7 +12,7 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
   1. **Backend:** API REST construida con **FastAPI** (`source/`).
   2. **Persistencia:** Base de datos relacional **PostgreSQL** administrada mediante **SQLAlchemy 2.0** y **Alembic** (`source/models/`, `alembic/`).
   3. **Autenticación:** Sistema **OAuth2 + JWT** con hashing bcrypt (`source/services/auth.py`, `source/models/user.py`, `source/schemas/auth.py`). Dependencias: `python-jose[cryptography]`, `passlib[bcrypt]`.
-  4. **Visualización / Frontend:** SPA en **React 19 + TypeScript + Vite** (`frontend/`), compilada a `frontend/dist` y servida por FastAPI. Mapa en tiempo real con **Leaflet + MapLibre** (OpenFreeMap), orientación cenital del vehículo, cálculo de rumbo y flechas adaptativas. Rutas `/`, `/register` y `/map`.
+  4. **Visualización / Frontend:** SPA en **React 19 + TypeScript + Vite** (`frontend/`), compilada a `frontend/dist` y servida por FastAPI. Mapa en tiempo real con **Leaflet + MapLibre** (OpenFreeMap), marcador cenital del camión (WebP recortado, importado como asset), rotación según rumbo y tamaño escalado con el zoom. Rutas `/`, `/register`, `/map` y `/fleet`.
   5. **Simulador:** Script Python con ruta urbana realista de 13 km por Córdoba Capital (`scripts/simulate_trucks.py`, `scripts/cordoba_route.json`). Aprovisiona un dispositivo simulado por camión y emite **solo** por `POST /devices/ingest`, el mismo camino que un ESP32; no hay camino con credenciales humanas. Saltea los camiones ocupados por un dispositivo que no creó (`SIMULATED_DEVICE_PREFIX`), de modo que el hardware real siempre gana; `--force` revoca al ocupante y obliga a re-aprovisionar ese equipo.
   6. **Hardware Embebido:** Firmware C++ para microcontroladores **ESP32** con **PlatformIO** (ubicado en la rama `origin/IterTrack-Hardware`).
 
@@ -86,8 +86,10 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
 
 7. **Frontend React (`frontend/`):**
    * La UI es una SPA de **React 19 + TypeScript + Vite** en `frontend/`; se compila a `frontend/dist` con `npm --prefix frontend run build` (o `make frontend`).
-   * `source/main.py` sirve ese build: `GET /`, `GET /register` y `GET /map` devuelven `frontend/dist/index.html` (React Router resuelve la ruta) y `/assets/*` monta los archivos hasheados con `StaticFiles`. Si el build no existe, esos endpoints responden `503` con el comando para generarlo.
+   * `source/main.py` sirve ese build: `GET /`, `GET /register`, `GET /map` y `GET /fleet` devuelven `frontend/dist/index.html` (React Router resuelve la ruta) y `/assets/*` monta los archivos hasheados con `StaticFiles`. Si el build no existe, esos endpoints responden `503` con el comando para generarlo.
    * El único asset estático restante es `source/static/isologo.png`, servido en `/favicon.ico` con `include_in_schema=False`.
+   * **Assets de imagen del frontend:** van en `frontend/src/assets/` y se importan (`import truckWebp from '../assets/truck.webp'`) para que Vite los emita con hash en `frontend/dist/assets/`. **Nunca** en `frontend/public/`: el build los deja en la raíz del sitio (`/truck.webp`), que FastAPI no sirve, y en producción el `<img>` queda roto con un `404`. El `tests/test_static_css.py` verifica que el marcador se emita bajo `assets/` y que no quede ninguna referencia a la raíz.
+   * **Secciones autenticadas:** `App.tsx` monta `DashboardLayout` (sidebar + topbar + `DashboardProvider`) como layout de ruta y cada sección es un `<Outlet>` que monta su propio contenedor. El provider vive en el layout, no en la página: cambiar de sección no reinicia el polling ni pierde la selección. El mapa también vive en el layout y se oculta con `.mapbox-off` (`visibility:hidden` en escritorio, `display:none` bajo 1265 px): montarlo en la página del panel lo recreaba en cada visita, con Leaflet + MapLibre nuevos y el estilo de OpenFreeMap pedido de nuevo. Las secciones sin mapa llevan `.app-section`: gradiente de fondo propio y tarjetas más translúcidas (`--g-bg`), para que el `backdrop-filter` tenga algo que difuminar. La sección Camiones vive en `/fleet` porque `GET /trucks` ya es el endpoint JSON; `Rutas`, `Reportes` y `Ajustes` se muestran deshabilitadas (`aria-disabled`, `title="Próximamente"`) hasta que tengan página.
    * El login es client-side: `LoginPage` envía usuario/contraseña a `POST /auth/login` como `application/x-www-form-urlencoded`, guarda el `access_token` en `localStorage` (clave `itertrack_token`) y navega a `/map`.
    * El registro es client-side: `RegisterPage` pide nombre completo/usuario/email/contraseña **y el código de invitación** y los envía a `POST /auth/register` como JSON; ante un `201` hace login automático, guarda el token y navega a `/map`. Muestra el `detail` de la API como texto (nunca `innerHTML`).
    * La protección de `/map` es client-side: `DashboardProvider` valida el token contra `GET /auth/me` al montar; sin token o con `401` limpia el storage y redirige a `/`.
@@ -223,8 +225,14 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   ```bash
   env/bin/uvicorn source.main:app --reload --port 8000
   ```
+* **Ver la flota moviéndose (migra, siembra demo, levanta API y simula):**
+  ```bash
+  make demo    # un solo comando; Ctrl+C corta la simulación
+  ```
+  Reutiliza la API si ya responde en `:8000` y toma `ADMIN_API_USER`/`ADMIN_API_PASSWORD` del `.env` raíz.
 * **Ejecutar simulación de camiones:**
   ```bash
+  make simulation                             # contra una API ya levantada
   env/bin/python scripts/simulate_trucks.py   # emite por /devices/ingest, mismo camino que un ESP32
   ```
 * **Bootstrap de plataforma y demo (idempotentes):**
