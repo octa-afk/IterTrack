@@ -62,7 +62,9 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 - Exportación de reportes.
 
 ### Fase 5 — Alertas de seguridad
-Motor de alertas con reglas configurables por cliente:
+Motor de alertas con reglas configurables por cliente. Ojo con el nombre: las
+**alertas de ingesta** (equipo sin asignación, punto inválido) ya existen y son
+operativas —ver `GET /alerts`—; lo que falta es este motor de reglas de negocio.
 - **Desvío de ruta**: vehículo fuera de corredor planificado (distancia > umbral).
 - **Caída de combustible**: descenso anómalo del nivel reportado por el hardware.
 - **Salida/entrada de geocerca**.
@@ -74,8 +76,9 @@ Motor de alertas con reglas configurables por cliente:
 - Dockerfile multi-stage (Node compila la SPA, Python corre la app) con entrypoint idempotente.
 - `docker-compose` con Caddy (TLS), `web`, `worker` (flota simulada por el pipeline real de dispositivos) y Postgres en volumen nombrado.
 - Imagen publicada en GHCR; despliegue en una VM de Azure for Students.
-- Simulador con dos modos: usuario y dispositivo. En modo dispositivo saltea los camiones ocupados por hardware real.
+- Simulador sólo en modo dispositivo: emite por `POST /devices/ingest` y saltea los camiones ocupados por hardware real. Un circuito por camión y recorrido limpio al arrancar.
 - Botón de acceso demo en el login, reset automático cada 24 h (cron en el host) y dominio definitivo (`itertrack-demo.duckdns.org` con TLS de Caddy): completados.
+- Alertas de ingesta agrupadas con cierre manual (`/alerts`): completadas.
 - Runbook: `docs/DEPLOYMENT.md`.
 
 ## Definiciones a validar con el cliente

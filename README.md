@@ -31,12 +31,13 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 * **Registro y gestión de camiones:** Identificación única por ID y patente vehicular única.
 * **Telemetría GPS en tiempo real:** Recepción continua de coordenadas, velocidad, rumbo y timestamp.
 * **Panel en vivo (SPA React):** Aplicación **React 19 + TypeScript + Vite** servida por FastAPI en `/map`, con mapa **Leaflet + MapLibre** sobre OpenStreetMap, marcador cenital del camión que rota según el rumbo, se escala con el zoom y sigue automáticamente al vehículo seleccionado.
-* **Navegación por secciones:** sidebar con `Panel` (mapa en vivo) y `Camiones` (tabla de flota con filtros, orden y detalle). `Rutas`, `Reportes` y `Ajustes` están visibles como próximas, sin páginas de relleno.
-* **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
+* **Navegación por secciones:** sidebar con `Panel` (mapa en vivo), `Camiones` (tabla de flota con filtros, orden y detalle) y `Rutas` (viajes y destinos). `Reportes` y `Ajustes` están visibles como próximas, sin páginas de relleno.
+* **Recorrido en el mapa:** El trazado se dibuja sólo del último tramo continuo, en azul cósmico y con un círculo en el punto de partida. Un salto de telemetría (equipo reasignado, reinicio del simulador, GPS) corta el trazo en vez de dibujar una recta entre dos lugares que el camión nunca unió, y el resumen del recorrido mide ese mismo tramo.
 * **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`); todos los endpoints de camiones, tanto de lectura como de escritura, requieren token Bearer. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
 * **Roles con alcance explícito y aislamiento por organización:** `platform_admin`, `org_admin` y `member`, reforzados por un `CHECK CONSTRAINT` en la base. Ningún listado cruza el límite de una organización y operar sobre un recurso ajeno responde `404` para no revelar que existe.
 * **Persistencia Robusta:** Modelos relacionales con SQLAlchemy 2.0 y control de versiones de esquema con Alembic sobre PostgreSQL.
-* **Simulador integrado con ruta realista:** Script Python con un circuito cerrado de 13 km por Córdoba Capital (425 puntos). Emite como dispositivo (`POST /devices/ingest`), el mismo camino que un ESP32; la telemetría no se escribe con cuentas humanas.
+* **Simulador con un circuito por camión:** Script Python con tres circuitos cerrados por Córdoba Capital (centro, norte y sur), georreferenciados con OSRM. Cada camión recorre el suyo y arranca la corrida con el recorrido limpio. Emite como dispositivo (`POST /devices/ingest`), el mismo camino que un ESP32; la telemetría no se escribe con cuentas humanas.
+* **Alertas de ingesta:** Los puntos que el pipeline rechaza (equipo sin asignación, camión inactivo, punto inválido) se agrupan en una alerta abierta por equipo y tipo de problema, con la evidencia de cada ocurrencia. `GET /alerts` lista las de la organización y `POST /alerts/{id}/close` las cierra; si el problema vuelve, se abre otra enlazada a la anterior.
 * **Ciclo de vida de dispositivos GPS:** Alta, reasignación, rotación de token y revocación. Cada equipo tiene su propia credencial (hash SHA-256, mostrada una sola vez) y una sola asignación abierta por camión.
 * **Documentación interactiva automática:** Swagger UI y ReDoc nativos de FastAPI.
 * **Compatibilidad IoT:** Integración diseñada para dispositivos ESP32 sobre PlatformIO.
@@ -326,7 +327,6 @@ Antes de ejecutarlo, inicia el backend como administrador de la organización, q
 
 ```bash
 # El simulador lee ADMIN_API_USER y ADMIN_API_PASSWORD desde scripts/.env.
-```
 # Copiá la plantilla y completá con una cuenta administradora local:
 cp scripts/.env.example scripts/.env
 
@@ -399,6 +399,26 @@ es `none`: no se llama a ningún servicio externo y todo destino queda pendiente
 La instancia pública de Nominatim no sirve en producción (1 request/segundo y 4
 por minuto para scripts periódicos); el análisis completo está en
 [`odd/tasks/destinations.md`](./odd/tasks/destinations.md).
+
+---
+
+## 🚨 Alertas de ingesta
+
+Un punto rechazado no es un error del cliente HTTP: es un equipo mal
+aprovisionado, sin asignación vigente o con el reloj corrido. Guardado suelto en
+`rejected_ingest_points`, nadie lo mira.
+
+Cada rechazo se agrupa en la alerta abierta de `(dispositivo, tipo de problema)`
+y queda como evidencia en `alert_occurrences`:
+
+* `GET /alerts` — alertas abiertas de la organización (todas para `platform_admin`), con dispositivo, problema, cantidad de ocurrencias y la última.
+* `POST /alerts/{id}/close` — cierra (`org_admin`); sobre una alerta ajena responde `404`.
+
+Si una alerta cerrada vuelve a fallar, se abre una nueva enlazada por
+`previous_alert_id`: así se distingue una recurrencia de un problema nuevo. La
+organización se copia del dispositivo, no de la asignación, para que las alertas
+de `no_assignment` —el caso más común— también queden visibles. Detalle en
+[`odd/tasks/ingest-alerts.md`](./odd/tasks/ingest-alerts.md).
 
 ---
 
@@ -540,7 +560,7 @@ La demo corre en un host aislado con su propia base de datos: nada de lo que hag
 
 Las contraseñas están en [`deploy/.env.example`](./deploy/.env.example). Son públicas por diseño; la de `platform_admin` no lo es y nunca se publica.
 
-Qué mirar: los tres camiones de `Demo Corp` se mueven sobre un circuito de 13 km en Córdoba a una velocidad objetivo de 55 km/h, con rumbo real. El `org_admin` de la demo no puede crear organizaciones (`403`) ni ver otra empresa (`404`, para no revelar que existe).
+Qué mirar: los tres camiones de `Demo Corp` recorren cada uno su propio circuito por Córdoba a 55 km/h, con rumbo real, su recorrido en azul cósmico y el círculo que marca dónde empezó la corrida. El `org_admin` de la demo no puede crear organizaciones (`403`) ni ver otra empresa (`404`, para no revelar que existe).
 
 La invitación de `Demo Corp` nace revocada: la demo se entra por el botón, no por registro, y así nadie crea cuentas que sobrevivan a los resets. Los datos se rebarrer cada 24 h con `env/bin/python -m scripts.seed_demo --reset`, que nunca toca la cuenta de plataforma ni otras organizaciones.
 

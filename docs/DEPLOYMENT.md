@@ -130,6 +130,7 @@ Checklist mínimo:
 - [ ] `GET /health` responde 200.
 - [ ] La SPA carga y el botón **Entrar a la demo** aparece y entra al mapa.
 - [ ] `GET /config` devuelve `{"demo":{"enabled":true,...}}` con la cuenta de **solo lectura** (`DEMO_USERNAME`), nunca `demo-admin`.
+- [ ] `GET /alerts` responde `401` sin token (el router está registrado) y `200 []` con la cuenta de la demo. Con un equipo mal aprovisionado aparece una alerta abierta.
 - [ ] El registro con el código de la demo responde `400`: la invitación nace revocada.
 - [ ] El mapa muestra 3 camiones moviéndose.
 - [ ] `demo-admin` recibe 403 al intentar crear una organización.
@@ -170,6 +171,11 @@ for tid in (1, 2, 3):
 db.close()
 PY
 ```
+
+**Reiniciar el worker borra el recorrido de sus camiones.** Desde que cada corrida
+arranca limpia, el worker borra el historial de los camiones que simula antes del
+primer punto (nunca el de un camión con hardware real). Es lo esperado: los
+trazados del mapa empiezan de cero después de un `restart`.
 
 Si el worker muestra `Ingesta rechazada (401): {"detail":"Invalid device credentials"}` y `No se pudieron listar dispositivos (401)` a la vez, perdió el token del dispositivo **y** la credencial para recuperarlo: reiniciar `docker compose restart worker` lo devuelve al ruedo. Las imágenes con el fix de re-autenticación se recuperan solas.
 
