@@ -21,6 +21,20 @@ const MOVE_MAX_MS = 6000;
 const MOVE_EASE = (k: number) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
 const OPEN_ZOOM = 12;
 
+/*
+ * Escala del marcador según el zoom. A zoom ciudad (12+) se dibuja a tamaño
+ * completo; alejándose se achica hasta 55% para no tapar la provincia entera.
+ * Nunca escala por encima de 1: crecer al acercarse solo tapa las calles.
+ */
+const PIN_FULL_ZOOM = OPEN_ZOOM;
+const PIN_MIN_SCALE = 0.55;
+const PIN_SCALE_PER_ZOOM = 0.09;
+
+function pinScale(zoom: number): number {
+  const raw = 1 - (PIN_FULL_ZOOM - zoom) * PIN_SCALE_PER_ZOOM;
+  return Math.min(1, Math.max(PIN_MIN_SCALE, raw));
+}
+
 type MaplibreLayer = L.Layer & { getMaplibreMap(): maplibregl.Map };
 type MaplibreFactory = (options: {
   style: string;
@@ -57,6 +71,13 @@ export default function MapView() {
     const lastPos = lastPosRef.current;
     const moves = movesRef.current;
     el.classList.add('map-style-loading');
+
+    /* El tamaño del marcador vive en CSS: acá solo publicamos la escala. */
+    const applyPinScale = () => {
+      el.style.setProperty('--pin-scale', String(pinScale(map.getZoom())));
+    };
+    applyPinScale();
+    map.on('zoomend', applyPinScale);
 
     const base = maplibreGL({ style: MAP_STYLE, attribution: ATTRIBUTION });
     base.addTo(map);
