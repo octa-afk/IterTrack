@@ -13,7 +13,7 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
   2. **Persistencia:** Base de datos relacional **PostgreSQL** administrada mediante **SQLAlchemy 2.0** y **Alembic** (`source/models/`, `alembic/`).
   3. **Autenticación:** Sistema **OAuth2 + JWT** con hashing bcrypt (`source/services/auth.py`, `source/models/user.py`, `source/schemas/auth.py`). Dependencias: `python-jose[cryptography]`, `passlib[bcrypt]`.
   4. **Visualización / Frontend:** SPA en **React 19 + TypeScript + Vite** (`frontend/`), compilada a `frontend/dist` y servida por FastAPI. Mapa en tiempo real con **Leaflet + MapLibre** (OpenFreeMap), orientación cenital del vehículo, cálculo de rumbo y flechas adaptativas. Rutas `/`, `/register` y `/map`.
-  5. **Simulador:** Script Python con ruta urbana realista de 13 km por Córdoba Capital (`scripts/simulate_trucks.py`, `scripts/cordoba_route.json`). Tiene dos modos: `--mode user` (default) escribe por `PUT /trucks/{id}/location` con credenciales de usuario; `--mode device` aprovisiona un dispositivo simulado por camión y emite por `POST /devices/ingest`, el mismo camino que un ESP32. En modo dispositivo saltea los camiones ocupados por un dispositivo que no creó (`SIMULATED_DEVICE_PREFIX`), de modo que el hardware real siempre gana; `--force` revoca al ocupante y obliga a re-aprovisionar ese equipo.
+  5. **Simulador:** Script Python con ruta urbana realista de 13 km por Córdoba Capital (`scripts/simulate_trucks.py`, `scripts/cordoba_route.json`). Aprovisiona un dispositivo simulado por camión y emite **solo** por `POST /devices/ingest`, el mismo camino que un ESP32; no hay camino con credenciales humanas. Saltea los camiones ocupados por un dispositivo que no creó (`SIMULATED_DEVICE_PREFIX`), de modo que el hardware real siempre gana; `--force` revoca al ocupante y obliga a re-aprovisionar ese equipo.
   6. **Hardware Embebido:** Firmware C++ para microcontroladores **ESP32** con **PlatformIO** (ubicado en la rama `origin/IterTrack-Hardware`).
 
 ---
@@ -137,7 +137,7 @@ Cuando modifiques o crees modelos en `source/models/`:
 Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en cuenta los siguientes puntos pendientes:
 
 * **Migración BD en `tracking.py` (Completada):**
-  * Todos los endpoints de `source/services/tracking.py` (`POST /trucks`, `PUT /{truck_id}/location`, `GET /{truck_id}/location`, `GET /{truck_id}/iter`, `GET /trucks`, `GET /trucks/ids`) ya consultan y persisten exclusivamente en PostgreSQL mediante la sesión inyectada `db: Session = Depends(get_db)`.
+  * Todos los endpoints de `source/services/tracking.py` (`POST /trucks`, `GET /{truck_id}/location`, `GET /{truck_id}/iter`, `GET /trucks`, `GET /trucks/ids`) consultan y persisten exclusivamente en PostgreSQL mediante la sesión inyectada `db: Session = Depends(get_db)`. La escritura de telemetría vive solo en `POST /devices/ingest`.
 * **Autenticación OAuth2 + JWT (Completada):**
   * Modelo ORM `User` en `source/models/user.py` (tabla `users` creada vía migración `391c6b7b75c0`).
   * `source/schemas/auth.py` y `source/services/auth.py` implementados: registro, login (OAuth2PasswordRequestForm), `/auth/me`, hashing bcrypt y tokens JWT HS256.
@@ -219,8 +219,7 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   ```
 * **Ejecutar simulación de camiones:**
   ```bash
-  env/bin/python scripts/simulate_trucks.py              # modo usuario
-  env/bin/python scripts/simulate_trucks.py --mode device  # mismo camino que un ESP32
+  env/bin/python scripts/simulate_trucks.py   # emite por /devices/ingest, mismo camino que un ESP32
   ```
 * **Bootstrap de plataforma y demo (idempotentes):**
   ```bash
