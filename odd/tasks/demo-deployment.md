@@ -352,3 +352,20 @@ Medición sobre la ruta completa (424 tramos) y sobre puntos reales de la base:
 | Ejemplo real | 100,5 m en 3,1 s (117 km/h) | 100,5 m en 6,7 s (54 km/h) |
 
 `espera_y_velocidad` calcula la velocidad con la espera efectiva, así que en los tramos cortos (piso de `--interval`) el valor reportado es menor que el objetivo, y ahora coincide con lo que el panel mide.
+
+### L19 — La flota quedó congelada tras el reset diario (2026-10-24)
+
+Síntoma en producción: el worker repetía `⚠️ Ingesta rechazada (401): {"detail":"Invalid device credentials"}` y `⚠️ No se pudieron listar dispositivos (401)`, con `GET /devices` y `POST /devices/ingest` en 401. En la base: **0 puntos ingeridos desde las 04:00 UTC**, y el último `tracking_point` de las 04:00:07. La demo llevaba horas muerta sin que nadie lo notara.
+
+Causa, dos fallas que se combinan:
+
+1. El worker autentica el administrador **una sola vez al arrancar** (`admin_headers = dict(autenticar_admin())`) y el JWT dura `ACCESS_TOKEN_EXPIRE_MINUTES=60`. A las 8 horas de uptime está vencido hace 7.
+2. El cron de las 04:00 (hora del host, que está en UTC → 01:00 en Argentina) corre `seed_demo --reset`, que borra los dispositivos del tenant y crea otros nuevos (`SIM-001..003`) con tokens que el worker nunca vio.
+
+El token del dispositivo pasa a inválido → el worker intenta recuperarse con `preparar_dispositivo` → `GET /devices` con el JWT de admin vencido → 401 → no obtiene token nuevo → loop permanente. **No se recupera sin reiniciar el contenedor**, así que cada madrugada la demo queda muerta hasta que alguien la mira.
+
+Recuperación inmediata aplicada: `docker compose restart worker`. Telemetría confirmada (19 puntos en 5 minutos, tres camiones en verde).
+
+Arreglo durable: `_reaprovisionar_dispositivo(truck_id, admin_headers)` re-loguea el administrador, actualiza el dict compartido y recién entonces re-aprovisiona. Es el `on_unauthorized` que recibe el sender de dispositivo, así que la recuperación deja de depender de un JWT de 8 horas. Tests: `test_recovery_renews_the_admin_jwt_before_reprovisioning` y `test_device_mode_recovery_reauthenticates_the_admin` (antes del arreglo, el callback no volvía a loguear y el test fallaba).
+
+Verificado durante el incidente, sobre la imagen vieja: `55,4 m en 2,0 s = 99 km/h` con `speed=55` reportado, o sea el bug de cadencia de L18 también estaba presente en producción.
