@@ -30,7 +30,8 @@ mientras no estás en el panel.
 
 S8. El cambio de sección tiene una animación mínima de entrada, sin costo de
 relayout y sin parpadear el mapa: sólo `opacity` y `translateY(6px)` durante
-180 ms, desactivada con `prefers-reduced-motion`.
+340 ms y un desplazamiento de 18 px con `scale(.985)`, desactivada con
+`prefers-reduced-motion`.
 
 S6. `extras/nuevo html(prueba)` **no** se usa como referencia de diseño: es
 material local de otra rama, ignorado por git. Borrarlo queda a decisión del
@@ -108,3 +109,11 @@ Verificación: al entrar a `/fleet` corre `section-in` (180 ms) y tras un poll d
 3 s la animación figura `finished` y **no se repite** — los re-render por datos
 no la reactivan. Al volver al panel animan las tarjetas y `.mapbox` no tiene
 ninguna animación. Con `prefers-reduced-motion: reduce` hay 0 animaciones.
+
+L10 (usuario, textual): "si casi que no se aprecia"
+Se subió la animación: `translateY` 6px→18px, `scale(.985)`→1, duración
+180ms→340ms, easing `cubic-bezier(.22,.61,.36,1)`. Medición durante la entrada
+a `/fleet`: `y` 119.4 → 106.3 → 103.1 → 97 (reposo), ancho 978 → 993 y opacidad
+0 → 0.59 → 0.73 → 1. Nota: `getComputedStyle().transform` devuelve la matriz
+identidad mientras la animación corre en el compositor; hay que medir con
+`getBoundingClientRect()`.

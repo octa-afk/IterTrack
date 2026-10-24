@@ -463,13 +463,15 @@
      Se aplica a las tarjetas, nunca a `.mapbox`, que ahora persiste entre
      secciones y parpadearía. Sin JS: la animación corre al montar el nodo. */
   @keyframes section-in{
-    from{opacity:0;transform:translateY(6px)}
-    to{opacity:1;transform:translateY(0)}
+    from{opacity:0;transform:translateY(18px) scale(.985)}
+    to{opacity:1;transform:translateY(0) scale(1)}
   }
   @keyframes fade-in{ from{opacity:0} to{opacity:1} }
-  .grid .card,.mapcard .card-h,.fleet-page{animation:section-in .18s cubic-bezier(.2,0,0,1) both}
+  .grid .card,.mapcard .card-h,.fleet-page{
+    animation:section-in .34s cubic-bezier(.22,.61,.36,1) both;
+  }
   .side nav a{transition:background-color .15s ease,color .15s ease}
-  .side nav a.on{animation:fade-in .18s ease-out both}
+  .side nav a.on{animation:fade-in .24s ease-out both}
   @media (prefers-reduced-motion:reduce){
     .grid .card,.mapcard .card-h,.fleet-page,.side nav a.on{animation:none}
     .side nav a{transition:none}
