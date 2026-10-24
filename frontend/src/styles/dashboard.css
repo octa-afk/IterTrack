@@ -131,7 +131,7 @@
     .grid{grid-template-columns:1fr}
     .listcard{min-height:483px}
   }
-  @media (max-width:943px){
+  @media (max-width:640px){
     body{padding:0;display:block}
     .app{display:block;height:auto;border-radius:0;box-shadow:none}
     .side{flex-direction:row;padding:14px 18px;align-items:center}
@@ -186,7 +186,7 @@
   @media (max-width:1265px){
     .grid{overflow:auto;grid-template-rows:none;align-content:start}
   }
-  @media (max-width:943px){
+  @media (max-width:640px){
     body{padding:0;display:block}
     .app{display:block;height:auto;border:0}
     .side{border-right:0;border-bottom:1px solid rgba(255,255,255,.35)}
@@ -222,15 +222,15 @@
   .pill{background:var(--green)}
   .avatar{color:var(--green-d)}
   .card{box-shadow:0 3.5px 16px rgba(60,90,150,.08)}
-  @media (max-width:943px){ .side{border-bottom:1px solid rgba(255,255,255,.9)} }
+  @media (max-width:640px){ .side{border-bottom:1px solid rgba(255,255,255,.9)} }
 
   /* ===== Pantalla completa ===== */
   html,body{height:100%}
-  @media (min-width:944px){
+  @media (min-width:641px){
     body{padding:0;display:block;overflow:auto}
     .app{width:100%;max-width:none;height:100vh;height:100dvh;min-height:644px;border-radius:0;border:0;box-shadow:none}
   }
-  @media (max-width:943px){
+  @media (max-width:640px){
     .app{border-radius:0}
   }
 
@@ -284,7 +284,7 @@
   .search{background:#f1f4fb;box-shadow:none}
 
   @media (prefers-reduced-motion:reduce){.app,.side,.side-in{transition:none}}
-  @media (max-width:943px){
+  @media (max-width:640px){
     .side{padding:0}
     .side-in{width:100%;flex-direction:row;padding:14px 18px;align-items:center}
     .app.nav-off .side-in{opacity:1}
@@ -359,11 +359,11 @@
     .mapcard .card-h{display:inline-flex}.bottom{display:grid;grid-template-columns:1fr}.bottom .card{height:219px}
     .leaflet-top.leaflet-left{left:0;top:0}.leaflet-bottom.leaflet-right{left:auto;right:0}
   }
-  @media (max-width:943px){
+  @media (max-width:640px){
     .app{padding:0}.side-in{width:100%}.top{padding:0 14px}.grid{padding:14px}.mapbox{height:56vh}
   }
   /* Mobile surfaces follow the supplied glass treatment without changing desktop. */
-  @media (max-width:943px){
+  @media (max-width:640px){
     :root{--lx:12px;--rp:calc(100vw - 24px)}
     body{background:#f4f6fb;min-height:100%;overflow:hidden}
     .app{height:100dvh;min-height:0;overflow:hidden;background:transparent}
@@ -399,7 +399,7 @@
     body[data-mobile-view="map"] .bottom,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
   }
   @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom{transition:none!important}}
-  @media (min-width:944px){
+  @media (min-width:641px){
     :root{
       --g-bg:rgba(255,255,255,.90);--g-solid:rgba(248,250,254,.97);
       --g-bd:rgba(255,255,255,.78);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);

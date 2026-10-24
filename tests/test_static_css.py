@@ -66,3 +66,17 @@ def test_truck_active_state_and_trip_summary():
     assert ".pin.off .truck-svg{" in text
     assert re.search(r"\.detail \.trip\{[^}]*border-radius:12px", text)
     assert re.search(r"\.detail \.trip-st\{[^}]*grid-template-columns:repeat\(3,1fr\)", text)
+
+
+@requires_build
+def test_mobile_layout_only_below_phone_widths():
+    """La UI móvil no está curada: no debe aparecer al angostar una ventana de PC.
+
+    El breakpoint tiene que quedar por debajo de una pantalla dividida típica
+    (720-960 px); si sube, la demo en PC se convierte en la versión móvil.
+    """
+    text = built_css()
+    assert "(width<=640px)" in text
+    assert "(width>=641px)" in text
+    assert "943px" not in text
+    assert "944px" not in text
