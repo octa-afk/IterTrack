@@ -1,9 +1,10 @@
-import { STATUS, ago } from '../lib/trucks';
+import { STATUS, ago, formatDuration, tripSummary } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
 import { Sparkline } from './Sparkline';
 
 export function TruckDetail() {
   const { selectedTruck: truck } = useDashboard();
+  const trip = truck ? tripSummary(truck.path) : null;
 
   return (
     <div className="card" style={{ padding: 14 }}>
@@ -18,8 +19,13 @@ export function TruckDetail() {
               <span>
                 <b style={{ color: 'var(--ink)', fontSize: '14px' }}>{truck.plate}</b>
                 {' · '}
-                <span style={{ color: STATUS[truck.status].color, fontWeight: '600' }}>
-                  {STATUS[truck.status].label}
+                <span
+                  style={{
+                    color: truck.active ? STATUS[truck.status].color : 'var(--muted)',
+                    fontWeight: '600',
+                  }}
+                >
+                  {truck.active ? STATUS[truck.status].label : 'Inactivo'}
                 </span>
               </span>
               <span>{truck.updated ? ago(truck.updated) : 'Sin señal'}</span>
@@ -52,6 +58,32 @@ export function TruckDetail() {
                   : '—'}
               </dd>
             </dl>
+
+            <div className="trip">
+              <div className="trip-h">Recorrido reciente</div>
+              {trip ? (
+                <div className="trip-st">
+                  <div>
+                    <b>{trip.km.toFixed(1)}</b>
+                    <span>km</span>
+                  </div>
+                  <div>
+                    <b>{formatDuration(trip.minutes)}</b>
+                    <span>Duración</span>
+                  </div>
+                  <div>
+                    <b>{trip.points}</b>
+                    <span>Puntos</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="trip-none">
+                  {truck.active
+                    ? 'Sin recorrido suficiente todavía.'
+                    : 'Camión inactivo: no recibe nuevas posiciones.'}
+                </p>
+              )}
+            </div>
 
             {truck.history.length > 1 && <Sparkline data={truck.history} />}
           </>

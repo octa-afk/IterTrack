@@ -33,10 +33,14 @@ export interface Token {
 
 // ---- Trucks (source/schemas/truck.py + source/models/truck.py) ----
 
-/** GET /trucks returns the ORM rows; the dashboard consumes id and plate. */
+/**
+ * GET /trucks returns the ORM rows. `active` is the fleet-lifecycle flag: an
+ * inactive truck keeps its history but the backend rejects new GPS reports.
+ */
 export interface Truck {
   id: number;
   plate: string;
+  active: boolean;
 }
 
 /** Payload accepted by POST /trucks/{id}/location and PUT. */

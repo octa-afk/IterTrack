@@ -8,10 +8,29 @@ import type { TrackingPoint, Truck } from '../api/types';
 
 export type TruckStatus = 'move' | 'idle' | 'stop' | 'alert';
 
+/** A recorded position of the selected truck's recent trail. */
+export interface PathPoint {
+  lat: number;
+  lng: number;
+  /** Measurement time in ms (from `recorded_at`). */
+  at: number;
+}
+
+export interface TripSummary {
+  km: number;
+  minutes: number;
+  points: number;
+}
+
 export interface TruckState {
   id: number;
   plate: string;
   color: string;
+  /**
+   * Fleet-lifecycle flag from the backend. An inactive truck keeps its history
+   * but stops reporting: the UI must not present it as a live vehicle.
+   */
+  active: boolean;
   lat: number | null;
   lng: number | null;
   heading: number;
@@ -22,6 +41,8 @@ export interface TruckState {
   route: string;
   updated: number;
   history: number[];
+  /** Recent trail, oldest first. Empty until the truck is selected. */
+  path: PathPoint[];
 }
 
 export type SortKey = 'plate' | 'speed' | 'fuel' | 'updated' | 'driver';
@@ -54,6 +75,8 @@ export const STALE_MS = 10 * 60e3;
 export const FRESH_MS = 5 * 60e3;
 export const HISTORY_MAX = 18;
 export const POLL_MS = 3000;
+/** Points requested from GET /trucks/{id}/iter for the map trail. */
+export const TRIP_LIMIT = 500;
 
 const TRUCK_COLORS = [
   '#3f6fe0', '#2f9e6b', '#8b5cf0', '#0e93a8',
@@ -95,6 +118,7 @@ export function crearEstadoCamion(t: Truck): TruckState {
     id: t.id,
     plate: t.plate,
     color: colorDeCamion(t),
+    active: t.active,
     lat: null,
     lng: null,
     heading: 0,
@@ -105,6 +129,7 @@ export function crearEstadoCamion(t: Truck): TruckState {
     route: '',
     updated: 0,
     history: [],
+    path: [],
   };
 }
 
@@ -161,6 +186,56 @@ export function buildHistory(points: TrackingPoint[]): number[] {
     history.push(seconds > 0 ? Math.max(0, Math.min(200, Math.round((distance / seconds) * 3.6))) : 0);
   }
   return history.slice(-HISTORY_MAX);
+}
+
+/**
+ * Chronological trail from GET /trucks/{id}/iter (newest first).
+ *
+ * Consecutive identical positions are dropped: a parked truck reports the same
+ * coordinates repeatedly and they would add nothing to the drawn line.
+ */
+export function buildPath(points: TrackingPoint[]): PathPoint[] {
+  const chronological = points.slice().reverse();
+  const path: PathPoint[] = [];
+  for (const point of chronological) {
+    const at = Date.parse(point.recorded_at) || Date.now();
+    const last = path[path.length - 1];
+    if (last && last.lat === point.lat && last.lng === point.long) {
+      path[path.length - 1] = { ...last, at };
+      continue;
+    }
+    path.push({ lat: point.lat, lng: point.long, at });
+  }
+  return path.slice(-TRIP_LIMIT);
+}
+
+/** Append a freshly polled location to an already seeded trail. */
+export function appendPath(path: PathPoint[], point: TrackingPoint): PathPoint[] {
+  if (!path.length) return path;
+  const at = Date.parse(point.recorded_at) || Date.now();
+  const last = path[path.length - 1];
+  if (at <= last.at) return path;
+  if (last.lat === point.lat && last.lng === point.long) {
+    return [...path.slice(0, -1), { ...last, at }];
+  }
+  return [...path, { lat: point.lat, lng: point.long, at }].slice(-TRIP_LIMIT);
+}
+
+/** Distance and duration of a trail; null when there is nothing to measure. */
+export function tripSummary(path: PathPoint[]): TripSummary | null {
+  if (path.length < 2) return null;
+  let meters = 0;
+  for (let i = 1; i < path.length; i++) {
+    meters += haversineM(path[i - 1].lat, path[i - 1].lng, path[i].lat, path[i].lng);
+  }
+  const minutes = Math.max(0, (path[path.length - 1].at - path[0].at) / 60000);
+  return { km: meters / 1000, minutes, points: path.length };
+}
+
+/** Compact duration for the trip summary: 45 min, 2.3 h. */
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${Math.round(minutes)} min`;
+  return `${(minutes / 60).toFixed(1)} h`;
 }
 
 const normalize = (value: string) =>

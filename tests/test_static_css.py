@@ -57,3 +57,12 @@ def test_bottom_cards_surfaces():
     assert ".bars{" in text
     assert ".bar{" in text
     assert ".donuts{" in text
+
+
+@requires_build
+def test_truck_active_state_and_trip_summary():
+    text = built_css()
+    assert ".badge-off{" in text
+    assert ".pin.off .truck-svg{" in text
+    assert re.search(r"\.detail \.trip\{[^}]*border-radius:12px", text)
+    assert re.search(r"\.detail \.trip-st\{[^}]*grid-template-columns:repeat\(3,1fr\)", text)

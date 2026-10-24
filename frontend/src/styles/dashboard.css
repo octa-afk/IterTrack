@@ -115,6 +115,18 @@
   .spark{width:100%;height:74px;margin-top:6.9px}
   .noSel{color:var(--muted);font-size:14px;text-align:center;padding:21px 9.2px}
 
+  /* Camión inactivo: conserva su historial pero ya no transmite. */
+  .badge-off{display:inline-block;margin-left:6px;padding:1px 7px;border:1px solid var(--line);border-radius:1149px;background:var(--bg);color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle}
+  .pin.off .truck-svg{opacity:.55;filter:grayscale(1)}
+
+  /* Resumen del recorrido reciente del camión seleccionado. */
+  .detail .trip{margin-top:9.2px;background:#fff;border-radius:12px;padding:10px 12px}
+  .detail .trip-h{display:flex;justify-content:space-between;font-size:11px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);margin-bottom:6.9px}
+  .detail .trip-st{display:grid;grid-template-columns:repeat(3,1fr);text-align:center}
+  .detail .trip-st b{display:block;font-size:16px;font-weight:600;color:var(--ink)}
+  .detail .trip-st span{font-size:11px;color:var(--muted)}
+  .detail .trip-none{font-size:12px;color:var(--muted);margin:0}
+
   @media (max-width:1265px){
     .grid{grid-template-columns:1fr}
     .listcard{min-height:483px}
@@ -319,7 +331,7 @@
   .card{border-radius:28px}
   .bottom{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;height:202px;gap:14px}
   .dn{gap:6px}.dn svg{width:52px;height:52px}.dn .t{font-size:10.5px}.dn .t b{font-size:13px}.dn .pc{font-size:12px}
-  .detail,.detail .st{background:var(--g-fill)}
+  .detail,.detail .st,.detail .trip{background:var(--g-fill)}
   .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
   .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
   .bar i{background:var(--g-fill2)}.bar:hover i,.bar.sel i{background:var(--green-l)}

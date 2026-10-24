@@ -37,6 +37,7 @@ export default function MapView() {
   const lastPosRef = useRef(new Map<number, { lat: number; lng: number; updated: number }>());
   const movesRef = useRef(new Map<number, ActiveMove>());
   const movementRef = useRef<ReturnType<typeof createMovementController> | null>(null);
+  const trailRef = useRef<L.Polyline | null>(null);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
 
@@ -159,6 +160,8 @@ export default function MapView() {
       document.removeEventListener('keydown', onKeyDown);
       movementRef.current?.stop();
       movementRef.current = null;
+      trailRef.current?.remove();
+      trailRef.current = null;
       markers.clear();
       lastPos.clear();
       moves.clear();
@@ -227,6 +230,36 @@ export default function MapView() {
       movesRef.current.delete(id);
     }
   }, [trucks, visibleTrucks, selectedId]);
+
+  /* Draw the selected truck's recent trail under the markers. */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const truck = trucks.find((t) => t.id === selectedId);
+    const latlngs = (truck?.path ?? []).map(
+      (point) => [point.lat, point.lng] as [number, number],
+    );
+
+    if (!truck || latlngs.length < 2) {
+      trailRef.current?.remove();
+      trailRef.current = null;
+      return;
+    }
+
+    if (!trailRef.current) {
+      trailRef.current = L.polyline(latlngs, {
+        color: truck.color,
+        weight: 4,
+        opacity: 0.8,
+        lineJoin: 'round',
+        lineCap: 'round',
+      }).addTo(map);
+      return;
+    }
+    trailRef.current.setLatLngs(latlngs);
+    trailRef.current.setStyle({ color: truck.color });
+  }, [trucks, selectedId]);
 
   /* Fly to the selected truck when the selection changes. */
   useEffect(() => {
