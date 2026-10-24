@@ -399,3 +399,14 @@ Pendientes abiertos, fuera de este deploy:
 - Fase 2: buffer offline de la ESP32 (diseño) y que el firmware informe `recorded_at` desde su GPS.
 - Fases 4 y 5: estadísticas logísticas y motor de alertas.
 - Ramas locales `feat/roles-and-admin`, `feat/device-reassign-revoke` y `feat/human-measurement-hardening` ya están en `develop` por otro camino: se pueden borrar.
+
+### L21 — El botón de demo entra con la cuenta de solo lectura (2026-10-24)
+
+Hasta acá `/config` publicaba `DEMO_ADMIN_USERNAME/PASSWORD`, o sea el `org_admin` del tenant: cualquiera que abriera el login podía borrar el historial, desactivar camiones o crear flotas. Con la escritura humana de ubicaciones ya eliminada, el visitante no necesita ningún permiso de escritura.
+
+- `Settings` separa `demo_username`/`demo_password` (lo que se publica) de `demo_admin_username`/`demo_admin_password` (seed y operación). `demo_enabled` exige las credenciales públicas, así que si faltan el botón no aparece.
+- `GET /config` devuelve el miembro; el admin de la demo no sale del servidor. Test explícito: la respuesta no contiene `demo-admin` ni su contraseña.
+- `deploy/.env.example` publica `DEMO_USERNAME=demo` y `DEMO_PASSWORD` igual a `DEMO_MEMBER_PASSWORD`, con un test que lo exige.
+- Verificado en vivo: `/config` → `demo`; login OK; `GET /trucks` 200; `POST /trucks`, `PATCH /trucks/{id}/activate` y `DELETE /trucks/{id}/iter` → `403`.
+
+> Al desplegar, el `.env` de la VM necesita `DEMO_USERNAME` y `DEMO_PASSWORD`. Sin ellas `demo_enabled` es falso y el botón desaparece: falla cerrado, no expone nada.

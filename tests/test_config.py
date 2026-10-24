@@ -72,7 +72,7 @@ def test_demo_enabled_requires_the_flag_and_both_credentials():
             database_url="sqlite:///:memory:",
             secret_key=VALID_SECRET,
             demo_mode=True,
-            demo_admin_username="demo",
+            demo_username="demo",
         ).demo_enabled
         is False
     )
@@ -82,8 +82,8 @@ def test_demo_enabled_requires_the_flag_and_both_credentials():
             database_url="sqlite:///:memory:",
             secret_key=VALID_SECRET,
             demo_mode=True,
-            demo_admin_username="demo",
-            demo_admin_password="demo-2026",
+            demo_username="demo",
+            demo_password="demo-member-2026",
         ).demo_enabled
         is True
     )
