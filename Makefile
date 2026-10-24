@@ -3,7 +3,6 @@
 SIMULATION_COUNT ?= 3
 SIMULATION_INTERVAL ?= 2
 SIMULATION_ID ?= 1
-SIMULATION_PLATE ?= ABC123
 
 # Credenciales locales (ADMIN_API_USER, ADMIN_API_PASSWORD, DATABASE_URL...) que
 # viven en el .env raíz. Los targets las cargan en el shell del recetario sin
@@ -33,8 +32,7 @@ simulation:
 	@$(LOAD_ENV); env/bin/python scripts/simulate_trucks.py \
 		--count $(SIMULATION_COUNT) \
 		--interval $(SIMULATION_INTERVAL) \
-		--id $(SIMULATION_ID) \
-		--plate $(SIMULATION_PLATE)
+		--id $(SIMULATION_ID)
 
 # Un solo comando para ver la flota moviéndose: migra, bootstrapea, siembra el
 # tenant demo, levanta la API si no está arriba y corre el simulador.
@@ -59,8 +57,7 @@ demo:
 	env/bin/python scripts/simulate_trucks.py \
 		--count $(SIMULATION_COUNT) \
 		--interval $(SIMULATION_INTERVAL) \
-		--id $(SIMULATION_ID) \
-		--plate $(SIMULATION_PLATE)
+		--id $(SIMULATION_ID)
 
 # One-time platform owner and internal organization. Never touched by the demo reset.
 bootstrap:

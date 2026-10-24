@@ -22,7 +22,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from scripts.simulate_trucks import build_truck_configs
+from scripts.simulate_trucks import build_truck_configs, truck_plates
 from source.database.database import SessionLocal
 from source.models.destination import (
     AddressCache,
@@ -292,6 +292,7 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
         base_plate=config.base_plate,
         count=config.truck_count,
         route_length=len(ruta),
+        plates=truck_plates(),
     )
 
     trucks_created = 0
@@ -314,6 +315,9 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
             trucks_created += 1
         else:
             truck.organization_id = organization.id
+            # La patente converge con la flota configurada: sin esto, cambiar
+            # `TRUCK_PLATES` no renombra nada hasta un `--reset`.
+            truck.plate = truck_config.plate
 
         # Same formula the simulator uses, so device mode recognises these
         # as its own instead of a real ESP32.
@@ -407,8 +411,15 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
             trips_created += 1
             reescribir = True
         else:
-            actuales = [(parada.lat, parada.lng) for parada in viaje.stops]
-            reescribir = actuales != puntos
+            # La dirección incluye la patente, así que un renombre también cuenta
+            # como cambio: sin esto la parada diría la patente vieja.
+            actuales = [
+                (parada.address, parada.lat, parada.lng) for parada in viaje.stops
+            ]
+            reescribir = actuales != [
+                (f"Parada {seq} · {truck_config.plate}", lat, lng)
+                for seq, (lat, lng) in enumerate(puntos, start=1)
+            ]
 
         if not reescribir:
             continue

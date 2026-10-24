@@ -109,7 +109,8 @@ def test_bootstrap_rejects_short_password(db_session):
 # ---- demo seed ----
 
 
-def test_seed_creates_demo_tenant_with_its_roles_and_fleet(db_session):
+def test_seed_creates_demo_tenant_with_its_roles_and_fleet(db_session, monkeypatch):
+    monkeypatch.delenv("TRUCK_PLATES", raising=False)
     result = seed_demo(db_session, demo_config())
 
     organization = db_session.get(Organization, result.organization_id)
@@ -129,9 +130,9 @@ def test_seed_creates_demo_tenant_with_its_roles_and_fleet(db_session):
         .all()
     )
     assert [(truck.id, truck.plate) for truck in trucks] == [
-        (1, "ABC123-01"),
-        (2, "ABC123-02"),
-        (3, "ABC123-03"),
+        (1, "ABC123"),
+        (2, "DEF456"),
+        (3, "XYZ789"),
     ]
 
     devices = db_session.query(Device).filter(Device.identifier.like("SIM-%")).all()
@@ -143,6 +144,22 @@ def test_seed_creates_demo_tenant_with_its_roles_and_fleet(db_session):
         .count()
         == 3
     )
+
+
+def test_seed_converges_plates_when_the_fleet_list_changes(db_session, monkeypatch):
+    """Renombrar la flota no puede exigir un reset: el reset borra el historial."""
+    seed_demo(db_session, demo_config())
+
+    monkeypatch.setenv("TRUCK_PLATES", "AAA111,BBB222,CCC333")
+    again = seed_demo(db_session, demo_config())
+
+    assert again.trucks == 0
+    plates = [truck.plate for truck in db_session.query(Truck).order_by(Truck.id)]
+    assert plates == ["AAA111", "BBB222", "CCC333"]
+    primer_viaje = (
+        db_session.query(Trip).filter(Trip.external_ref == "DEMO-001").one()
+    )
+    assert primer_viaje.stops[0].address.endswith("AAA111")
 
 
 def test_seed_gives_each_truck_its_own_trip(db_session):

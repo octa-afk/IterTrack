@@ -15,6 +15,7 @@ from scripts.simulate_trucks import (
     rotate_route,
     route_offset,
     simular_ruta,
+    truck_plates,
 )
 
 
@@ -55,6 +56,41 @@ def test_build_truck_configs_preserves_base_identity_for_single_truck():
     configs = build_truck_configs(base_id=7, base_plate="ABC123", count=1)
 
     assert [(config.truck_id, config.plate) for config in configs] == [(7, "ABC123")]
+
+
+def test_build_truck_configs_uses_the_configured_plates():
+    configs = build_truck_configs(
+        base_id=1,
+        base_plate="ABC123",
+        count=3,
+        route_length=12,
+        plates=("ABC", "DEF", "XYZ"),
+    )
+
+    assert [config.plate for config in configs] == ["ABC", "DEF", "XYZ"]
+
+
+def test_build_truck_configs_falls_back_when_the_plate_list_is_short():
+    configs = build_truck_configs(
+        base_id=1,
+        base_plate="ABC123",
+        count=3,
+        plates=("ABC", "DEF"),
+    )
+
+    assert [config.plate for config in configs] == ["ABC", "DEF", "ABC123-03"]
+
+
+def test_truck_plates_defaults_to_distinct_plates(monkeypatch):
+    monkeypatch.delenv("TRUCK_PLATES", raising=False)
+
+    assert truck_plates() == ("ABC123", "DEF456", "XYZ789")
+
+
+def test_truck_plates_reads_the_environment_list(monkeypatch):
+    monkeypatch.setenv("TRUCK_PLATES", " aa1 , bb2 ,,")
+
+    assert truck_plates() == ("AA1", "BB2")
 
 
 def test_build_truck_configs_generates_deterministic_unique_identities():

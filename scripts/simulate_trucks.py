@@ -2,7 +2,7 @@ import argparse
 import json
 import math
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -77,16 +77,41 @@ class TruckConfig:
     route_offset: int
 
 
+# Cada camión de la demo lleva patente propia: con `ABC123-01/-02/-03` la tabla
+# y la búsqueda por patente se vuelven adivinanzas. `TRUCK_PLATES` las cambia sin
+# tocar código y la leen tanto el seed como el simulador, que si no divergen.
+DEFAULT_TRUCK_PLATES = ("ABC123", "DEF456", "XYZ789")
+DEFAULT_BASE_PLATE = "ABC123"
+
+
+def truck_plates() -> tuple[str, ...]:
+    """Patentes de la flota simulada, en orden de camión."""
+    raw = os.getenv("TRUCK_PLATES", "").strip()
+    if not raw:
+        return DEFAULT_TRUCK_PLATES
+    plates = tuple(part.strip().upper() for part in raw.split(",") if part.strip())
+    if not plates:
+        raise ValueError("TRUCK_PLATES no tiene ninguna patente válida.")
+    return plates
+
+
 def build_truck_configs(
     base_id: int,
     base_plate: str,
     count: int,
     route_length: int | None = None,
+    plates: Sequence[str] | None = None,
 ) -> list[TruckConfig]:
-    """Build deterministic identities and route offsets for the workers."""
+    """Build deterministic identities and route offsets for the workers.
+
+    `plates` fija la patente de cada camión. Si la lista se queda corta, o no
+    viene, se cae al esquema `<base_plate>-NN` para no romper los despliegues
+    que no configuraron una flota propia.
+    """
     if count < 1:
         raise ValueError("count must be at least 1")
 
+    pool = tuple(plates or ())
     offsets = (
         [route_offset(route_length, index, count) for index in range(count)]
         if route_length is not None
@@ -95,7 +120,13 @@ def build_truck_configs(
     return [
         TruckConfig(
             truck_id=base_id + index,
-            plate=base_plate if count == 1 else f"{base_plate}-{index + 1:02d}",
+            plate=(
+                pool[index]
+                if index < len(pool)
+                else base_plate
+                if count == 1
+                else f"{base_plate}-{index + 1:02d}"
+            ),
             route_offset=offsets[index],
         )
         for index in range(count)
@@ -598,6 +629,7 @@ def ejecutar_simulaciones(
     clear_history_on_start: bool = False,
     force: bool = False,
     objetivo_kmh: float = 55.0,
+    plates: Sequence[str] | None = None,
 ):
     """Run all configured truck workers until interrupted.
 
@@ -611,7 +643,10 @@ def ejecutar_simulaciones(
         return False
 
     trabajos = []
-    for config in build_truck_configs(base_id, base_plate, count, len(cargar_ruta())):
+    flota = build_truck_configs(
+        base_id, base_plate, count, len(cargar_ruta()), plates=plates
+    )
+    for config in flota:
         registrar_camion(config.truck_id, config.plate, headers=admin_headers)
         token = preparar_dispositivo(config.truck_id, admin_headers, force=force)
         if token is None:
@@ -666,7 +701,15 @@ def ejecutar_simulaciones(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simulador de camión con ruta urbana realista en Córdoba")
     parser.add_argument("--id", type=int, default=1, help="ID del camión (default: 1)")
-    parser.add_argument("--plate", type=str, default="ABC123", help="Patente del camión (default: ABC123)")
+    parser.add_argument(
+        "--plate",
+        type=str,
+        default=None,
+        help=(
+            "Patente base. Sin esta opción, con varios camiones se usa la lista "
+            "TRUCK_PLATES (por defecto ABC123, DEF456, XYZ789)."
+        ),
+    )
     parser.add_argument("-i", "--interval", type=float, default=2.0, help="Intervalo en segundos entre pings (default: 2.0)")
     parser.add_argument("-n", "--count", type=int, default=1, help="Cantidad de camiones (default: 1)")
     parser.add_argument(
@@ -695,7 +738,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     ok = ejecutar_simulaciones(
         base_id=args.id,
-        base_plate=args.plate,
+        base_plate=args.plate or DEFAULT_BASE_PLATE,
+        # Una patente pedida a mano manda para un solo camión; con varios, la
+        # lista compartida es la que mantiene seed y simulador de acuerdo.
+        plates=truck_plates() if args.plate is None else None,
         intervalo=args.interval,
         count=args.count,
         clear_history_on_start=args.clear_history_on_start,
