@@ -14,6 +14,7 @@ const NAV_ITEMS: {
   { label: 'Camiones', to: '/fleet', icon: <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /> },
   {
     label: 'Rutas',
+    to: '/viajes',
     icon: (
       <>
         <circle cx="6" cy="19" r="2" />

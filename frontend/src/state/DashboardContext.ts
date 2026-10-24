@@ -6,6 +6,8 @@ export interface DashboardState {
   selectedId: number | null;
   filters: Filters;
   userInitials: string;
+  /** Rol del usuario autenticado; `member` es de sólo lectura. */
+  role: string;
   ready: boolean;
   visibleTrucks: TruckState[];
   selectedTruck: TruckState | null;

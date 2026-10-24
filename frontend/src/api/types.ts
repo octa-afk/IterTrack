@@ -24,6 +24,8 @@ export interface UserResponse {
   email: string;
   full_name: string;
   disabled: boolean;
+  /** `platform_admin` | `org_admin` | `member`. Decide si se ofrecen acciones. */
+  role: string;
 }
 
 export interface Token {
@@ -70,4 +72,59 @@ export interface DemoConfig {
 
 export interface ClientConfig {
   demo: DemoConfig;
+}
+
+
+// ---- Destinos y viajes (source/schemas/destination.py) ----
+
+export interface Charger {
+  id: number;
+  name: string;
+  contact: string | null;
+  active: boolean;
+}
+
+export interface Depot {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+  radius_m: number;
+}
+
+export interface TripStop {
+  id: number;
+  seq: number;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  geo_source: string | null;
+  geo_confidence: number | null;
+  needs_review: boolean;
+  receiver: string | null;
+  status: string;
+}
+
+export interface Trip {
+  id: number;
+  charger_id: number;
+  truck_id: number | null;
+  driver_name: string | null;
+  departure_at: string;
+  depot_id: number | null;
+  status: string;
+  external_ref: string | null;
+  notes: string | null;
+  created_at: string;
+  stops: TripStop[];
+}
+
+export interface TripCreatePayload {
+  charger_id: number;
+  departure_at: string;
+  truck_id?: number | null;
+  depot_id?: number | null;
+  driver_name?: string | null;
+  external_ref?: string | null;
+  stops: { address: string; receiver?: string | null }[];
 }

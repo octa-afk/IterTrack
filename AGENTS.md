@@ -117,6 +117,9 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Lo que el geocoder no encuentra queda `needs_review=true` en `GET /destinations/pending`. No se inventa un centroide: un pin equivocado manda al chofer al lugar incorrecto.
    * El pin manual (`PATCH /trips/{id}/stops/{stop_id}`) resuelve el destino y **escribe la caché** con `resolved_by_user_id`.
    * El proveedor vive detrás de la interfaz `Geocoder` (`source/services/geocoding.py`), inyectada con `Depends(get_geocoder)`. `GEOCODER_PROVIDER` acepta `none` (default, no llama a nadie) y `nominatim`. Los tests siempre la sobrescriben y nunca salen a la red.
+   * `trips.departure_at` es `datetime` con zona (no una fecha): "salir a las 07:30" no entra en un `date` y sin zona la salida se corre tres horas.
+   * `depots` guarda nombre, lat/lng y `radius_m`. La elegibilidad **no** usa el radio todavía: un camión está disponible si está activo y no tiene viaje en `planned`/`in_progress` (`GET /trips/available-trucks`). El radio queda para cuando exista detección de llegada.
+   * Lecturas con `get_current_user` y scoping por organización; escrituras con `require_org_admin`. Así `member` puede ver viajes pero no crearlos, y la sección Rutas le oculta el formulario.
    * La instancia pública de Nominatim no sirve en producción: 1 request/segundo y 4 por minuto para scripts periódicos. El análisis y las alternativas están en `odd/tasks/destinations.md`.
 
 ---
