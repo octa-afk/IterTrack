@@ -464,6 +464,8 @@ git checkout IterTrack-Hardware
 | `POST` | `/devices/{id}/reassign` | Reasigna el dispositivo a otro camión | `{"truck_id": 2}` | 🔒 `org_admin` |
 | `POST` | `/devices/{id}/token/rotate` | Rota el token del dispositivo | — | 🔒 `org_admin` |
 | `POST` | `/devices/{id}/revoke` | Revoca el dispositivo y libera el camión | — | 🔒 `org_admin` |
+| `GET` | `/alerts` | Lista las alertas de ingesta abiertas de la organización, con su cantidad de ocurrencias | — | 🔒 Bearer |
+| `POST` | `/alerts/{id}/close` | Cierra una alerta abierta; si el problema recurre se abre otra enlazada | — | 🔒 `org_admin` |
 
 ### Flujo de autenticación:
 

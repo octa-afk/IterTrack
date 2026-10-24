@@ -4,6 +4,7 @@ Importing this package registers every table on `Base.metadata`, which is what
 Alembic autogeneration and `Base.metadata.create_all` rely on.
 """
 
+from .alert import Alert, AlertOccurrence
 from .destination import AddressCache, Charger, Depot, Trip, TripStop
 from .device import Device, DeviceAssignment
 from .ingestion import IngestedPoint, RejectedIngestPoint
@@ -13,6 +14,8 @@ from .user import User
 
 __all__ = [
     "AddressCache",
+    "Alert",
+    "AlertOccurrence",
     "Charger",
     "Depot",
     "Device",
