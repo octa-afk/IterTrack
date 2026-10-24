@@ -8,7 +8,7 @@ import { listTrips } from '../api/destinations';
 import { useDashboard } from '../state/useDashboard';
 import { createTruckIcon } from '../lib/truckIcon';
 import { createMovementController, type ActiveMove } from '../lib/movement';
-import { POLL_MS, haversineM } from '../lib/trucks';
+import { POLL_MS, haversineM, splitPath } from '../lib/trucks';
 
 /*
  * Ported from source/static/js/map.js (map boot + marker rendering) plus
@@ -52,7 +52,7 @@ export default function MapView() {
   const lastPosRef = useRef(new Map<number, { lat: number; lng: number; updated: number }>());
   const movesRef = useRef(new Map<number, ActiveMove>());
   const movementRef = useRef<ReturnType<typeof createMovementController> | null>(null);
-  const trailRef = useRef<L.Polyline | null>(null);
+  const trailRef = useRef<L.LayerGroup | null>(null);
   const tripRef = useRef<L.LayerGroup | null>(null);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
@@ -256,17 +256,19 @@ export default function MapView() {
     }
   }, [trucks, visibleTrucks, selectedId]);
 
-  /* Draw the selected truck's recent trail under the markers. */
+  /*
+   * Draw the selected truck's recent trail under the markers. El recorrido se
+   * parte donde hay un corte (ver `splitPath`): unirlos dibujaría una recta que
+   * cruza la ciudad y que el camión nunca recorrió.
+   */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const truck = trucks.find((t) => t.id === selectedId);
-    const latlngs = (truck?.path ?? []).map(
-      (point) => [point.lat, point.lng] as [number, number],
-    );
+    const tramos = truck ? splitPath(truck.path) : [];
 
-    if (!truck || latlngs.length < 2) {
+    if (!truck || !tramos.length) {
       trailRef.current?.remove();
       trailRef.current = null;
       tripRef.current?.remove();
@@ -274,18 +276,21 @@ export default function MapView() {
       return;
     }
 
-    if (!trailRef.current) {
-      trailRef.current = L.polyline(latlngs, {
-        color: truck.color,
-        weight: 4,
-        opacity: 0.8,
-        lineJoin: 'round',
-        lineCap: 'round',
-      }).addTo(map);
-      return;
+    if (!trailRef.current) trailRef.current = L.layerGroup().addTo(map);
+    const capa = trailRef.current;
+    capa.clearLayers();
+    for (const tramo of tramos) {
+      L.polyline(
+        tramo.map((point) => [point.lat, point.lng] as [number, number]),
+        {
+          color: truck.color,
+          weight: 4,
+          opacity: 0.8,
+          lineJoin: 'round',
+          lineCap: 'round',
+        },
+      ).addTo(capa);
     }
-    trailRef.current.setLatLngs(latlngs);
-    trailRef.current.setStyle({ color: truck.color });
   }, [trucks, selectedId]);
 
   /*
