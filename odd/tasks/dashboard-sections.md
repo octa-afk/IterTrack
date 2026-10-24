@@ -32,9 +32,9 @@ S8. La sección Camiones acompaña el compactado del sidebar con la misma
 lógica que la barra de búsqueda: `left` anima con `.3s ease` al cambiar
 `--lx`, en ambos sentidos. Sin animación de entrada de contenido.
 
-S9. Las secciones sin mapa (Camiones y las que vengan) tienen **fondo blanco**
-con un gradiente apenas perceptible hacia gris muy claro, y sus tarjetas bajan
-la opacidad del vidrio. Nada de celeste.
+S9. Las secciones sin mapa (Camiones y las que vengan) tienen **fondo celeste
+plano** (`#dfe8f6`, el token `--mint`), sin gradientes, y sus tarjetas bajan la
+opacidad del vidrio a `.70`.
 
 S6. `extras/nuevo html(prueba)` **no** se usa como referencia de diseño: es
 material local de otra rama, ignorado por git. Borrarlo queda a decisión del
@@ -162,3 +162,9 @@ Se cambió el fondo de sección: `linear-gradient(180deg,#fff 0%,#fbfcfd 46%,
 manchas azul/celeste/lavanda. Verificado por `getComputedStyle`. Consecuencia
 aceptada: sobre blanco el vidrio casi no tiene qué difuminar; la separación de
 los paneles queda en la sombra y el borde, no en la transparencia.
+
+L16 (usuario, textual): "proba ahcerlo celeste pero sin gradientes"
+`.app.app-section{background:#dfe8f6}` a secas, en escritorio y en móvil.
+`getComputedStyle` devuelve `backgroundImage: none` y `backgroundColor:
+rgb(223,232,246)`. Las tarjetas al 70% sobre ese plano quedan en ~#f2f6fc, un
+tono más claro que el fondo: el panel se distingue por tono y sombra.
