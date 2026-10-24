@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -24,26 +23,20 @@ MEASUREMENT_ORDER = (models.TrackingPoint.recorded_at.desc(), models.TrackingPoi
 def _persist_truck(
     db: Session,
     truck: schemas.Truck,
-    location: schemas.Location,
     organization_id: int,
 ) -> None:
-    """Create a truck and its first tracking point for an explicit organization."""
+    """Create a truck for an explicit organization.
+
+    No tracking point is written: telemetry only enters through
+    `POST /devices/ingest`, authenticated with the device credential. A freshly
+    created truck has no position until its device reports one.
+    """
     if db.query(models.Truck).filter(models.Truck.id == truck.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El camión ya existe")
     if db.query(models.Truck).filter(models.Truck.plate == truck.plate).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La patente ya existe")
 
     db.add(models.Truck(id=truck.id, plate=truck.plate, organization_id=organization_id))
-    db.add(
-        models.TrackingPoint(
-            truck_id=truck.id,
-            lat=location.lat,
-            long=location.long,
-            speed=location.speed,
-            heading=location.heading,
-            recorded_at=location.recorded_at or datetime.now(UTC),
-        )
-    )
     db.commit()
 
 
@@ -51,11 +44,10 @@ def _persist_truck(
 @router.post("")
 def add_truck(
     truck: schemas.Truck,
-    location: schemas.Location,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_org_admin),
 ):
-    _persist_truck(db, truck, location, current_user.organization_id)
+    _persist_truck(db, truck, current_user.organization_id)
     return {
         "mensaje": "Camión agregado",
         "truck": truck
@@ -66,7 +58,6 @@ def add_truck(
 def add_truck_for_organization(
     organization_id: int,
     truck: schemas.Truck,
-    location: schemas.Location,
     db: Session = Depends(get_db),
     _current_user: models.User = Depends(require_platform_admin),
 ):
@@ -76,7 +67,7 @@ def add_truck_for_organization(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Organización no encontrada"
         )
-    _persist_truck(db, truck, location, organization.id)
+    _persist_truck(db, truck, organization.id)
     return {
         "mensaje": "Camión agregado",
         "truck": truck
@@ -160,33 +151,6 @@ def reassign_truck_organization(
         "truck_id": truck.id,
         "organization_id": truck.organization_id,
     }
-
-#Agrega un punto de ubicación al historial del camión
-@router.put("/{truck_id}/location")
-def update_location(truck_id: int, location: schemas.Location, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    truck = db.query(models.Truck).filter(models.Truck.id == truck_id).first()
-    if not truck or truck.organization_id != current_user.organization_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="camión no encontrado"
-            )
-    if not truck.active:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El camión está inactivo",
-        )
-    db_point = models.TrackingPoint(
-        truck_id=truck_id,
-        lat=location.lat,
-        long=location.long,
-        speed=location.speed,
-        heading=location.heading,
-        recorded_at=location.recorded_at or datetime.now(UTC),
-    )
-    #Cada actualización se agrega como un nuevo punto de tracking.
-    db.add(db_point)
-    db.commit()
-    return{"mensaje": "Ubicación actualizada correctamente"}
 
 #Devuelve el punto de tracking más reciente del camión, según recorded_at (hora de medición)
 @router.get("/{truck_id}/location")

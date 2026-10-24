@@ -68,10 +68,7 @@ def make_device(db_session, organization, identifier):
 
 
 def truck_payload(truck_id, plate):
-    return {
-        "truck": {"id": truck_id, "plate": plate},
-        "location": {"lat": -31.42, "long": -64.18, "speed": 0, "heading": 0},
-    }
+    return {"id": truck_id, "plate": plate}
 
 
 # ---- organizations ----

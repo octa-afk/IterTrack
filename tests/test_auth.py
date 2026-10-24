@@ -147,7 +147,7 @@ def test_me_with_random_token_returns_401(auth_client):
 def test_protected_endpoint_without_token_returns_401(auth_client):
     response = auth_client.post(
         "/trucks",
-        json={"truck": {"id": 1, "plate": "ABC123"}, "location": {"lat": -31.42, "long": -64.18}},
+        json={"id": 1, "plate": "ABC123"},
     )
     assert response.status_code == 401
 

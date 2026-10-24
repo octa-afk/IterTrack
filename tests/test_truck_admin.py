@@ -165,7 +165,7 @@ def test_client_cannot_reassign_truck(api_client, client_token, test_truck, test
 def test_admin_can_create_truck(api_client, admin_token):
     response = api_client.post(
         "/trucks",
-        json={"truck": {"id": 99, "plate": "ADMIN99"}, "location": {"lat": -31.42, "long": -64.18}},
+        json={"id": 99, "plate": "ADMIN99"},
         headers=auth_header(admin_token),
     )
     assert response.status_code == 200
@@ -174,7 +174,7 @@ def test_admin_can_create_truck(api_client, admin_token):
 def test_client_cannot_create_truck(api_client, client_token):
     response = api_client.post(
         "/trucks",
-        json={"truck": {"id": 98, "plate": "CLIENT98"}, "location": {"lat": -31.42, "long": -64.18}},
+        json={"id": 98, "plate": "CLIENT98"},
         headers=auth_header(client_token),
     )
     assert response.status_code == 403
@@ -234,19 +234,6 @@ def test_admin_cannot_touch_other_org_truck(api_client, admin_token, test_org2, 
         headers=auth_header(admin_token),
     )
     assert response.status_code == 403
-
-
-def test_inactive_truck_rejects_location_update(api_client, admin_token, test_org, db_session):
-    truck_inactive = Truck(id=60, plate="INACT60", organization_id=test_org.id, active=False)
-    db_session.add(truck_inactive)
-    db_session.commit()
-
-    response = api_client.put(
-        f"/trucks/{truck_inactive.id}/location",
-        json={"lat": -31.42, "long": -64.18, "speed": 0, "heading": 0},
-        headers=auth_header(admin_token),
-    )
-    assert response.status_code == 409
 
 
 def test_history_retained_after_deactivate(api_client, admin_token, test_truck, db_session):
