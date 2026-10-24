@@ -28,10 +28,9 @@ falsas ni contenido inventado.
 S7. El mapa no se recrea al cambiar de sección: se monta una vez y se oculta
 mientras no estás en el panel.
 
-S8. El cambio de sección tiene una animación mínima de entrada, sin costo de
-relayout y sin parpadear el mapa: sólo `opacity` y `translateY(6px)` durante
-340 ms y un desplazamiento de 18 px con `scale(.985)`, desactivada con
-`prefers-reduced-motion`.
+S8. La sección Camiones acompaña el compactado del sidebar con la misma
+lógica que la barra de búsqueda: `left` anima con `.3s ease` al cambiar
+`--lx`, en ambos sentidos. Sin animación de entrada de contenido.
 
 S6. `extras/nuevo html(prueba)` **no** se usa como referencia de diseño: es
 material local de otra rama, ignorado por git. Borrarlo queda a decisión del
@@ -117,3 +116,21 @@ a `/fleet`: `y` 119.4 → 106.3 → 103.1 → 97 (reposo), ancho 978 → 993 y o
 0 → 0.59 → 0.73 → 1. Nota: `getComputedStyle().transform` devuelve la matriz
 identidad mientras la animación corre en el compositor; hay que medir con
 `getBoundingClientRect()`.
+
+L11 (usuario, textual): "no se ve asi que quita la animacion. te voy a pedir que
+el panel de camiones con la lista de camiones tenga animacion al igual que la
+barra de busqueda, la barra de busqueda tiene una animacion que se ejecuta al
+compactar el panel lateral izquierdo, quiero que el panel de camiones de la
+seccion camiones siga la misma logica"
+
+L12: se elimina la animación de entrada (`section-in`, `fade-in` y la
+transición de color del sidebar). La sección Camiones usa ahora
+`transition:left .3s ease` sobre `--lx`, igual que `.top`.
+Hallazgo: con el código original la transición sólo estaba declarada dentro de
+`.app.nav-off`, así que al **expandir** los bloques saltaban (la regla que
+declara `transition` desaparecía junto con la clase). Se movió la transición a
+la regla base de `.top`, `.mapcard .card-h`, `.bottom`, `.fleet-page` y los
+controles de Leaflet: ahora ambos sentidos animan y en sincronía.
+Medición (x en px, mismo instante): compactando 271 → 151.6 → 53.6 → 17.8 para
+la sección y para la barra; expandiendo 16 → 135.4 → 233.3 → 263.2, idénticos.
+`prefers-reduced-motion: reduce` deja los seis sin transición.
