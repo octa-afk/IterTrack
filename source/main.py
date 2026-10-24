@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from source.database.config import settings
+from source.services.alerts import router as alerts_router
 from source.services.auth import router as auth_router
 from source.services.destinations import depots_router, destinations_router, trips_router
 from source.services.destinations import router as chargers_router
@@ -22,6 +23,7 @@ app.include_router(tracking_router)
 app.include_router(org_router)
 app.include_router(auth_router)
 app.include_router(devices_router)
+app.include_router(alerts_router)
 app.include_router(organizations_router)
 app.include_router(chargers_router)
 app.include_router(depots_router)
