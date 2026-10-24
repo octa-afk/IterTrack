@@ -191,6 +191,15 @@ Para automatizarlo, un cron del host cada 24 h con el mismo comando. Es necesari
 docker compose pull && docker compose up -d
 ```
 
+> La VM tiene su **propia copia** de `docker-compose.yml`, no la del repo. Si un cambio toca el comando del `worker` o las variables del compose, hay que volver a copiarlo antes de recrear:
+>
+> ```bash
+> # desde tu máquina, en el repo
+> scp docker-compose.yml octa@57.156.58.24:~/itertrack/
+> ```
+>
+> Ejemplo real: al retirar el modo usuario del simulador, el `worker` dejó de aceptar `--mode device` y un `pull` sin actualizar el compose lo deja en `unrecognized arguments`.
+
 **Backup y restore** (los datos viven en el volumen `pgdata`)
 
 ```bash
