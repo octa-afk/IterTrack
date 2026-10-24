@@ -21,6 +21,13 @@ const MOVE_MIN_MS = 400;
 const MOVE_MAX_MS = 6000;
 const MOVE_EASE = (k: number) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
 const OPEN_ZOOM = 12;
+/* Córdoba Capital: encuadre inicial antes de ajustar a la flota. */
+const CITY_CENTER: [number, number] = [-31.4135, -64.1811];
+/*
+ * Celeste claro para todos los recorridos. El trazado es el mismo para cualquier
+ * camión y se mira de a uno, así que el color no tiene que distinguir la flota.
+ */
+const TRAIL_COLOR = '#7fc8f0';
 
 /*
  * Escala del marcador según el zoom. A zoom ciudad (12+) se dibuja a tamaño
@@ -54,6 +61,7 @@ export default function MapView() {
   const movementRef = useRef<ReturnType<typeof createMovementController> | null>(null);
   const trailRef = useRef<L.LayerGroup | null>(null);
   const tripRef = useRef<L.LayerGroup | null>(null);
+  const fittedRef = useRef(false);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
 
@@ -67,7 +75,7 @@ export default function MapView() {
     const el = containerRef.current;
     if (!el) return;
 
-    const map = L.map(el).setView([-31.9, -64.0], 7);
+    const map = L.map(el).setView(CITY_CENTER, OPEN_ZOOM);
     mapRef.current = map;
     const markers = markersRef.current;
     const lastPos = lastPosRef.current;
@@ -195,6 +203,22 @@ export default function MapView() {
     };
   }, []);
 
+  /*
+   * Encuadre inicial: al recargar, el mapa se abre sobre la flota con el zoom
+   * justo para ver los tres camiones, no en la provincia entera. Se hace una
+   * sola vez; después manda la selección.
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || fittedRef.current || selectedId !== null) return;
+    const puntos = trucks
+      .filter((truck) => truck.lat !== null && truck.lng !== null)
+      .map((truck) => [truck.lat as number, truck.lng as number] as [number, number]);
+    if (!puntos.length) return;
+    fittedRef.current = true;
+    map.fitBounds(L.latLngBounds(puntos), { padding: [70, 70], maxZoom: OPEN_ZOOM });
+  }, [trucks, selectedId]);
+
   /* Reconcile markers with the current fleet state. */
   useEffect(() => {
     const map = mapRef.current;
@@ -284,13 +308,25 @@ export default function MapView() {
     L.polyline(
       actual.map((point) => [point.lat, point.lng] as [number, number]),
       {
-        color: truck.color,
+        color: TRAIL_COLOR,
         weight: 4,
-        opacity: 0.8,
+        opacity: 0.9,
         lineJoin: 'round',
         lineCap: 'round',
       },
     ).addTo(capa);
+
+    /* Dónde empezó la corrida que se está mirando. */
+    const inicio = actual[0];
+    L.circleMarker([inicio.lat, inicio.lng], {
+      radius: 5,
+      color: '#fff',
+      weight: 2,
+      fillColor: TRAIL_COLOR,
+      fillOpacity: 1,
+    })
+      .bindTooltip('Inicio del recorrido')
+      .addTo(capa);
   }, [trucks, selectedId]);
 
   /*
