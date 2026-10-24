@@ -1,7 +1,7 @@
 /*
  * Types mirroring the FastAPI contract:
  *   - source/schemas/auth.py   -> UserCreate, UserResponse, Token
- *   - source/schemas/truck.py  -> Location, TrackingPoint shape
+ *   - source/schemas/truck.py  -> Truck shape
  *   - source/models/truck.py   -> Truck, TrackingPoint ORM columns
  *
  * These are the single source of truth for the typed API client. Keep them in
@@ -41,16 +41,6 @@ export interface Truck {
   id: number;
   plate: string;
   active: boolean;
-}
-
-/** Payload accepted by POST /trucks/{id}/location and PUT. */
-export interface Location {
-  lat: number;
-  long: number;
-  speed?: number;
-  heading?: number;
-  /** ISO-8601 timestamp with timezone; omitted -> server time. */
-  recorded_at?: string | null;
 }
 
 /** A stored tracking point, as returned by /location and /iter. */

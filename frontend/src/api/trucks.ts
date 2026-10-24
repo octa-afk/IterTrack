@@ -1,6 +1,6 @@
 /* Tracking endpoints. Contract: source/services/tracking.py. */
 import { apiRequest } from './client';
-import type { Location, TrackingPoint, Truck } from './types';
+import type { TrackingPoint, Truck } from './types';
 
 /** GET /trucks — trucks of the caller's organization. */
 export function listTrucks(): Promise<Truck[]> {
@@ -16,13 +16,4 @@ export function getLocation(truckId: number): Promise<TrackingPoint> {
 export function getHistory(truckId: number, limit?: number): Promise<TrackingPoint[]> {
   const query = limit === undefined ? '' : `?limit=${limit}`;
   return apiRequest<TrackingPoint[]>(`/trucks/${truckId}/iter${query}`);
-}
-
-/** POST /trucks/{id}/location — append a new tracking point. */
-export function updateLocation(truckId: number, location: Location): Promise<{ mensaje: string }> {
-  return apiRequest<{ mensaje: string }>(`/trucks/${truckId}/location`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(location),
-  });
 }
