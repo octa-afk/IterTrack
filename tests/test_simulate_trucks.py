@@ -5,6 +5,7 @@ from itertools import pairwise
 import pytest
 
 from scripts.simulate_trucks import (
+    _reaprovisionar_dispositivo,
     actualizar_ubicacion,
     build_truck_configs,
     calcular_distancia_metros,
@@ -641,3 +642,92 @@ def test_a_simulated_lap_never_exceeds_the_target_speed(monkeypatch):
         velocidades.append(dist / waits[i] * 3.6)
 
     assert max(velocidades) <= 55.0 + 0.01
+
+
+def test_recovery_renews_the_admin_jwt_before_reprovisioning(monkeypatch):
+    """El JWT de admin vence en 60 min; sin re-login la recuperación da 401."""
+    stale = {"Authorization": "Bearer stale"}
+    seen = []
+
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.autenticar_admin",
+        lambda: {"Authorization": "Bearer fresh"},
+    )
+
+    def fake_preparar(truck_id, headers, force=False):
+        seen.append((truck_id, dict(headers)))
+        return "tok"
+
+    monkeypatch.setattr("scripts.simulate_trucks.preparar_dispositivo", fake_preparar)
+
+    assert _reaprovisionar_dispositivo(3, stale) == "tok"
+
+    assert seen == [(3, {"Authorization": "Bearer fresh"})]
+    # El dict es compartido con los demás hilos: se actualiza en el lugar.
+    assert stale == {"Authorization": "Bearer fresh"}
+
+
+def test_device_mode_recovery_reauthenticates_the_admin(monkeypatch):
+    """La recuperación que recibe el sender renueva el JWT antes de aprovisionar."""
+    logins: list[int] = []
+    recoveries = []
+    headers_seen: list[dict] = []
+
+    class StopNow:
+        def is_set(self):
+            return True
+
+        def set(self):
+            pass
+
+        def wait(self, timeout=None):
+            return True
+
+    class Completed:
+        def result(self):
+            return None
+
+    class SyncExecutor:
+        def __init__(self, max_workers):
+            pass
+
+        def submit(self, worker, *args, **kwargs):
+            worker(*args, **kwargs)
+            return Completed()
+
+        def shutdown(self, **kwargs):
+            pass
+
+    def fake_admin_login():
+        logins.append(len(logins) + 1)
+        return {"Authorization": f"Bearer admin-{len(logins)}"}
+
+    def fake_preparar(truck_id, headers=None, force=False):
+        headers_seen.append(dict(headers or {}))
+        return f"tok-{truck_id}"
+
+    def fake_sender_factory(token, on_unauthorized=None):
+        recoveries.append(on_unauthorized)
+        return lambda *args, **kwargs: True
+
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.cargar_ruta", lambda: [[-31.4, -64.18], [-31.5, -64.19]]
+    )
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar", lambda: {"Authorization": "Bearer user"})
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar_admin", fake_admin_login)
+    monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
+    monkeypatch.setattr("scripts.simulate_trucks.preparar_dispositivo", fake_preparar)
+    monkeypatch.setattr("scripts.simulate_trucks.constructor_de_sender", fake_sender_factory)
+    monkeypatch.setattr("scripts.simulate_trucks.Event", StopNow)
+    monkeypatch.setattr("scripts.simulate_trucks.ThreadPoolExecutor", SyncExecutor)
+    monkeypatch.setattr("scripts.simulate_trucks.simular_ruta", lambda *args, **kwargs: None)
+
+    assert ejecutar_simulaciones(base_id=7, base_plate="ABC123", intervalo=1, count=1, mode="device")
+
+    assert headers_seen == [{"Authorization": "Bearer admin-1"}]
+    assert recoveries[0] is not None
+
+    assert recoveries[0]() == "tok-7"
+
+    assert logins == [1, 2]
+    assert headers_seen[-1] == {"Authorization": "Bearer admin-2"}
