@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from scripts.simulate_trucks import build_truck_configs, cargar_ruta
+from scripts.simulate_trucks import build_truck_configs
 from source.database.database import SessionLocal
 from source.models.device import Device, DeviceAssignment
 from source.models.ingestion import IngestedPoint, RejectedIngestPoint
@@ -213,8 +213,8 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
 
     db.flush()
 
-    route = cargar_ruta()
-    start_lat, start_lon = route[0]
+    # El seed no inyecta posiciones: la primera ubicación la reporta el
+    # dispositivo (POST /devices/ingest), igual que el hardware real.
     truck_configs = build_truck_configs(
         base_id=config.base_id,
         base_plate=config.base_plate,
@@ -238,16 +238,6 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
             )
             db.add(truck)
             db.flush()
-            db.add(
-                TrackingPoint(
-                    truck_id=truck.id,
-                    lat=start_lat,
-                    long=start_lon,
-                    speed=0,
-                    heading=0,
-                    recorded_at=datetime.now(UTC),
-                )
-            )
             trucks_created += 1
         else:
             truck.organization_id = organization.id

@@ -10,7 +10,7 @@ from .device import (
 )
 from .ingestion import DeviceIngestBatch, DeviceIngestPoint
 from .organization import InvitationRotate, OrganizationCreate, OrganizationResponse
-from .truck import Location, TrackingPoint, Truck
+from .truck import Truck
 
 __all__ = [
     "DeviceAssignmentInfo",
@@ -21,11 +21,9 @@ __all__ = [
     "DeviceReassign",
     "DeviceResponse",
     "InvitationRotate",
-    "Location",
     "OrganizationCreate",
     "OrganizationResponse",
     "Token",
-    "TrackingPoint",
     "Truck",
     "UserCreate",
     "UserResponse",

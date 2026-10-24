@@ -35,7 +35,7 @@ def test_get_trucks_empty(trucks_client):
 def test_add_truck_and_list(admin_client):
     response = admin_client.post(
         "/trucks",
-        json={"truck": {"id": 1, "plate": "ABC123"}, "location": {"lat": -31.42, "long": -64.18}},
+        json={"id": 1, "plate": "ABC123"},
     )
     assert response.status_code == 200
     trucks = admin_client.get("/trucks").json()
@@ -44,14 +44,16 @@ def test_add_truck_and_list(admin_client):
 
 
 def test_duplicate_truck_returns_400(admin_client):
-    payload = {"truck": {"id": 1, "plate": "ABC123"}, "location": {"lat": -31.42, "long": -64.18}}
+    payload = {"id": 1, "plate": "ABC123"}
     assert admin_client.post("/trucks", json=payload).status_code == 200
     assert admin_client.post("/trucks", json=payload).status_code == 400
 
 
-def test_invalid_coordinates_rejected(admin_client):
-    response = admin_client.post(
-        "/trucks",
-        json={"truck": {"id": 2, "plate": "XYZ789"}, "location": {"lat": 123, "long": -64.18}},
-    )
-    assert response.status_code == 422
+def test_new_truck_has_no_location_until_its_device_reports(admin_client):
+    """El alta no inyecta un punto: la primera ubicación la manda el dispositivo."""
+    assert admin_client.post("/trucks", json={"id": 2, "plate": "XYZ789"}).status_code == 200
+
+    response = admin_client.get("/trucks/2/location")
+
+    assert response.status_code == 404
+    assert admin_client.get("/trucks/2/iter").json() == []
