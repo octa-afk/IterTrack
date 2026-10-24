@@ -55,3 +55,13 @@ def test_demo_credentials_match_the_worker_credentials() -> None:
     assert env["ADMIN_API_PASSWORD"] == env["DEMO_ADMIN_PASSWORD"], (
         "el worker del simulador usa ADMIN_API_PASSWORD para loguearse"
     )
+
+
+def test_the_published_demo_account_is_the_read_only_member() -> None:
+    """`/config` publica la cuenta de solo lectura, nunca la de administración."""
+    env = _read_env()
+
+    assert env["DEMO_USERNAME"] == env["DEMO_MEMBER_USERNAME"], (
+        "el visitante debe entrar como miembro; el admin de la demo no se publica"
+    )
+    assert env["DEMO_PASSWORD"] == env["DEMO_MEMBER_PASSWORD"]

@@ -14,8 +14,15 @@ class Settings(BaseSettings):
 
     # Un visitante de la demo entra con un click sin leer el README. El flag
     # vive acá y no en el frontend para que la misma imagen sirva a un cliente
-    # real con la demo apagada; las credenciales son públicas por diseño.
+    # real con la demo apagada.
+    #
+    # `demo_username`/`demo_password` son la cuenta que se publica en /config:
+    # una de solo lectura (`member`). Las credenciales de `demo_admin_*` son
+    # para el seed y la operación y NUNCA salen del servidor: con el admin
+    # público, cualquiera podía borrar el historial o desactivar camiones.
     demo_mode: bool = False
+    demo_username: str = ""
+    demo_password: str = ""
     demo_admin_username: str = ""
     demo_admin_password: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -35,11 +42,11 @@ class Settings(BaseSettings):
 
     @property
     def demo_enabled(self) -> bool:
-        """Solo hay demo si el flag está encendido y hay credenciales que dar."""
+        """Solo hay demo si el flag está encendido y hay cuenta pública que dar."""
         return (
             self.demo_mode
-            and bool(self.demo_admin_username)
-            and bool(self.demo_admin_password)
+            and bool(self.demo_username)
+            and bool(self.demo_password)
         )
 
     @field_validator("secret_key")

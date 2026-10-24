@@ -51,7 +51,9 @@ def client_config():
     """Public client configuration, read before anyone authenticates.
 
     When `DEMO_MODE` is on this exposes the demo account, which is public by
-    design: it is the whole point of a demo. When it is off, not even the
+    design: it is the whole point of a demo. The published account is the
+    read-only `member` (`DEMO_USERNAME`/`DEMO_PASSWORD`); the demo admin
+    credentials never leave the server. When the flag is off, not even the
     username leaves the server.
     """
     if not settings.demo_enabled:
@@ -59,8 +61,8 @@ def client_config():
     return {
         "demo": {
             "enabled": True,
-            "username": settings.demo_admin_username,
-            "password": settings.demo_admin_password,
+            "username": settings.demo_username,
+            "password": settings.demo_password,
         }
     }
 

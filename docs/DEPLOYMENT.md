@@ -129,7 +129,7 @@ Checklist mínimo:
 
 - [ ] `GET /health` responde 200.
 - [ ] La SPA carga y el botón **Entrar a la demo** aparece y entra al mapa.
-- [ ] `GET /config` devuelve `{"demo":{"enabled":true,...}}`.
+- [ ] `GET /config` devuelve `{"demo":{"enabled":true,...}}` con la cuenta de **solo lectura** (`DEMO_USERNAME`), nunca `demo-admin`.
 - [ ] El registro con el código de la demo responde `400`: la invitación nace revocada.
 - [ ] El mapa muestra 3 camiones moviéndose.
 - [ ] `demo-admin` recibe 403 al intentar crear una organización.
