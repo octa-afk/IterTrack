@@ -42,7 +42,7 @@ export function DashboardLayout() {
 
   return (
     <DashboardProvider>
-      <div className={navOpen ? 'app' : 'app nav-off'}>
+      <div className={`app${navOpen ? '' : ' nav-off'}${enPanel ? '' : ' app-section'}`}>
         <Sidebar onLogout={handleLogout} />
         <div className="content">
           <Topbar navOpen={navOpen} onToggleNav={toggleNav} />

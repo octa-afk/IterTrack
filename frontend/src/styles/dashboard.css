@@ -432,7 +432,13 @@
   .fleet-table .estado{display:inline-flex;align-items:center;gap:6.9px}
   .fleet-table .dot{grid-row:auto;flex:none}
   .fleet-table .empty{cursor:default;text-align:center}
-  .fleet-table .ver{padding:4.6px 9.2px;font-size:12px;white-space:nowrap}
+  .fleet-table .ir-mapa{
+    width:30px;height:30px;border:0;border-radius:9px;display:grid;place-items:center;
+    background:rgba(31,42,61,.05);color:var(--ink);cursor:pointer;padding:0;
+  }
+  .fleet-table .ir-mapa:hover{background:rgba(90,126,230,.16)}
+  .fleet-table .ir-mapa:focus-visible{outline:2.3px solid var(--green);outline-offset:2px}
+  .fleet-table .ir-mapa svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
   /* Geometría de la sección: mismas coordenadas que los paneles flotantes
      (topbar 16+64, paneles desde 97px) en vez del `.grid` del mapa. */
@@ -457,3 +463,27 @@
     .mapbox-off{display:none}
   }
 
+
+  /* ===== Fondo de las secciones sin mapa =====
+     En el panel manda el mapa; en Camiones (y las secciones que vengan) no hay
+     nada detrás de las tarjetas, así que el vidrio no tenía qué difuminar.
+     Un gradiente con manchas suaves le da material al `backdrop-filter` sin
+     competir con el contenido: contrastes bajos y sin bordes duros. */
+  .app.app-section{
+    background:
+      radial-gradient(680px 460px at 10% 2%,rgba(110,150,235,.46),transparent 72%),
+      radial-gradient(760px 520px at 94% -8%,rgba(150,205,245,.52),transparent 72%),
+      radial-gradient(620px 520px at 66% 108%,rgba(124,131,201,.34),transparent 72%),
+      linear-gradient(152deg,#eaf1fd 0%,#dbe6f7 58%,#cfdff3 100%);
+  }
+  /* Vidrio más translúcido sólo acá: contra el mapa ese ajuste no aplica. */
+  @media (min-width:641px){
+    .app.app-section{
+      --g-bg:rgba(255,255,255,.70);
+      --g-bd:rgba(255,255,255,.66);
+      --g-hi:inset 0 1px 0 rgba(255,255,255,.85);
+    }
+  }
+  @media (max-width:1265px){
+    .app.app-section{background:linear-gradient(160deg,#eef3fc,#d9e4f5)}
+  }
