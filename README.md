@@ -114,7 +114,10 @@ IterTrack/
 │   └── package.json
 ├── scripts/
 │   ├── simulate_trucks.py         # Script para simular recorrido y envío de datos GPS
-│   └── cordoba_route.json         # Coordenadas georreferenciadas de la ruta urbana de prueba
+│   ├── generate_demo_routes.py    # Herramienta de mantenimiento: pide los circuitos a OSRM
+│   ├── cordoba_route.json         # Circuito del camión 1 (centro / Nueva Córdoba)
+│   ├── cordoba_route_norte.json   # Circuito del camión 2 (Cerro de las Rosas / Argüello)
+│   └── cordoba_route_sur.json     # Circuito del camión 3 (Jardín / Av. Cruz Roja)
 ├── tests/                         # Suite pytest (SQLite en memoria)
 ├── alembic/
 │   ├── env.py                     # Configuración del entorno de migración de Alembic
@@ -355,9 +358,9 @@ make simulation SIMULATION_COUNT=1   # un camión, para probar el marcador
 `make simulation` carga el `.env` raíz, así que toma `ADMIN_API_USER` y `ADMIN_API_PASSWORD` de ahí sin exports manuales.
 
 ### Características de la simulación:
-1. **Ruta Urbana Realista:** Recorre un circuito cerrado de 13 km por avenidas de Córdoba Capital (Av. Colón, Costanera, Plaza España, Patio Olmos, etc.) cargado desde [`scripts/cordoba_route.json`](./scripts/cordoba_route.json) (425 puntos georreferenciados).
+1. **Rutas Urbanas Reales:** Cada camión recorre su propio circuito cerrado por Córdoba Capital: centro / Nueva Córdoba ([`cordoba_route.json`](./scripts/cordoba_route.json), 14 km), Cerro de las Rosas / Argüello ([`cordoba_route_norte.json`](./scripts/cordoba_route_norte.json), 18 km) y Jardín / Av. Cruz Roja ([`cordoba_route_sur.json`](./scripts/cordoba_route_sur.json), 14 km). Los tres están georreferenciados punto por punto y se generan con [`scripts/generate_demo_routes.py`](./scripts/generate_demo_routes.py) usando OSRM; los datos derivan de OpenStreetMap (ODbL).
 2. **Telemetría Completa:** Muestra en tiempo real el rumbo en grados (°), punto cardinal (N, SE, etc.), velocidad calculada en km/h y estado HTTP (`200 OK`).
-3. **Bucle Continuo:** Al completar los 425 puntos, reinicia automáticamente la siguiente vuelta sin interrupciones.
+3. **Bucle Continuo:** Al completar su circuito, cada camión reinicia la vuelta siguiente sin interrupciones.
 
 ---
 

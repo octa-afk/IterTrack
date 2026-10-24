@@ -41,7 +41,7 @@ def test_simular_ruta_captures_measurement_time_for_each_ping(monkeypatch):
         measurements.append(recorded_at)
         return True
 
-    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: route)
     monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
 
     before = datetime.now(UTC)
@@ -106,7 +106,30 @@ def test_build_truck_configs_generates_deterministic_unique_identities():
         (8, "ABC123-02"),
         (9, "ABC123-03"),
     ]
-    assert [config.route_offset for config in configs] == [0, 4, 8]
+    # Un circuito por camión: nadie comparte ruta, así que nadie necesita fase.
+    assert [config.route_offset for config in configs] == [0, 0, 0]
+    assert len({config.route_file for config in configs}) == 3
+
+
+def test_build_truck_configs_spreads_the_trucks_that_share_a_circuit():
+    """Con más camiones que circuitos, los que repiten ruta se reparten la vuelta."""
+    configs = build_truck_configs(
+        base_id=1,
+        base_plate="ABC123",
+        count=6,
+        route_length=12,
+        plates=("A", "B", "C", "D", "E", "F"),
+    )
+
+    assert [config.route_file for config in configs] == [
+        "cordoba_route.json",
+        "cordoba_route_norte.json",
+        "cordoba_route_sur.json",
+        "cordoba_route.json",
+        "cordoba_route_norte.json",
+        "cordoba_route_sur.json",
+    ]
+    assert [config.route_offset for config in configs] == [0, 0, 0, 6, 6, 6]
 
 
 def test_route_offsets_are_evenly_spaced_when_route_has_enough_points():
@@ -145,7 +168,7 @@ def test_simular_ruta_preserves_history_across_route_laps_by_default(monkeypatch
         updates.append(1)
         return True
 
-    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: route)
     monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
     monkeypatch.setattr(
         "scripts.simulate_trucks.limpiar_recorrido",
@@ -196,7 +219,7 @@ def test_ejecutar_simulaciones_clears_history_once_per_truck_when_requested(monk
         def shutdown(self, **kwargs):
             pass
 
-    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: route)
     monkeypatch.setattr(
         "scripts.simulate_trucks.autenticar_admin", lambda: {"Authorization": "Bearer admin"}
     )
@@ -264,7 +287,7 @@ def test_ejecutar_simulaciones_registers_with_admin_credentials(monkeypatch):
         provisions.append((truck_id, headers))
         return f"tok-{truck_id}"
 
-    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: route)
     monkeypatch.setattr(
         "scripts.simulate_trucks.autenticar_admin", lambda: {"Authorization": "Bearer admin"}
     )
@@ -285,10 +308,56 @@ def test_ejecutar_simulaciones_registers_with_admin_credentials(monkeypatch):
     assert provisions == [(7, admin)]
 
 
+def test_ejecutar_simulaciones_gives_each_truck_its_own_circuit(monkeypatch):
+    circuits = []
+
+    class CompletedWorker:
+        def result(self):
+            return None
+
+    class SynchronousExecutor:
+        def __init__(self, max_workers):
+            pass
+
+        def submit(self, worker, *args, **kwargs):
+            worker(*args, **kwargs)
+            return CompletedWorker()
+
+        def shutdown(self, **kwargs):
+            pass
+
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.autenticar_admin", lambda: {"Authorization": "Bearer admin"}
+    )
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None
+    )
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.preparar_dispositivo", lambda truck_id, headers=None, force=False: "tok"
+    )
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.constructor_de_sender",
+        lambda token, on_unauthorized=None: (lambda *args, **kwargs: True),
+    )
+    monkeypatch.setattr("scripts.simulate_trucks.ThreadPoolExecutor", SynchronousExecutor)
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.simular_ruta",
+        lambda *args, **kwargs: circuits.append(kwargs.get("route_file")),
+    )
+
+    ejecutar_simulaciones(base_id=1, base_plate="ABC123", intervalo=1, count=3)
+
+    assert circuits == [
+        "cordoba_route.json",
+        "cordoba_route_norte.json",
+        "cordoba_route_sur.json",
+    ]
+
+
 def test_ejecutar_simulaciones_aborts_without_admin_credentials(monkeypatch):
     calls = []
 
-    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: [(0, 0), (1, 1)])
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: [(0, 0), (1, 1)])
     monkeypatch.setattr("scripts.simulate_trucks.autenticar_admin", dict)
     monkeypatch.setattr(
         "scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: calls.append("registrar")
@@ -400,7 +469,7 @@ class _RecordingStop:
 def _run_one_lap(monkeypatch, route, intervalo=2.0):
     """Corre `simular_ruta` una vuelta sin dormir y devuelve las esperas."""
     stop = _RecordingStop(points=len(route))
-    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: route)
     monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
     simular_ruta(7, "ABC123", intervalo, stop_event=stop, sender=lambda *args, **kwargs: True)
     return stop.waits
@@ -512,7 +581,7 @@ def test_device_mode_recovery_reauthenticates_the_admin(monkeypatch):
         return lambda *args, **kwargs: True
 
     monkeypatch.setattr(
-        "scripts.simulate_trucks.cargar_ruta", lambda: [[-31.4, -64.18], [-31.5, -64.19]]
+        "scripts.simulate_trucks.cargar_ruta", lambda *_: [[-31.4, -64.18], [-31.5, -64.19]]
     )
     monkeypatch.setattr("scripts.simulate_trucks.autenticar_admin", fake_admin_login)
     monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)

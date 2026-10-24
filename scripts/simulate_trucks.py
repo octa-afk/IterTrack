@@ -53,7 +53,16 @@ INGEST_URL = f"{DEVICES_URL}/ingest"
 # its own devices and never take over a real ESP32 by accident.
 SIMULATED_DEVICE_PREFIX = os.getenv("SIMULATED_DEVICE_PREFIX", "SIM")
 
-ROUTE_FILE = Path(__file__).resolve().parent / "cordoba_route.json"
+ROUTES_DIR = Path(__file__).resolve().parent
+# Un circuito por camión: si todos comparten ruta, el mapa muestra tres
+# marcadores en fila india por las mismas calles. Los tres existen en el repo,
+# así que el simulador nunca sale a la red.
+ROUTE_FILES = (
+    "cordoba_route.json",       # centro / Nueva Córdoba
+    "cordoba_route_norte.json",  # Cerro de las Rosas / Argüello
+    "cordoba_route_sur.json",    # Jardín / Av. Cruz Roja
+)
+ROUTE_FILE = ROUTES_DIR / ROUTE_FILES[0]
 
 HEADERS: dict[str, str] = {}
 
@@ -75,6 +84,7 @@ class TruckConfig:
     truck_id: int
     plate: str
     route_offset: int
+    route_file: str
 
 
 # Cada camión de la demo lleva patente propia: con `ABC123-01/-02/-03` la tabla
@@ -95,6 +105,23 @@ def truck_plates() -> tuple[str, ...]:
     return plates
 
 
+def truck_route_file(index: int) -> str:
+    """Circuito de un camión, en orden de índice dentro de la flota."""
+    return ROUTE_FILES[index % len(ROUTE_FILES)]
+
+
+def truck_phase(index: int, count: int, route_length: int) -> int:
+    """Fase de un camión dentro de su circuito.
+
+    Con un circuito por camión cada uno arranca al principio del suyo. Cuando
+    hay más camiones que circuitos, los que comparten ruta se reparten la vuelta
+    para no viajar pegados.
+    """
+    route = truck_route_file(index)
+    sharing = [other for other in range(count) if truck_route_file(other) == route]
+    return route_offset(route_length, sharing.index(index), len(sharing))
+
+
 def build_truck_configs(
     base_id: int,
     base_plate: str,
@@ -112,25 +139,36 @@ def build_truck_configs(
         raise ValueError("count must be at least 1")
 
     pool = tuple(plates or ())
-    offsets = (
-        [route_offset(route_length, index, count) for index in range(count)]
-        if route_length is not None
-        else list(range(count))
-    )
-    return [
-        TruckConfig(
-            truck_id=base_id + index,
-            plate=(
-                pool[index]
-                if index < len(pool)
-                else base_plate
-                if count == 1
-                else f"{base_plate}-{index + 1:02d}"
-            ),
-            route_offset=offsets[index],
+    configs: list[TruckConfig] = []
+    for index in range(count):
+        route_file = truck_route_file(index)
+        compartido = sum(
+            1 for other in range(count) if truck_route_file(other) == route_file
         )
-        for index in range(count)
-    ]
+        offset = 0
+        if compartido > 1:
+            # Sólo hace falta medir la ruta cuando varios camiones la comparten.
+            length = (
+                route_length
+                if route_length is not None
+                else len(cargar_ruta(route_file))
+            )
+            offset = truck_phase(index, count, length)
+        configs.append(
+            TruckConfig(
+                truck_id=base_id + index,
+                plate=(
+                    pool[index]
+                    if index < len(pool)
+                    else base_plate
+                    if count == 1
+                    else f"{base_plate}-{index + 1:02d}"
+                ),
+                route_offset=offset,
+                route_file=route_file,
+            )
+        )
+    return configs
 
 
 def route_offset(route_length: int, truck_index: int, truck_count: int) -> int:
@@ -241,10 +279,11 @@ def espera_hacia_el_siguiente(
     return espera
 
 
-def cargar_ruta():
-    """Carga los puntos de la ruta realista desde el archivo JSON."""
-    if ROUTE_FILE.exists():
-        with open(ROUTE_FILE, encoding="utf-8") as f:
+def cargar_ruta(route_file: str | None = None):
+    """Carga los puntos de un circuito; sin argumento, el del primer camión."""
+    path = ROUTES_DIR / route_file if route_file else ROUTE_FILE
+    if path.exists():
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     else:
         # Fallback a circuito básico si el archivo no estuviese presente
@@ -557,6 +596,7 @@ def simular_ruta(
     admin_headers=None,
     sender=None,
     objetivo_kmh: float = 55.0,
+    route_file: str | None = None,
 ):
     """Recorrer la ruta emitiendo por `sender`.
 
@@ -567,9 +607,12 @@ def simular_ruta(
     if sender is None:
         raise ValueError("simular_ruta necesita un sender de dispositivo")
 
-    ruta = rotate_route(cargar_ruta(), phase_offset)
+    ruta = rotate_route(cargar_ruta(route_file), phase_offset)
     total_puntos = len(ruta)
-    print(f"\n🚚 Iniciando simulación de ruta urbana en Córdoba ({total_puntos} puntos)")
+    print(
+        f"\n🚚 Camión #{truck_id} ({plate}) — circuito "
+        f"{route_file or ROUTE_FILES[0]}: {total_puntos} puntos"
+    )
     print(
         f"⏱️ Intervalo mínimo: {intervalo}s | velocidad objetivo: {objetivo_kmh:.0f} km/h"
         f" | API: {DEVICES_URL}\n"
@@ -643,9 +686,7 @@ def ejecutar_simulaciones(
         return False
 
     trabajos = []
-    flota = build_truck_configs(
-        base_id, base_plate, count, len(cargar_ruta()), plates=plates
-    )
+    flota = build_truck_configs(base_id, base_plate, count, plates=plates)
     for config in flota:
         registrar_camion(config.truck_id, config.plate, headers=admin_headers)
         token = preparar_dispositivo(config.truck_id, admin_headers, force=force)
@@ -681,6 +722,7 @@ def ejecutar_simulaciones(
             stop_event,
             config.route_offset,
             clear_history_on_start=clear_history_on_start,
+            route_file=config.route_file,
             admin_headers=admin_headers,
             sender=sender,
             objetivo_kmh=objetivo_kmh,
