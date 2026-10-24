@@ -669,7 +669,7 @@ def ejecutar_simulaciones(
     base_plate: str,
     intervalo: float,
     count: int,
-    clear_history_on_start: bool = False,
+    keep_history: bool = False,
     force: bool = False,
     objetivo_kmh: float = 55.0,
     plates: Sequence[str] | None = None,
@@ -679,6 +679,11 @@ def ejecutar_simulaciones(
     Telemetry only enters through `POST /devices/ingest`: each truck gets a
     simulated device and writes with its token, the same path a real ESP32
     uses. Trucks held by a real device are skipped unless `force` is set.
+
+    Cada corrida arranca con el recorrido vacío (`keep_history=True` lo
+    conserva). Sólo se borra el historial de los camiones que llegaron hasta
+    acá: los que tienen hardware real se saltean antes, así que su recorrido
+    nunca se toca.
     """
     admin_headers = dict(autenticar_admin())
     if not admin_headers:
@@ -721,7 +726,7 @@ def ejecutar_simulaciones(
             intervalo,
             stop_event,
             config.route_offset,
-            clear_history_on_start=clear_history_on_start,
+            clear_history_on_start=not keep_history,
             route_file=config.route_file,
             admin_headers=admin_headers,
             sender=sender,
@@ -764,9 +769,13 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "--clear-history-on-start",
+        "--keep-history",
         action="store_true",
-        help="Borra el historial existente de cada camión una sola vez al iniciar (opción destructiva)",
+        help=(
+            "Conserva el recorrido anterior de cada camión. Por defecto se borra "
+            "al arrancar: los puntos de una corrida previa quedan a kilómetros de "
+            "la nueva y el mapa dibuja un recorrido que el camión no hizo."
+        ),
     )
     parser.add_argument(
         "--force",
@@ -786,7 +795,7 @@ if __name__ == "__main__":
         plates=truck_plates() if args.plate is None else None,
         intervalo=args.interval,
         count=args.count,
-        clear_history_on_start=args.clear_history_on_start,
+        keep_history=args.keep_history,
         force=args.force,
         objetivo_kmh=args.speed_kmh,
     )
