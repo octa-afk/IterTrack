@@ -7,6 +7,15 @@ export function listChargers(): Promise<Charger[]> {
   return apiRequest<Charger[]>('/chargers');
 }
 
+/** POST /chargers — crea un dador de carga. */
+export function createCharger(name: string): Promise<Charger> {
+  return apiRequest<Charger>('/chargers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+}
+
 /** GET /depots */
 export function listDepots(): Promise<Depot[]> {
   return apiRequest<Depot[]>('/depots');

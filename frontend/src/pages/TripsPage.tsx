@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
 import {
+  createCharger,
   createTrip,
   listAvailableTrucks,
   listChargers,
@@ -56,6 +57,8 @@ export default function TripsPage() {
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [creandoDador, setCreandoDador] = useState(false);
+  const [nuevoDador, setNuevoDador] = useState('');
 
   const [chargerId, setChargerId] = useState('');
   const [truckId, setTruckId] = useState('');
@@ -97,6 +100,21 @@ export default function TripsPage() {
   // dispara un render en cascada sin necesidad.
   const chargerSeleccionado = chargerId || String(chargers[0]?.id ?? '');
   const truckSeleccionado = truckId || String(disponibles[0]?.id ?? '');
+
+  const agregarDador = async () => {
+    const nombre = nuevoDador.trim();
+    if (!nombre) return;
+    setError('');
+    try {
+      const creado = await createCharger(nombre);
+      setNuevoDador('');
+      setCreandoDador(false);
+      setChargerId(String(creado.id));
+      setReloadKey((n) => n + 1);
+    } catch (fallo) {
+      setError(fallo instanceof ApiError ? fallo.message : 'No se pudo crear el dador de carga');
+    }
+  };
 
   const enviar = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -192,70 +210,118 @@ export default function TripsPage() {
         </div>
       </div>
 
+      {!puedeEditar && (
+        <div className="card">
+          <div className="card-h">
+            <h3>Nuevo viaje</h3>
+          </div>
+          <p className="noSel">
+            Tu cuenta es de solo lectura. Para crear viajes necesitás una cuenta
+            administradora de la organización.
+          </p>
+        </div>
+      )}
+
       {puedeEditar && (
         <div className="card">
           <div className="card-h">
             <h3>Nuevo viaje</h3>
           </div>
-          {!chargers.length ? (
-            <p className="noSel">
-              Primero cargá un dador de carga: un viaje siempre pertenece a uno.
+          <form className="trip-form" onSubmit={enviar}>
+            <div className="field">
+              <span>Dador de carga</span>
+              {creandoDador || !chargers.length ? (
+                <div className="inline-add">
+                  <input
+                    value={nuevoDador}
+                    onChange={(e) => setNuevoDador(e.target.value)}
+                    placeholder="Colchones Sur"
+                    aria-label="Nombre del dador de carga"
+                    required
+                    minLength={2}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={agregarDador}
+                    disabled={nuevoDador.trim().length < 2}
+                  >
+                    Agregar
+                  </button>
+                </div>
+              ) : (
+                <div className="inline-add">
+                  <select
+                    value={chargerSeleccionado}
+                    onChange={(e) => setChargerId(e.target.value)}
+                    aria-label="Dador de carga"
+                  >
+                    {chargers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    title="Agregar dador de carga"
+                    aria-label="Agregar dador de carga"
+                    onClick={() => setCreandoDador(true)}
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="field">
+              <span>Camión del depósito</span>
+              <select
+                value={truckSeleccionado}
+                onChange={(e) => setTruckId(e.target.value)}
+                aria-label="Camión del depósito"
+              >
+                <option value="">Sin asignar</option>
+                {disponibles.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.plate}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <span>Destino</span>
+              <input
+                value={destino}
+                onChange={(e) => setDestino(e.target.value)}
+                placeholder="Av. Colón 1234, Córdoba"
+                aria-label="Destino"
+                required
+                minLength={3}
+              />
+            </div>
+
+            <div className="field">
+              <span>Salida</span>
+              <input
+                type="datetime-local"
+                value={salida}
+                onChange={(e) => setSalida(e.target.value)}
+                aria-label="Hora de salida"
+                required
+              />
+            </div>
+
+            <button className="btn-primary" type="submit" disabled={enviando || !chargers.length}>
+              {enviando ? 'Creando…' : 'Crear viaje'}
+            </button>
+            <p className="hint">
+              Si la dirección no se puede ubicar, el viaje se crea igual y el destino queda
+              pendiente de revisión.
             </p>
-          ) : (
-            <form className="trip-form" onSubmit={enviar}>
-              <label className="field">
-                <span>Dador de carga</span>
-                <select value={chargerSeleccionado} onChange={(e) => setChargerId(e.target.value)}>
-                  {chargers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="field">
-                <span>Camión del depósito</span>
-                <select value={truckSeleccionado} onChange={(e) => setTruckId(e.target.value)}>
-                  <option value="">Sin asignar</option>
-                  {disponibles.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.plate}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="field">
-                <span>Destino</span>
-                <input
-                  value={destino}
-                  onChange={(e) => setDestino(e.target.value)}
-                  placeholder="Av. Colón 1234, Córdoba"
-                  required
-                  minLength={3}
-                />
-              </label>
-
-              <label className="field">
-                <span>Salida</span>
-                <input
-                  type="datetime-local"
-                  value={salida}
-                  onChange={(e) => setSalida(e.target.value)}
-                  required
-                />
-              </label>
-
-              <button className="btn-primary" type="submit" disabled={enviando}>
-                {enviando ? 'Creando…' : 'Crear viaje'}
-              </button>
-              <p className="hint">
-                Si la dirección no se puede ubicar, el viaje se crea igual y el destino queda
-                pendiente de revisión.
-              </p>
-            </form>
-          )}
+          </form>
         </div>
       )}
     </div>
