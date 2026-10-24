@@ -508,6 +508,14 @@
     background:#fff;font:inherit;font-size:13.5px;color:var(--ink);
   }
   .field input:focus-visible,.field select:focus-visible{outline:2.3px solid var(--green);outline-offset:1px}
+  .inline-add{display:flex;gap:6px;align-items:stretch}
+  .inline-add input,.inline-add select{flex:1;min-width:0}
+  .btn-secondary{
+    flex:none;border:1px solid var(--line);border-radius:9.2px;padding:0 12px;
+    background:rgba(31,42,61,.05);color:var(--ink);font:500 13px Poppins;cursor:pointer;
+  }
+  .btn-secondary:hover{background:rgba(90,126,230,.14)}
+  .btn-secondary:disabled{opacity:.45;cursor:default}
   .btn-primary{
     margin-top:4.6px;border:0;border-radius:11px;padding:11px 14px;cursor:pointer;
     background:var(--green);color:#fff;font:600 13.5px Poppins;

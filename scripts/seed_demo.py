@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from scripts.simulate_trucks import build_truck_configs
 from source.database.database import SessionLocal
+from source.models.destination import Charger, Depot
 from source.models.device import Device, DeviceAssignment
 from source.models.ingestion import IngestedPoint, RejectedIngestPoint
 from source.models.organization import Organization
@@ -35,6 +36,12 @@ DEFAULT_TRUCK_COUNT = 3
 DEFAULT_BASE_ID = 1
 DEFAULT_BASE_PLATE = "ABC123"
 DEFAULT_DEVICE_PREFIX = "SIM"
+# Datos mínimos para que la sección Rutas sea usable en la demo.
+DEFAULT_CHARGER = "Colchones Sur"
+DEFAULT_DEPOT = "Depósito Centro"
+# Plaza San Martín, centro de Córdoba.
+DEFAULT_DEPOT_LAT = -31.4135
+DEFAULT_DEPOT_LNG = -64.1811
 
 
 class SeedError(ValueError):
@@ -65,6 +72,8 @@ class DemoSeedResult:
     devices: int
     reset: bool
     invitation_code: str
+    charger: bool
+    depot: bool
 
 
 def _required(name: str) -> str:
@@ -264,6 +273,37 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
         else:
             device.organization_id = organization.id
 
+    # Un viaje siempre pertenece a un dador de carga y sale de un depósito. Sin
+    # esto la sección Rutas queda vacía y sin forma de crear el primero.
+    charger_created = False
+    if (
+        db.query(Charger)
+        .filter(
+            Charger.organization_id == organization.id, Charger.name == DEFAULT_CHARGER
+        )
+        .first()
+        is None
+    ):
+        db.add(Charger(organization_id=organization.id, name=DEFAULT_CHARGER))
+        charger_created = True
+
+    depot_created = False
+    if (
+        db.query(Depot)
+        .filter(Depot.organization_id == organization.id, Depot.name == DEFAULT_DEPOT)
+        .first()
+        is None
+    ):
+        db.add(
+            Depot(
+                organization_id=organization.id,
+                name=DEFAULT_DEPOT,
+                lat=DEFAULT_DEPOT_LAT,
+                lng=DEFAULT_DEPOT_LNG,
+            )
+        )
+        depot_created = True
+
     db.commit()
     db.refresh(organization)
     return DemoSeedResult(
@@ -272,6 +312,8 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
         devices=devices_created,
         reset=reset,
         invitation_code=organization.invitation_code,
+        charger=charger_created,
+        depot=depot_created,
     )
 
 
@@ -298,6 +340,11 @@ def main() -> int:
     modo = "reset" if result.reset else "sin reset"
     print(f"🏢 Demo '{config.org_name}' (id {result.organization_id}) — {modo}")
     print(f"🚚 Camiones creados: {result.trucks} | 📡 Dispositivos: {result.devices}")
+    if result.charger or result.depot:
+        print(
+            f"🚚 Dador de carga: {'creado' if result.charger else 'existía'} | "
+            f"🏭 Depósito: {'creado' if result.depot else 'existía'}"
+        )
     print("🔒 Invitación cerrada: la demo se entra con el botón del login.")
     return 0
 
