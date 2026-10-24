@@ -38,6 +38,12 @@ implementación `none` por defecto. Los tests nunca salen a la red.
 S9. Toda operación está acotada a la organización del usuario; crear o leer
 recursos ajenos responde `404` para no filtrar existencia.
 
+S10. La sección Rutas (`/viajes`) lista los viajes y ofrece a `org_admin` un
+formulario con dador, camión disponible, destino y hora de salida.
+
+S11. Un camión está disponible si está activo y no tiene viaje abierto; el radio
+del depósito se evalúa más adelante, cuando exista detección de llegada.
+
 ## Tasks
 
 | ID | Specs | Estado |
@@ -81,3 +87,23 @@ se borraron de la base.
 Pendiente para la próxima: UI de viajes/destinos, asignación de camión desde la
 pantalla, detección de llegada por radio (`arrived_at`/`departed_at` existen pero
 nadie los escribe) y el import desde CSV/API del dador.
+
+L6 (usuario, textual): "quizas nos conviene meter un apartado dentro de la
+interfaz que nos permita usar uno de los camiones que están en el deposito para
+crear un nuevo viaje. supongamos que el deposito estña en el centro de
+cordoba, entonces la pagina te pediria un destino y un horario de salida"
+
+L7: decisión del usuario — elegibilidad "sin viaje abierto" (el radio del
+depósito queda para después). Implementado:
+- `departure_at` reemplaza a `scheduled_for`; el schema exige zona horaria
+  (422 si falta) para que un `datetime-local` no se lea como UTC.
+- `depots` + `GET/POST /depots`; con un solo depósito el viaje lo toma solo.
+- `GET /trips/available-trucks` (activo y sin viaje abierto). Verificado en la
+  UI: con los camiones 1 y 2 tomados, el select sólo ofreció ABC123-03.
+- Lecturas a `get_current_user`: sin eso el `member` de la demo veía 403 en
+  todo. El formulario se oculta por `role`, que `/auth/me` sí devuelve (mi
+  lectura inicial del tipo del frontend estaba desactualizada: el tipo no tenía
+  `role` pero la API sí lo manda).
+- Sección Rutas en `/viajes` (`/trips` es la API). `make test` 214 en verde.
+Pendiente: resolver el pin desde la UI, detalle del viaje con destinos en el
+mapa, y el alta de dador de carga desde la pantalla (hoy se crea por API).

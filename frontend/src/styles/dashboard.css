@@ -395,7 +395,7 @@
     body[data-mobile-view="map"] .mapcard .card-h{position:absolute;left:12px;top:82px}
     body[data-mobile-view="map"] .bottom,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
   }
-  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom,.fleet-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
+  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom,.section-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
   @media (min-width:641px){
     :root{
       --g-bg:rgba(255,255,255,.90);--g-solid:rgba(248,250,254,.97);
@@ -442,13 +442,13 @@
 
   /* Geometría de la sección: mismas coordenadas que los paneles flotantes
      (topbar 16+64, paneles desde 97px) en vez del `.grid` del mapa. */
-  .fleet-page{
+  .section-page{
     position:absolute;z-index:5;left:var(--lx);right:16px;top:97px;bottom:39px;
     display:grid;grid-template-columns:minmax(0,1fr) var(--rp);gap:14px;min-height:0;
     transition:left .3s ease;
   }
   @media (max-width:1265px){
-    .fleet-page{position:relative;inset:auto;display:block;padding:14px}
+    .section-page{position:relative;inset:auto;display:block;padding:14px}
     .fleetcard{margin-bottom:14px}
     .fleet-wrap{max-height:60vh}
   }
@@ -481,3 +481,41 @@
   @media (max-width:1265px){
     .app.app-section{background:#dfe8f6}
   }
+
+  /* ===== Sección Rutas: viajes y formulario de alta ===== */
+  .section-page.solo{grid-template-columns:minmax(0,1fr)}
+  .trips-card{display:flex;flex-direction:column;min-height:0}
+  .trips-wrap{flex:1;min-height:0;overflow:auto}
+  .trips-table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed}
+  .trips-table th:nth-child(1){width:112px}
+  .trips-table th:nth-child(3){width:98px}
+  .trips-table th:nth-child(4){width:158px}
+  .trips-table td{overflow:hidden;text-overflow:ellipsis}
+  .trips-table th{
+    position:sticky;top:0;z-index:1;text-align:left;white-space:nowrap;
+    font-weight:500;font-size:12px;color:var(--muted);
+    padding:8px 10px;background:var(--card);border-bottom:1px solid var(--line);
+  }
+  .trips-table td{padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .trips-table .plate{font-weight:600}
+  .trips-table .estado{display:inline-flex;align-items:center;gap:6.9px;max-width:100%}
+  .trips-table .estado .dot{grid-row:auto;flex:none}
+  .trips-table .empty{cursor:default;text-align:center;color:var(--muted);white-space:normal}
+  .trip-form{display:flex;flex-direction:column;gap:10px}
+  .field{display:flex;flex-direction:column;gap:4.6px;font-size:12px;color:var(--muted)}
+  .field input,.field select{
+    width:100%;padding:9.2px 10px;border:1px solid var(--line);border-radius:9.2px;
+    background:#fff;font:inherit;font-size:13.5px;color:var(--ink);
+  }
+  .field input:focus-visible,.field select:focus-visible{outline:2.3px solid var(--green);outline-offset:1px}
+  .btn-primary{
+    margin-top:4.6px;border:0;border-radius:11px;padding:11px 14px;cursor:pointer;
+    background:var(--green);color:#fff;font:600 13.5px Poppins;
+  }
+  .btn-primary:hover{background:var(--green-d)}
+  .btn-primary:disabled{opacity:.6;cursor:default}
+  .btn-primary:focus-visible{outline:2.3px solid var(--green-d);outline-offset:2px}
+  .hint{font-size:11.5px;color:var(--muted);line-height:1.35}
+  .aviso{margin:0 0 9.2px;padding:8px 10px;border-radius:9.2px;font-size:12.5px}
+  .aviso.ok{background:rgba(90,126,230,.10);color:var(--ink)}
+  .aviso.error{background:rgba(224,103,92,.14);color:#8c2f28}

@@ -13,7 +13,7 @@ requires_build = pytest.mark.skipif(
 
 
 @requires_build
-@pytest.mark.parametrize("route", ["/", "/register", "/map", "/fleet"])
+@pytest.mark.parametrize("route", ["/", "/register", "/map", "/fleet", "/viajes"])
 def test_routes_serve_the_spa_shell(client, route):
     response = client.get(route)
     assert response.status_code == 200
