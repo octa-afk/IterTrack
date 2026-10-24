@@ -28,6 +28,10 @@ falsas ni contenido inventado.
 S7. El mapa no se recrea al cambiar de sección: se monta una vez y se oculta
 mientras no estás en el panel.
 
+S8. El cambio de sección tiene una animación mínima de entrada, sin costo de
+relayout y sin parpadear el mapa: sólo `opacity` y `translateY(6px)` durante
+180 ms, desactivada con `prefers-reduced-motion`.
+
 S6. `extras/nuevo html(prueba)` **no** se usa como referencia de diseño: es
 material local de otra rama, ignorado por git. Borrarlo queda a decisión del
 usuario porque no está respaldado en ninguna rama.
@@ -90,3 +94,17 @@ mismos objetos (`===`), `.mapbox` está `hidden` en flota y sin `map-style-loadi
 al volver; 3 marcadores presentes. A 1024 px el mapa oculto no ocupa alto.
 Bug menor encontrado en la tabla: el rumbo salía crudo (225.44311469526514°)
 porque `bearing()` devuelve float y sólo `TruckDetail` redondeaba.
+
+L8 (pedido del usuario, textual): "ahora agreguemos alguna animacion minima, que
+no arruine el rendimiento pero que mejore visualmente la experiencia de cambiar
+de panel"
+
+L9: animación resuelta 100% en CSS, sin JS: `@keyframes section-in` sobre
+`.grid .card`, `.mapcard .card-h` y `.fleet-page`, más `fade-in` sobre el ítem
+activo del sidebar y una transición de color en los links. Sólo opacidad y
+transform, que los compone la GPU. El mapa persistente (`.mapbox`) queda
+explícitamente fuera: si se animara, el panel parpadearía en cada vuelta.
+Verificación: al entrar a `/fleet` corre `section-in` (180 ms) y tras un poll de
+3 s la animación figura `finished` y **no se repite** — los re-render por datos
+no la reactivan. Al volver al panel animan las tarjetas y `.mapbox` no tiene
+ninguna animación. Con `prefers-reduced-motion: reduce` hay 0 animaciones.
