@@ -30,7 +30,7 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 
 * **Registro y gestión de camiones:** Identificación única por ID y patente vehicular única.
 * **Telemetría GPS en tiempo real:** Recepción continua de coordenadas, velocidad, rumbo y timestamp.
-* **Panel en vivo (SPA React):** Aplicación **React 19 + TypeScript + Vite** servida por FastAPI en `/map`, con mapa **Leaflet + MapLibre** sobre OpenStreetMap, rotación del vehículo según rumbo (*bearing*), flechas direccionales adaptativas al zoom y seguimiento automático.
+* **Panel en vivo (SPA React):** Aplicación **React 19 + TypeScript + Vite** servida por FastAPI en `/map`, con mapa **Leaflet + MapLibre** sobre OpenStreetMap, marcador cenital del camión que rota según el rumbo, se escala con el zoom y sigue automáticamente al vehículo seleccionado.
 * **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
 * **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`); todos los endpoints de camiones, tanto de lectura como de escritura, requieren token Bearer. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
 * **Roles con alcance explícito y aislamiento por organización:** `platform_admin`, `org_admin` y `member`, reforzados por un `CHECK CONSTRAINT` en la base. Ningún listado cruza el límite de una organización y operar sobre un recurso ajeno responde `404` para no revelar que existe.
