@@ -413,6 +413,22 @@ def _revocar(device_id: int, admin_headers) -> bool:
     return response.status_code == 200
 
 
+def _reaprovisionar_dispositivo(truck_id: int, admin_headers: dict) -> str | None:
+    """Recovery entry: renew the admin JWT, then re-provision the device.
+
+    El JWT de administración dura `ACCESS_TOKEN_EXPIRE_MINUTES` y el worker lo
+    obtiene una sola vez al arrancar. Sin este re-login, la recuperación que
+    dispara el reset diario de la demo (que borra los dispositivos) responde
+    401 y la flota queda congelada hasta reiniciar el contenedor: el token del
+    dispositivo ya no vale y no hay credencial válida para pedir uno nuevo.
+    """
+    renovado = dict(autenticar_admin())
+    if renovado:
+        admin_headers.clear()
+        admin_headers.update(renovado)
+    return preparar_dispositivo(truck_id, admin_headers)
+
+
 def preparar_dispositivo(truck_id: int, admin_headers=None, force: bool = False) -> str | None:
     """Return a token for a simulated device on `truck_id`, or None to skip it.
 
@@ -707,9 +723,10 @@ def ejecutar_simulaciones(
                         token,
                         # `partial` fija el truck_id: un cierre sobre el bucle
                         # capturaría el último config y los tres camiones
-                        # compartirían el mismo dispositivo.
+                        # compartirían el mismo dispositivo. La recuperación
+                        # renueva el JWT de admin antes de re-aprovisionar.
                         on_unauthorized=partial(
-                            preparar_dispositivo, config.truck_id, admin_headers
+                            _reaprovisionar_dispositivo, config.truck_id, admin_headers
                         ),
                     ),
                 )
