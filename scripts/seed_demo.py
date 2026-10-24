@@ -13,16 +13,14 @@ Required environment variables (see .env.example):
 """
 
 import argparse
-import json
 import os
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from scripts.simulate_trucks import build_truck_configs, truck_plates
+from scripts.simulate_trucks import build_truck_configs, cargar_ruta, truck_plates
 from source.database.database import SessionLocal
 from source.models.destination import (
     AddressCache,
@@ -59,7 +57,6 @@ DEFAULT_DEPOT_LNG = -64.1811
 # El último viaje se siembra cerrado a propósito: con los tres abiertos ningún
 # camión figura disponible y el formulario no tendría a quién asignarle uno nuevo.
 DEMO_TRIP_STATUSES = ("in_progress", "in_progress", "done")
-ROUTE_FILE = Path(__file__).resolve().parent / "cordoba_route.json"
 
 
 class SeedError(ValueError):
@@ -111,17 +108,17 @@ def _password(name: str) -> str:
 
 
 def _demo_trip_indexes(
-    route_length: int, route_offset: int, truck_count: int
+    route_length: int, route_offset: int, sharing: int
 ) -> list[int]:
-    """Tres paradas dentro del tercio del circuito que le toca a ese camión.
+    """Tres paradas dentro del tramo que le toca a ese camión.
 
-    Los camiones comparten el mismo circuito repartidos en fases. Si las paradas
-    se eligieran del circuito entero, los tres viajes tendrían destinos
-    mezclados y un camión pasaría por una parada "suya" media vuelta después.
+    Cada camión tiene su propio circuito; cuando varios comparten uno se
+    reparten la vuelta en fases. Las paradas salen del tramo de ese camión para
+    que las pase cerca y no media vuelta después de haber salido.
     """
     if route_length < 1:
         raise SeedError("La ruta de demo está vacía.")
-    tramo = route_length / truck_count
+    tramo = route_length / sharing
     return [
         int(route_offset + tramo * fraccion) % route_length
         for fraccion in (0.25, 0.5, 0.75)
@@ -283,15 +280,10 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
 
     # El seed no inyecta posiciones: la primera ubicación la reporta el
     # dispositivo (POST /devices/ingest), igual que el hardware real.
-    # La ruta se lee acá porque fija la fase de cada camión: sin `route_length`
-    # `build_truck_configs` reparte offsets 0, 1, 2 y los tres viajes terminarían
-    # con las mismas paradas.
-    ruta = json.loads(ROUTE_FILE.read_text(encoding="utf-8"))
     truck_configs = build_truck_configs(
         base_id=config.base_id,
         base_plate=config.base_plate,
         count=config.truck_count,
-        route_length=len(ruta),
         plates=truck_plates(),
     )
 
@@ -382,10 +374,14 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
     trips_rebuilt = 0
     for indice, truck_config in enumerate(truck_configs):
         referencia = f"DEMO-{indice + 1:03d}"
+        ruta = cargar_ruta(truck_config.route_file)
+        compartido = sum(
+            1 for otro in truck_configs if otro.route_file == truck_config.route_file
+        )
         puntos = [
             (ruta[posicion][0], ruta[posicion][1])
             for posicion in _demo_trip_indexes(
-                len(ruta), truck_config.route_offset, len(truck_configs)
+                len(ruta), truck_config.route_offset, compartido
             )
         ]
         viaje = (

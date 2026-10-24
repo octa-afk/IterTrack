@@ -10,6 +10,7 @@ from scripts.bootstrap_platform import (
     bootstrap_platform,
 )
 from scripts.seed_demo import DemoSeedConfig, SeedError, seed_demo
+from scripts.simulate_trucks import calcular_distancia_metros
 from source.models.destination import Trip
 from source.models.device import Device, DeviceAssignment
 from source.models.organization import Organization
@@ -185,6 +186,13 @@ def test_seed_gives_each_truck_its_own_trip(db_session):
         for trip in trips
         for stop in trip.stops
     )
+    # Cada viaje sale de un circuito propio: si compartieran ruta, las primeras
+    # paradas caerían a metros unas de otras.
+    primeros = {trip.truck_id: (trip.stops[0].lat, trip.stops[0].lng) for trip in trips}
+    for left in (1, 2, 3):
+        for right in (1, 2, 3):
+            if left < right:
+                assert calcular_distancia_metros(*primeros[left], *primeros[right]) > 2000
 
 
 def test_seed_rebuilds_demo_trip_stops_that_went_stale(db_session):
