@@ -26,10 +26,15 @@ def built_css() -> str:
 @requires_build
 def test_pin_geometry_and_heading_rotation():
     text = built_css()
-    assert ".pin svg{width:36px;height:54px}" in text
+    assert re.search(r"\.pin\{[^}]*width:32px[^}]*height:62px", text)
+    assert re.search(r"\.pin \.truck-img\{[^}]*width:32px[^}]*height:62px", text)
     assert ".pin .lbl" in text
-    assert ".pin.sel .truck-svg" in text
+    assert ".pin.sel .truck-img" in text
     assert "rotate(var(--heading,0deg))" in text
+    # El marcador se achica al alejar el zoom; el JS publica --pin-scale y el
+    # CSS lo compone con el rumbo (y la etiqueta sigue el tamaño escalado).
+    assert "scale(var(--pin-scale,1))" in text
+    assert re.search(r"\.pin \.lbl\{top:calc\(50% \+ 31px \* var\(--pin-scale,1\)", text)
 
 
 @requires_build
@@ -63,9 +68,24 @@ def test_bottom_cards_surfaces():
 def test_truck_active_state_and_trip_summary():
     text = built_css()
     assert ".badge-off{" in text
-    assert ".pin.off .truck-svg{" in text
+    assert ".pin.off .truck-img{" in text
     assert re.search(r"\.detail \.trip\{[^}]*border-radius:12px", text)
     assert re.search(r"\.detail \.trip-st\{[^}]*grid-template-columns:repeat\(3,1fr\)", text)
+
+
+@requires_build
+def test_truck_marker_image_ships_inside_the_served_assets_directory():
+    """El marcador debe vivir en /assets: FastAPI solo sirve esa carpeta.
+
+    Un archivo en frontend/public llega al build como /truck.webp, que en
+    producción responde 404 y deja el marcador como imagen rota.
+    """
+    assets = sorted((DIST / "assets").glob("*.webp"))
+    assert assets, "the build emitted no marker image under assets/"
+    assert assets[0].stat().st_size < 60_000, "the marker image is unoptimized"
+    scripts = sorted((DIST / "assets").glob("*.js"))
+    bundled = "".join(path.read_text(encoding="utf-8") for path in scripts)
+    assert "/truck.webp" not in bundled
 
 
 @requires_build

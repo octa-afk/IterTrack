@@ -77,6 +77,12 @@ def view_map():
     return _index()
 
 
+@app.get("/fleet")
+def view_fleet():
+    """Sección Camiones. No puede vivir en /trucks: ese path es la API JSON."""
+    return _index()
+
+
 @app.get("/register")
 def view_register():
     return _index()

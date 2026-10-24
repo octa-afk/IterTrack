@@ -50,11 +50,10 @@
   .mapbox,#map,.leaflet-container,.maplibregl-canvas{background:var(--map-bg,#f4f6fb)}
   .map-style-loading::before{content:'';position:absolute;inset:0;z-index:500;background:var(--map-bg,#f4f6fb);pointer-events:none}
   .leaflet-container{font-family:Poppins,sans-serif}
-  .pin{width:48px;height:48px;display:grid;place-items:center;position:relative}
-  .pin .truck-svg{display:grid;transform:rotate(var(--heading,0deg));transition:transform .2s,filter .2s}
-  .pin svg{width:36px;height:54px}
-  .pin.sel .truck-svg{transform:rotate(var(--heading,0deg)) scale(1.15);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
-  .pin .lbl{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;background:var(--g-solid);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .pin{width:32px;height:62px;position:relative}
+  .pin .truck-img{display:block;width:32px;height:62px;transform:rotate(var(--heading,0deg)) scale(var(--pin-scale,1));transition:transform .2s,filter .2s}
+  .pin.sel .truck-img{transform:rotate(var(--heading,0deg)) scale(calc(var(--pin-scale,1) * 1.15));filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+  .pin .lbl{display:none;position:absolute;top:calc(50% + 31px * var(--pin-scale,1) + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--g-solid);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
   .pin.sel .lbl{display:block}
 
   /* Fila inferior */
@@ -117,7 +116,7 @@
 
   /* Camión inactivo: conserva su historial pero ya no transmite. */
   .badge-off{display:inline-block;margin-left:6px;padding:1px 7px;border:1px solid var(--line);border-radius:1149px;background:var(--bg);color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle}
-  .pin.off .truck-svg{opacity:.55;filter:grayscale(1)}
+  .pin.off .truck-img{opacity:.55;filter:grayscale(1)}
 
   /* Resumen del recorrido reciente del camión seleccionado. */
   .detail .trip{margin-top:9.2px;background:#fff;border-radius:12px;padding:10px 12px}
@@ -319,34 +318,32 @@
   .side .logout{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff}
   .side-in{width:100%;height:100%;padding:40px 0 23px}
   .logo{margin-bottom:39px}
-  .top{position:absolute;z-index:5;left:var(--lx);right:16px;top:16px;height:64px;padding:0 10px 0 9px;border-radius:32px}
+  .top{position:absolute;z-index:5;left:var(--lx);right:16px;top:16px;height:64px;padding:0 10px 0 9px;border-radius:32px;transition:left .3s ease}
   .search{background:var(--g-fill);box-shadow:none;height:44px}
   .search:focus-within{box-shadow:0 0 0 2px var(--ac)}
   .pill{background:none;padding:0;height:auto;color:var(--ink)}
   .pill .al{background:var(--g-fill2);color:var(--ink)} .pill .bell{fill:var(--ink)}
   .avatar{background:var(--ac);color:#fff}
-  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:97px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px}
+  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:97px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px;transition:left .3s ease}
   .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
   .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:97px;bottom:39px;width:var(--rp);gap:14px}
   .card{border-radius:28px}
-  .bottom{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;height:202px;gap:14px}
+  .bottom{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;height:202px;gap:14px;transition:left .3s ease}
   .dn{gap:6px}.dn svg{width:52px;height:52px}.dn .t{font-size:10.5px}.dn .t b{font-size:13px}.dn .pc{font-size:12px}
   .detail,.detail .st,.detail .trip{background:var(--g-fill)}
   .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
   .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
   .bar i{background:var(--g-fill2)}.bar:hover i,.bar.sel i{background:var(--green-l)}
   .bars .limit span{background:transparent}.dn circle:first-child{stroke:var(--g-fill2)}
-  .leaflet-top.leaflet-left{left:var(--lx);top:147px}.leaflet-left .leaflet-control{margin-left:0}
+  .leaflet-top.leaflet-left{left:var(--lx);top:147px;transition:left .3s ease}.leaflet-left .leaflet-control{margin-left:0}
   .leaflet-bar,.leaflet-touch .leaflet-bar{border:1px solid var(--g-bd)!important;border-radius:18px;overflow:hidden}
   .leaflet-bar a{background:transparent;color:var(--ink);border-bottom:1px solid var(--g-bd);width:39px;height:39px;line-height:39px}
   .leaflet-bar a:hover{background:var(--g-fill)}
-  .leaflet-bottom.leaflet-right{right:auto;left:var(--lx);bottom:0}
+  .leaflet-bottom.leaflet-right{right:auto;left:var(--lx);bottom:0;transition:left .3s ease}
   .leaflet-control-attribution{border-radius:12px 12px 0 0;color:var(--muted);box-shadow:none;border-bottom:0}
   .leaflet-control-attribution a{color:var(--green-d)}
   .app.nav-off .side{width:0;opacity:0;pointer-events:none;border:0}
   .app.nav-off{--lx:16px}
-  .app.nav-off .top,.app.nav-off .mapcard .card-h,.app.nav-off .bottom,
-  .app.nav-off .leaflet-top.leaflet-left,.app.nav-off .leaflet-bottom.leaflet-right{transition:left .3s ease}
   .mobile-tabs{display:none}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
   @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
@@ -398,7 +395,7 @@
     body[data-mobile-view="map"] .mapcard .card-h{position:absolute;left:12px;top:82px}
     body[data-mobile-view="map"] .bottom,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
   }
-  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom{transition:none!important}}
+  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom,.fleet-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
   @media (min-width:641px){
     :root{
       --g-bg:rgba(255,255,255,.90);--g-solid:rgba(248,250,254,.97);
@@ -411,4 +408,76 @@
     .side nav a.on{color:var(--ink)}
     .side nav a:hover{background:rgba(31,42,61,.05)}
     .side .logout{background:rgba(255,255,255,.85);border:0;color:var(--ink)}
+  }
+
+  /* ===== Sección Camiones: tabla de la flota ===== */
+  nav a.soon{opacity:.5;cursor:not-allowed}
+  .fleetcard{display:flex;flex-direction:column;min-height:0;flex:1}
+  .fleetcard .chips{margin-bottom:9.2px}
+  .fleet-wrap{flex:1;min-height:0;overflow:auto}
+  .fleet-table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .fleet-table th{
+    position:sticky;top:0;z-index:1;text-align:left;white-space:nowrap;
+    font-weight:500;font-size:12px;color:var(--muted);
+    padding:8px 12px;background:var(--card);border-bottom:1px solid var(--line);
+  }
+  .fleet-table th button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4.6px;border-radius:6px}
+  .fleet-table th button:focus-visible{outline:2.3px solid var(--green);outline-offset:2.3px}
+  .fleet-table th.num,.fleet-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+    .fleet-table td{padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .fleet-table tbody tr{cursor:pointer}
+  .fleet-table tbody tr:hover{background:rgba(31,42,61,.04)}
+  .fleet-table tbody tr.sel{background:rgba(90,126,230,.10)}
+  .fleet-table .plate{font-weight:600}
+  .fleet-table .estado{display:inline-flex;align-items:center;gap:6.9px}
+  .fleet-table .dot{grid-row:auto;flex:none}
+  .fleet-table .empty{cursor:default;text-align:center}
+  .fleet-table .ir-mapa{
+    width:30px;height:30px;border:0;border-radius:9px;display:grid;place-items:center;
+    background:rgba(31,42,61,.05);color:var(--ink);cursor:pointer;padding:0;
+  }
+  .fleet-table .ir-mapa:hover{background:rgba(90,126,230,.16)}
+  .fleet-table .ir-mapa:focus-visible{outline:2.3px solid var(--green);outline-offset:2px}
+  .fleet-table .ir-mapa svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* Geometría de la sección: mismas coordenadas que los paneles flotantes
+     (topbar 16+64, paneles desde 97px) en vez del `.grid` del mapa. */
+  .fleet-page{
+    position:absolute;z-index:5;left:var(--lx);right:16px;top:97px;bottom:39px;
+    display:grid;grid-template-columns:minmax(0,1fr) var(--rp);gap:14px;min-height:0;
+    transition:left .3s ease;
+  }
+  @media (max-width:1265px){
+    .fleet-page{position:relative;inset:auto;display:block;padding:14px}
+    .fleetcard{margin-bottom:14px}
+    .fleet-wrap{max-height:60vh}
+  }
+
+  /* ===== Mapa persistente entre secciones =====
+     El mapa vive en el layout y se monta una sola vez. Fuera del panel se
+     oculta sin cambiar su tamaño, así Leaflet conserva la vista y el estilo
+     de MapLibre no se vuelve a pedir. Debajo de 1265 px el mapa está en flujo
+     normal, así que ahí sí tiene que dejar de ocupar alto. */
+  .mapbox-off{visibility:hidden;pointer-events:none}
+  @media (max-width:1265px){
+    .mapbox-off{display:none}
+  }
+
+
+  /* ===== Fondo de las secciones sin mapa =====
+     En el panel manda el mapa; en Camiones (y las secciones que vengan) no hay
+     nada detrás de las tarjetas, así que el vidrio no tenía qué difuminar.
+     Un gradiente con manchas suaves le da material al `backdrop-filter` sin
+     competir con el contenido: contrastes bajos y sin bordes duros. */
+  .app.app-section{background:#dfe8f6}
+  /* Vidrio más translúcido sólo acá: contra el mapa ese ajuste no aplica. */
+  @media (min-width:641px){
+    .app.app-section{
+      --g-bg:rgba(255,255,255,.70);
+      --g-bd:rgba(255,255,255,.66);
+      --g-hi:inset 0 1px 0 rgba(255,255,255,.85);
+    }
+  }
+  @media (max-width:1265px){
+    .app.app-section{background:#dfe8f6}
   }

@@ -30,7 +30,8 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 
 * **Registro y gestión de camiones:** Identificación única por ID y patente vehicular única.
 * **Telemetría GPS en tiempo real:** Recepción continua de coordenadas, velocidad, rumbo y timestamp.
-* **Panel en vivo (SPA React):** Aplicación **React 19 + TypeScript + Vite** servida por FastAPI en `/map`, con mapa **Leaflet + MapLibre** sobre OpenStreetMap, rotación del vehículo según rumbo (*bearing*), flechas direccionales adaptativas al zoom y seguimiento automático.
+* **Panel en vivo (SPA React):** Aplicación **React 19 + TypeScript + Vite** servida por FastAPI en `/map`, con mapa **Leaflet + MapLibre** sobre OpenStreetMap, marcador cenital del camión que rota según el rumbo, se escala con el zoom y sigue automáticamente al vehículo seleccionado.
+* **Navegación por secciones:** sidebar con `Panel` (mapa en vivo) y `Camiones` (tabla de flota con filtros, orden y detalle). `Rutas`, `Reportes` y `Ajustes` están visibles como próximas, sin páginas de relleno.
 * **Historial de recorrido:** Almacenamiento y consulta de los últimos puntos geográficos transitados.
 * **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`); todos los endpoints de camiones, tanto de lectura como de escritura, requieren token Bearer. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
 * **Roles con alcance explícito y aislamiento por organización:** `platform_admin`, `org_admin` y `member`, reforzados por un `CHECK CONSTRAINT` en la base. Ningún listado cruza el límite de una organización y operar sobre un recurso ajeno responde `404` para no revelar que existe.
@@ -95,7 +96,7 @@ IterTrack/
 ├── README.md                      # Documentación principal del proyecto
 ├── AGENTS.md                      # Reglas, arquitectura e instrucciones para agentes de IA
 ├── ROADMAP.md                     # Visión de producto y fases
-├── Makefile                       # test, check, frontend, migrate, dev y simulation
+├── Makefile                       # test, check, frontend, migrate, dev, simulation y demo
 ├── requirements.txt               # Dependencias Python del proyecto
 ├── .gitignore                     # Filtro de exclusiones para Git
 ├── .env.example                   # Plantilla de variables de entorno (sin credenciales reales)
@@ -120,7 +121,7 @@ IterTrack/
 │   ├── script.py.mako             # Template para generación de revisiones
 │   └── versions/                  # Historial de migraciones de la base de datos
 └── source/
-    ├── main.py                    # FastAPI: routers, SPA en /, /register y /map, y /assets
+    ├── main.py                    # FastAPI: routers, SPA en /, /register, /map y /fleet, y /assets
     ├── static/
     │   └── isologo.png            # Ícono del sitio (/favicon.ico)
     ├── database/
@@ -234,7 +235,7 @@ alembic upgrade head
 
 ### 6. Compilar el Frontend
 
-FastAPI sirve el build de React desde `frontend/dist`. Sin ese build, `/`, `/register` y `/map` responden `503`.
+FastAPI sirve el build de React desde `frontend/dist`. Sin ese build, `/`, `/register`, `/map` y `/fleet` responden `503`.
 
 ```bash
 make frontend   # npm ci && npm run build en frontend/
@@ -300,10 +301,29 @@ npm --prefix frontend run build            # typecheck (tsc) + build
 
 ## 🛰 Simulación de Telemetría
 
-El repositorio incluye un simulador para verificar la recepción y visualización continua de telemetría en tiempo real. Emite **solo** por `POST /devices/ingest` con el token de un dispositivo aprovisionado, el mismo camino que un ESP32: no existe forma de inyectar ubicaciones con una cuenta humana. Antes de ejecutarlo, inicia el backend y configura `ADMIN_API_USER` y `ADMIN_API_PASSWORD` con una cuenta administradora de la organización, que es la que registra camiones y aprovisiona el dispositivo simulado.
+El repositorio incluye un simulador para verificar la recepción y visualización continua de telemetría en tiempo real. Emite **solo** por `POST /devices/ingest` con el token de un dispositivo aprovisionado, el mismo camino que un ESP32: no existe forma de inyectar ubicaciones con una cuenta humana.
+
+### Camino corto: un solo comando
+
+```bash
+make demo
+```
+
+Migra la base, bootstrapea la plataforma, siembra el tenant demo, levanta la API en `:8000` si no está respondiendo y arranca el simulador con la flota completa. Abrí `http://localhost:8000/map` y los camiones se mueven por Córdoba; `Ctrl+C` corta la simulación (y la API, si la levantó ese mismo target). Las credenciales salen del `.env` raíz (`ADMIN_API_USER` / `ADMIN_API_PASSWORD`); si ya tenés un `uvicorn` corriendo, lo reutiliza en vez de pelear por el puerto.
+
+Para ajustar la flota sin tocar el archivo:
+
+```bash
+make demo SIMULATION_COUNT=5 SIMULATION_INTERVAL=1
+```
+
+### Camino manual
+
+Antes de ejecutarlo, inicia el backend como administrador de la organización, que es quien registra camiones y aprovisiona el dispositivo simulado.
 
 ```bash
 # El simulador lee ADMIN_API_USER y ADMIN_API_PASSWORD desde scripts/.env.
+```
 # Copiá la plantilla y completá con una cuenta administradora local:
 cp scripts/.env.example scripts/.env
 
@@ -328,8 +348,11 @@ Si `ADMIN_API_USER` o `ADMIN_API_PASSWORD` no están definidas ni en el entorno 
 El simulador aprovisiona un dispositivo por camión (`SIM-<id>`) y emite por `POST /devices/ingest`, el mismo pipeline que el hardware. **Saltea** los camiones ocupados por un dispositivo que no creó, de modo que un ESP32 real siempre gana; `--force` revoca al ocupante y obliga a re-aprovisionar ese equipo.
 
 ```bash
-make simulation
+make simulation                      # solo el simulador, contra una API ya levantada
+make simulation SIMULATION_COUNT=1   # un camión, para probar el marcador
 ```
+
+`make simulation` carga el `.env` raíz, así que toma `ADMIN_API_USER` y `ADMIN_API_PASSWORD` de ahí sin exports manuales.
 
 ### Características de la simulación:
 1. **Ruta Urbana Realista:** Recorre un circuito cerrado de 13 km por avenidas de Córdoba Capital (Av. Colón, Costanera, Plaza España, Patio Olmos, etc.) cargado desde [`scripts/cordoba_route.json`](./scripts/cordoba_route.json) (425 puntos georreferenciados).
@@ -361,6 +384,7 @@ git checkout IterTrack-Hardware
 | `GET` | `/` | SPA React (`frontend/dist/index.html`) — login | — | — |
 | `GET` | `/register` | SPA React — registro | — | — |
 | `GET` | `/map` | SPA React — panel; valida la sesión antes de consultar la API | — | — |
+| `GET` | `/fleet` | SPA React — sección Camiones (tabla de flota) | — | — |
 | `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`source/static/isologo.png`) | — | — |
 | `GET` | `/health` | Estado del servicio (`{"status": "ok"}`) | — | — |
 | `GET` | `/assets/{archivo}` | CSS y JS hasheados del build de React | — | — |
