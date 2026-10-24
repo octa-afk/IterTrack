@@ -104,10 +104,23 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
 
 9. **Arranque, demo y despliegue:**
    * `scripts/bootstrap_platform.py` crea la organización interna y la cuenta `platform_admin`. Se corre **una vez por despliegue** y converge si se repite. Sin esto, una base vacía no tiene forma de emitir una invitación.
-   * `scripts/seed_demo.py` crea o resetea (`--reset`) el tenant `Demo Corp`: `org_admin`, `member`, camiones y dispositivos `SIM-<id>`. Nunca toca otras organizaciones ni la cuenta de plataforma, y falla si un camión o dispositivo ya pertenece a otra organización.
+   * `scripts/seed_demo.py` crea o resetea (`--reset`) el tenant `Demo Corp`: `org_admin`, `member`, camiones y dispositivos `SIM-<id>`. También siembra un dador de carga (`Colchones Sur`) y un depósito (`Depósito Centro`, Plaza San Martín) porque sin ellos la sección Rutas queda vacía y sin forma de crear el primero desde la UI. Nunca toca otras organizaciones ni la cuenta de plataforma, y falla si un camión o dispositivo ya pertenece a otra organización.
    * `Dockerfile` multi-stage: Node compila `frontend/dist`, Python corre la app. El entrypoint (`scripts/docker_entrypoint.sh`) migra, bootstrapea y siembra según `RUN_MIGRATIONS`, `BOOTSTRAP_PLATFORM` y `SEED_DEMO_ON_BOOT`, y después ejecuta el comando recibido.
    * `docker-compose.yml`: `caddy` (TLS), `web` (migra), `worker` (simulador, `RUN_MIGRATIONS=false`) y `postgres` (volumen nombrado, **sin puertos publicados**). La imagen se publica en GHCR desde `.github/workflows/publish-image.yml`.
    * El runbook operativo está en `docs/DEPLOYMENT.md`.
+
+10. **Destinos y viajes tercerizados (`source/services/destinations.py`, `source/models/destination.py`):**
+   * `chargers` es el dador de carga (la empresa que terceriza el envío). Es una dimensión de la organización, **no** un inquilino: no tiene login ni invitaciones.
+   * `trips` une dador, fecha, camión y chofer. **El chofer va en el viaje, no en el camión**: en tercerización el mismo camión rota de chofer por envío.
+   * `external_ref` es idempotente por organización: un envío reenviado dos veces responde `409` en lugar de duplicarse.
+   * **La coordenada es la fuente de verdad; la dirección es texto para mostrar.** Se resuelve una sola vez al importar y se guarda en `address_cache` por dirección normalizada (sin acentos, minúsculas). Reimportar la misma dirección no consulta al proveedor.
+   * Lo que el geocoder no encuentra queda `needs_review=true` en `GET /destinations/pending`. No se inventa un centroide: un pin equivocado manda al chofer al lugar incorrecto.
+   * El pin manual (`PATCH /trips/{id}/stops/{stop_id}`) resuelve el destino y **escribe la caché** con `resolved_by_user_id`.
+   * El proveedor vive detrás de la interfaz `Geocoder` (`source/services/geocoding.py`), inyectada con `Depends(get_geocoder)`. `GEOCODER_PROVIDER` acepta `none` (default, no llama a nadie) y `nominatim`. Los tests siempre la sobrescriben y nunca salen a la red.
+   * `trips.departure_at` es `datetime` con zona (no una fecha): "salir a las 07:30" no entra en un `date` y sin zona la salida se corre tres horas.
+   * `depots` guarda nombre, lat/lng y `radius_m`. La elegibilidad **no** usa el radio todavía: un camión está disponible si está activo y no tiene viaje en `planned`/`in_progress` (`GET /trips/available-trucks`). El radio queda para cuando exista detección de llegada.
+   * Lecturas con `get_current_user` y scoping por organización; escrituras con `require_org_admin`. Así `member` puede ver viajes pero no crearlos, y la sección Rutas le oculta el formulario.
+   * La instancia pública de Nominatim no sirve en producción: 1 request/segundo y 4 por minuto para scripts periódicos. El análisis y las alternativas están en `odd/tasks/destinations.md`.
 
 ---
 

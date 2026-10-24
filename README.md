@@ -309,7 +309,7 @@ El repositorio incluye un simulador para verificar la recepción y visualizació
 make demo
 ```
 
-Migra la base, bootstrapea la plataforma, siembra el tenant demo, levanta la API en `:8000` si no está respondiendo y arranca el simulador con la flota completa. Abrí `http://localhost:8000/map` y los camiones se mueven por Córdoba; `Ctrl+C` corta la simulación (y la API, si la levantó ese mismo target). Las credenciales salen del `.env` raíz (`ADMIN_API_USER` / `ADMIN_API_PASSWORD`); si ya tenés un `uvicorn` corriendo, lo reutiliza en vez de pelear por el puerto.
+Migra la base, bootstrapea la plataforma, siembra el tenant demo (incluye el dador de carga `Colchones Sur` y el `Depósito Centro`), levanta la API en `:8000` si no está respondiendo y arranca el simulador con la flota completa. Abrí `http://localhost:8000/map` y los camiones se mueven por Córdoba; `Ctrl+C` corta la simulación (y la API, si la levantó ese mismo target). Las credenciales salen del `.env` raíz (`ADMIN_API_USER` / `ADMIN_API_PASSWORD`); si ya tenés un `uvicorn` corriendo, lo reutiliza en vez de pelear por el puerto.
 
 Para ajustar la flota sin tocar el archivo:
 
@@ -361,6 +361,43 @@ make simulation SIMULATION_COUNT=1   # un camión, para probar el marcador
 
 ---
 
+## 🚚 Destinos y viajes tercerizados
+
+Cuando la flota terceriza camiones, los destinos no los define el operador: los
+manda un **dador de carga** (por ejemplo, una empresa de colchones) y el operador
+nos los reenvía. El modelo separa tres cosas que antes estaban mezcladas:
+
+* `chargers` — el dador de carga. Es una dimensión de la organización, **no** un
+  inquilino: no tiene login ni invitaciones.
+* `trips` — el envío con su fecha, el camión asignado y el chofer. **El chofer
+  vive en el viaje, no en el camión**: en tercerización el mismo camión rota de
+  chofer según el envío.
+* `trip_stops` — los destinos, con dirección, coordenada, procedencia y si
+  necesitan revisión.
+
+La sección **Rutas** (`/viajes`) lista los viajes y, para `org_admin`, ofrece el
+formulario de alta: dador de carga, camión disponible, destino y hora de salida.
+Un camión es elegible si está activo y no tiene viaje abierto; el radio del
+depósito todavía no se chequea porque depende de telemetría fresca. `member` ve
+la lista sin formulario.
+
+La regla central: **la coordenada es la fuente de verdad, la dirección es texto
+para mostrar**. Se resuelve una sola vez, al importar, y se guarda en
+`address_cache` por dirección normalizada; la segunda importación de la misma
+dirección no vuelve a consultar al proveedor. Si el proveedor no la encuentra
+—"Ruta 9 km 720" no geocodifica ni con Google—, el destino queda en la cola
+`GET /destinations/pending` y se resuelve con un pin manual, que a su vez
+alimenta la caché.
+
+El proveedor de geocoding está detrás de la interfaz `Geocoder` (inyectada con
+`Depends`) y se elige por `GEOCODER_PROVIDER` (`none` | `nominatim`). El default
+es `none`: no se llama a ningún servicio externo y todo destino queda pendiente.
+La instancia pública de Nominatim no sirve en producción (1 request/segundo y 4
+por minuto para scripts periódicos); el análisis completo está en
+[`odd/tasks/destinations.md`](./odd/tasks/destinations.md).
+
+---
+
 ## 🔌 Módulo de Hardware (ESP32)
 
 El desarrollo del firmware para dispositivos en cabina de camión se encuentra en la rama dedicada `origin/IterTrack-Hardware`:
@@ -385,6 +422,17 @@ git checkout IterTrack-Hardware
 | `GET` | `/register` | SPA React — registro | — | — |
 | `GET` | `/map` | SPA React — panel; valida la sesión antes de consultar la API | — | — |
 | `GET` | `/fleet` | SPA React — sección Camiones (tabla de flota) | — | — |
+| `GET` | `/viajes` | SPA React — sección Rutas (viajes y alta de viaje) | — | — |
+| `GET` | `/chargers` | Dadores de carga de la organización | — | 🔒 Bearer |
+| `POST` | `/chargers` | Crea un dador de carga | `{"name": "Colchones Sur"}` | 🔒 org_admin |
+| `GET` | `/trips` | Viajes de la organización (`?charger_id=`, `?truck_id=`) | — | 🔒 Bearer |
+| `POST` | `/trips` | Importa un viaje con sus destinos; geocodifica al entrar | `{"charger_id": 1, "departure_at": "2026-10-26T07:30:00-03:00", "external_ref": "ENVIO-001", "stops": [{"address": "Av. Colón 1234, Córdoba"}]}` | 🔒 org_admin |
+| `GET` | `/trips/{id}` | Un viaje con sus destinos | — | 🔒 Bearer |
+| `PATCH` | `/trips/{id}/stops/{stop_id}` | Pin manual: resuelve el destino y escribe la caché | `{"lat": -31.4135, "lng": -64.1811}` | 🔒 org_admin |
+| `GET` | `/destinations/pending` | Cola de destinos sin coordenada (`needs_review`) | — | 🔒 Bearer |
+| `GET` | `/depots` | Depósitos de la organización | — | 🔒 Bearer |
+| `POST` | `/depots` | Crea un depósito | `{"name": "Depósito Centro", "lat": -31.4135, "lng": -64.1811}` | 🔒 org_admin |
+| `GET` | `/trips/available-trucks` | Camiones activos sin viaje abierto | — | 🔒 Bearer |
 | `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`source/static/isologo.png`) | — | — |
 | `GET` | `/health` | Estado del servicio (`{"status": "ok"}`) | — | — |
 | `GET` | `/assets/{archivo}` | CSS y JS hasheados del build de React | — | — |

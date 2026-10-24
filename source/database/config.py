@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     demo_password: str = ""
     demo_admin_username: str = ""
     demo_admin_password: str = ""
+
+    # Geocoding de direcciones (destinos). `none` deja todo destino pendiente de
+    # revisión manual, que es el comportamiento seguro por defecto: sin proveedor
+    # configurado no se llama a ningún servicio externo.
+    # Valores: none | nominatim.
+    geocoder_provider: str = "none"
+    geocoder_url: str = "https://nominatim.openstreetmap.org"
+    geocoder_user_agent: str = "IterTrack/1.0 (fleet telemetry; contacto@itertrack.local)"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @field_validator("database_url")

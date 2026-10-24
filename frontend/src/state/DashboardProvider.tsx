@@ -24,6 +24,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [userInitials, setUserInitials] = useState('FL');
+  const [role, setRole] = useState('member');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -72,6 +73,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const user = await me();
         if (!cancelled) {
           setUserInitials(String(user.username || 'FL').slice(0, 2).toUpperCase());
+          setRole(user.role || 'member');
         }
       } catch {
         clearToken();
@@ -132,6 +134,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     selectedId,
     filters,
     userInitials,
+    role,
     ready,
     visibleTrucks,
     selectedTruck,
