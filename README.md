@@ -35,7 +35,7 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 * **Autenticación OAuth2 + JWT:** Registro y login resueltos en el navegador (`/` y `/register`); todos los endpoints de camiones, tanto de lectura como de escritura, requieren token Bearer. Contraseñas hasheadas con bcrypt y tokens firmados con HS256.
 * **Roles con alcance explícito y aislamiento por organización:** `platform_admin`, `org_admin` y `member`, reforzados por un `CHECK CONSTRAINT` en la base. Ningún listado cruza el límite de una organización y operar sobre un recurso ajeno responde `404` para no revelar que existe.
 * **Persistencia Robusta:** Modelos relacionales con SQLAlchemy 2.0 y control de versiones de esquema con Alembic sobre PostgreSQL.
-* **Simulador integrado con ruta realista:** Script Python con un circuito cerrado de 13 km por Córdoba Capital (425 puntos). Tiene dos modos: escribe como usuario (`PUT /trucks/{id}/location`) o como dispositivo (`POST /devices/ingest`), el mismo camino que un ESP32.
+* **Simulador integrado con ruta realista:** Script Python con un circuito cerrado de 13 km por Córdoba Capital (425 puntos). Emite como dispositivo (`POST /devices/ingest`), el mismo camino que un ESP32; la telemetría no se escribe con cuentas humanas.
 * **Ciclo de vida de dispositivos GPS:** Alta, reasignación, rotación de token y revocación. Cada equipo tiene su propia credencial (hash SHA-256, mostrada una sola vez) y una sola asignación abierta por camión.
 * **Documentación interactiva automática:** Swagger UI y ReDoc nativos de FastAPI.
 * **Compatibilidad IoT:** Integración diseñada para dispositivos ESP32 sobre PlatformIO.
@@ -300,16 +300,16 @@ npm --prefix frontend run build            # typecheck (tsc) + build
 
 ## 🛰 Simulación de Telemetría
 
-El repositorio incluye un simulador para verificar la recepción y visualización continua de telemetría en tiempo real. Antes de ejecutarlo, inicia el backend y registra una cuenta asociada a una organización. Configura `API_USER` y `API_PASSWORD` con las credenciales válidas de esa cuenta; el simulador inicia sesión en `/auth/login` y usa el token Bearer para enviar datos. Los camiones que registra quedan asociados a la organización de esa cuenta.
+El repositorio incluye un simulador para verificar la recepción y visualización continua de telemetría en tiempo real. Emite **solo** por `POST /devices/ingest` con el token de un dispositivo aprovisionado, el mismo camino que un ESP32: no existe forma de inyectar ubicaciones con una cuenta humana. Antes de ejecutarlo, inicia el backend y configura `ADMIN_API_USER` y `ADMIN_API_PASSWORD` con una cuenta administradora de la organización, que es la que registra camiones y aprovisiona el dispositivo simulado.
 
 ```bash
-# El simulador lee API_USER y API_PASSWORD desde scripts/.env.
-# Copiá la plantilla y completá con una cuenta demo local:
+# El simulador lee ADMIN_API_USER y ADMIN_API_PASSWORD desde scripts/.env.
+# Copiá la plantilla y completá con una cuenta administradora local:
 cp scripts/.env.example scripts/.env
 
 # También podés pasarlas por entorno, con prioridad sobre el archivo:
-export API_USER=demo
-export API_PASSWORD=tu_clave_local
+export ADMIN_API_USER=admin
+export ADMIN_API_PASSWORD=tu_clave_local
 
 # Ejecución estándar (2 segundos por ping):
 python scripts/simulate_trucks.py
@@ -321,19 +321,14 @@ python scripts/simulate_trucks.py -i 1.0
 python scripts/simulate_trucks.py --id 1 --plate "ABC123" -i 1.5
 ```
 
-Si `API_USER` o `API_PASSWORD` no están definidas ni en el entorno ni en `.env`, el simulador aborta con un mensaje explícito y sale con código 1, para que un orquestador lo vea como un fallo.
+Si `ADMIN_API_USER` o `ADMIN_API_PASSWORD` no están definidas ni en el entorno ni en `.env`, el simulador aborta con un mensaje explícito y sale con código 1, para que un orquestador lo vea como un fallo.
 
-### Modos del simulador
+### Cómo emite
 
-| Modo | Camino | Cuándo usarlo |
-|---|---|---|
-| `--mode user` (default) | `PUT /trucks/{id}/location` con credenciales de usuario | Ver el mapa andando en segundos |
-| `--mode device` | `POST /devices/ingest` con token de dispositivo | Flota de desarrollo y demo: ejercita el mismo pipeline que el hardware |
-
-En modo dispositivo el simulador aprovisiona un dispositivo por camión (`SIM-<id>`) y **saltea** los camiones ocupados por un dispositivo que no creó, de modo que un ESP32 real siempre gana. `--force` revoca al ocupante y obliga a re-aprovisionar ese equipo.
+El simulador aprovisiona un dispositivo por camión (`SIM-<id>`) y emite por `POST /devices/ingest`, el mismo pipeline que el hardware. **Saltea** los camiones ocupados por un dispositivo que no creó, de modo que un ESP32 real siempre gana; `--force` revoca al ocupante y obliga a re-aprovisionar ese equipo.
 
 ```bash
-make simulation SIMULATION_MODE=device
+make simulation
 ```
 
 ### Características de la simulación:

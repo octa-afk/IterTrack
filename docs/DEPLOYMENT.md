@@ -11,7 +11,7 @@ flowchart LR
     B["Navegador del visitante"] -->|HTTPS| C["Caddy<br/>TLS automático"]
     C --> W["web<br/>FastAPI + SPA"]
     W --> P[("Postgres<br/>volumen pgdata")]
-    K["worker<br/>simulador --mode device"] -->|POST /devices/ingest| W
+    K["worker<br/>simulador por dispositivo"] -->|POST /devices/ingest| W
 ```
 
 Cuatro servicios en un solo host (`docker-compose.yml`):
