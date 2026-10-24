@@ -194,6 +194,27 @@ def espera_y_velocidad(
     return espera, dist_metros / espera * 3.6
 
 
+def espera_hacia_el_siguiente(
+    ruta, indice: int, intervalo_minimo: float, objetivo_kmh: float
+) -> float:
+    """Segundos a esperar después de emitir el punto `indice`.
+
+    La espera pertenece al tramo que el camión recorre a continuación
+    (`indice -> indice + 1`), no al que acaba de dejar atrás. Esperar el tramo
+    ya recorrido desplaza el pacing un punto: cada tramo viaja con la espera
+    del anterior y un tramo de 160 m precedido por uno de 20 m se recorre en
+    2 s (≈290 km/h), que es justo lo que este cálculo evita.
+
+    El circuito se recorre en bucle, así que el último punto enlaza con el
+    primero.
+    """
+    actual = ruta[indice]
+    siguiente = ruta[(indice + 1) % len(ruta)]
+    dist = calcular_distancia_metros(actual[0], actual[1], siguiente[0], siguiente[1])
+    espera, _ = espera_y_velocidad(dist, intervalo_minimo, objetivo_kmh)
+    return espera
+
+
 def cargar_ruta():
     """Carga los puntos de la ruta realista desde el archivo JSON."""
     if ROUTE_FILE.exists():
@@ -610,19 +631,22 @@ def simular_ruta(
         for i, (lat, lon) in enumerate(ruta):
             if stop_event.is_set():
                 break
-            # Calcular rumbo respecto al punto anterior
+            # Rumbo y velocidad del tramo recorrido hasta este punto.
             if i > 0:
                 prev_lat, prev_lon = ruta[i - 1]
                 dist = calcular_distancia_metros(prev_lat, prev_lon, lat, lon)
                 rumbo = calcular_rumbo(prev_lat, prev_lon, lat, lon)
                 cardinal = punto_cardinal(rumbo)
-                espera, velocidad_kmh = espera_y_velocidad(dist, intervalo, objetivo_kmh)
+                _, velocidad_kmh = espera_y_velocidad(dist, intervalo, objetivo_kmh)
                 telemetria_str = f"| Rumbo: {rumbo:5.1f}° {cardinal:2} | Vel: {velocidad_kmh:4.1f} km/h | Tramo: {dist:4.1f}m"
             else:
                 rumbo = 0
                 velocidad_kmh = 0
-                espera = intervalo
                 telemetria_str = "| Punto de partida"
+
+            # La espera es la del tramo que viene: el camión tarda en llegar al
+            # próximo punto, no en llegar al que acaba de reportar.
+            espera = espera_hacia_el_siguiente(ruta, i, intervalo, objetivo_kmh)
 
             # Hora de medición: el instante en que el simulador toma la lectura, no el envío.
             medido_en = datetime.now(UTC)

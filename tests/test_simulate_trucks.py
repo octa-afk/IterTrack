@@ -570,3 +570,74 @@ def test_no_segment_of_the_real_route_exceeds_the_target_speed():
 
     assert max(velocidades) <= objetivo + 0.01
     assert max(velocidades) < 90
+
+
+class _RecordingStop:
+    """StopSignal que registra cada espera y corta al completar una vuelta."""
+
+    def __init__(self, points: int):
+        self.waits: list[float] = []
+        self.limit = points
+        self.stopped = False
+
+    def is_set(self) -> bool:
+        return self.stopped
+
+    def wait(self, timeout: float | None = None) -> bool:
+        self.waits.append(timeout or 0.0)
+        if len(self.waits) >= self.limit:
+            self.stopped = True
+        return self.stopped
+
+    def set(self) -> None:
+        self.stopped = True
+
+
+def _run_one_lap(monkeypatch, route, intervalo=2.0):
+    """Corre `simular_ruta` una vuelta sin dormir y devuelve las esperas."""
+    stop = _RecordingStop(points=len(route))
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda: route)
+    monkeypatch.setattr("scripts.simulate_trucks.autenticar", dict)
+    monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
+    monkeypatch.setattr("scripts.simulate_trucks.actualizar_ubicacion", lambda *args, **kwargs: True)
+    simular_ruta(7, "ABC123", intervalo, stop_event=stop)
+    return stop.waits
+
+
+def test_wait_after_a_point_covers_the_segment_to_the_next_point(monkeypatch):
+    """La espera posterior al punto i es la del tramo i -> i+1, no la del anterior.
+
+    Con tramos alternados corto/largo, desplazar la espera un punto hace que un
+    tramo de 100 m viaje con el pacing de uno de 30 m (y el panel lo marque en
+    alerta por exceso de velocidad).
+    """
+    route = [
+        [-31.400000, -64.180000],  # 0 m
+        [-31.400270, -64.180000],  # 30 m
+        [-31.401168, -64.180000],  # 130 m desde el anterior
+        [-31.401438, -64.180000],  # 30 m
+        [-31.400000, -64.180000],  # cierra el circuito: ~160 m
+    ]
+    waits = _run_one_lap(monkeypatch, route)
+
+    esperadas = []
+    for i in range(len(route)):
+        siguiente = route[(i + 1) % len(route)]
+        dist = calcular_distancia_metros(route[i][0], route[i][1], siguiente[0], siguiente[1])
+        esperadas.append(max(2.0, dist / (55.0 / 3.6)))
+
+    assert waits == pytest.approx(esperadas, abs=0.01)
+
+
+def test_a_simulated_lap_never_exceeds_the_target_speed(monkeypatch):
+    """Invariante real: distancia recorrida / espera nunca supera el objetivo."""
+    route = cargar_ruta()
+    waits = _run_one_lap(monkeypatch, route)
+
+    velocidades = []
+    for i in range(len(route)):
+        siguiente = route[(i + 1) % len(route)]
+        dist = calcular_distancia_metros(route[i][0], route[i][1], siguiente[0], siguiente[1])
+        velocidades.append(dist / waits[i] * 3.6)
+
+    assert max(velocidades) <= 55.0 + 0.01
