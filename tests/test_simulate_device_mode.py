@@ -212,9 +212,7 @@ def test_ejecutar_simulaciones_device_mode_skips_occupied_trucks(monkeypatch):
     monkeypatch.setattr("scripts.simulate_trucks.Event", StopImmediately)
     monkeypatch.setattr("scripts.simulate_trucks.ThreadPoolExecutor", SynchronousExecutor)
 
-    ejecutar_simulaciones(
-        base_id=1, base_plate="ABC123", intervalo=1, count=3, mode="device"
-    )
+    ejecutar_simulaciones(base_id=1, base_plate="ABC123", intervalo=1, count=3)
 
     # Only trucks 1 and 3 got a sender; truck 2 stayed with its real device.
     assert len(simulated) == 2

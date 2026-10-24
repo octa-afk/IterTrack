@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
-from threading import Event, Lock
+from threading import Event
 from time import monotonic
 from typing import Any, Protocol
 from uuid import uuid4
@@ -143,11 +143,6 @@ def _login(user_var: str, password_var: str, etiqueta: str) -> dict[str, str]:
     return {}
 
 
-def autenticar() -> dict:
-    """Login de telemetría con API_USER / API_PASSWORD."""
-    return _login("API_USER", "API_PASSWORD", "telemetría")
-
-
 def autenticar_admin() -> dict:
     """Login de administración con ADMIN_API_USER / ADMIN_API_PASSWORD."""
     return _login("ADMIN_API_USER", "ADMIN_API_PASSWORD", "admin")
@@ -233,26 +228,14 @@ def cargar_ruta():
 
 def registrar_camion(
     truck_id: int,
-    lat: float,
-    long: float,
     plate: str,
-    speed: float = 0,
-    heading: float = 0,
     headers=None,
 ):
-    """Registra el camión si aún no existe en el sistema."""
+    """Registra el camión si aún no existe. El alta no envía ubicación."""
     try:
         response = requests.post(
             BASE_URL,
-            json={
-                "truck": {"id": truck_id, "plate": plate},
-                "location": {
-                    "lat": lat,
-                    "long": long,
-                    "speed": speed,
-                    "heading": heading,
-                }
-            },
+            json={"id": truck_id, "plate": plate},
             headers=HEADERS if headers is None else headers,
             timeout=5
         )
@@ -279,47 +262,6 @@ def limpiar_recorrido(truck_id: int, headers=None):
             print(f"⚠️ No se pudo borrar el recorrido: {response.status_code}")
     except requests.RequestException as e:
         print(f"⚠️ Error al borrar recorrido: {e}")
-
-def actualizar_ubicacion(
-    truck_id: int,
-    lat: float,
-    long: float,
-    speed: float,
-    heading: float,
-    recorded_at: datetime,
-    headers=None,
-    on_unauthorized=None,
-) -> bool:
-    """Envía la coordenada y su hora de medición al endpoint PUT /trucks/{id}/location.
-
-    Si el token venció (401) y hay un callback ``on_unauthorized``, renueva las
-    credenciales y reintenta una sola vez. Sin eso la simulación se queda
-    reportando fallos para siempre y el mapa se congela.
-    """
-    payload: dict[str, Any] = {
-        "lat": lat,
-        "long": long,
-        "speed": speed,
-        "heading": heading,
-        "recorded_at": recorded_at.isoformat(),
-    }
-
-    def enviar(auth_headers):
-        return requests.put(
-            f"{BASE_URL}/{truck_id}/location",
-            json=payload,
-            headers=HEADERS if auth_headers is None else auth_headers,
-            timeout=5,
-        )
-
-    try:
-        response = enviar(headers)
-        if response.status_code == 401 and on_unauthorized is not None:
-            response = enviar(on_unauthorized())
-        return response.status_code == 200
-    except requests.RequestException as e:
-        print(f"⚠️ Error al actualizar ubicación: {e}")
-        return False
 
 def listar_dispositivos(headers=None):
     """Return the devices visible to the caller, or None when the request fails."""
@@ -578,66 +520,39 @@ def simular_ruta(
     truck_id: int,
     plate: str,
     intervalo: float,
-    headers=None,
     stop_event: StopSignal | None = None,
     phase_offset: int = 0,
     clear_history_on_start: bool = False,
     admin_headers=None,
-    refresh_headers=None,
     sender=None,
     objetivo_kmh: float = 55.0,
 ):
+    """Recorrer la ruta emitiendo por `sender`.
+
+    La telemetría solo entra por `POST /devices/ingest`, así que `sender` es
+    obligatorio: es el contrato que arma `constructor_de_sender` con el token
+    del dispositivo. No existe camino alternativo con credenciales humanas.
+    """
+    if sender is None:
+        raise ValueError("simular_ruta necesita un sender de dispositivo")
+
     ruta = rotate_route(cargar_ruta(), phase_offset)
     total_puntos = len(ruta)
     print(f"\n🚚 Iniciando simulación de ruta urbana en Córdoba ({total_puntos} puntos)")
     print(
         f"⏱️ Intervalo mínimo: {intervalo}s | velocidad objetivo: {objetivo_kmh:.0f} km/h"
-        f" | API: {BASE_URL}\n"
+        f" | API: {DEVICES_URL}\n"
     )
 
-    if headers is None:
-        headers = autenticar()
     if stop_event is None:
         stop_event = Event()
 
-    # Un solo re-login actualiza el dict compartido, así todos los hilos de
-    # simulación se recuperan juntos del vencimiento del token.
-    on_unauthorized = None
-    if refresh_headers is not None:
+    # El registro y la limpieza son operaciones de administración.
+    registration_headers = admin_headers
 
-        def _renew() -> dict:
-            renovado = dict(refresh_headers())
-            if renovado:
-                headers.clear()
-                headers.update(renovado)
-            return headers
-
-        on_unauthorized = _renew
-
-    # Modo usuario: la telemetría va por PUT /trucks/{id}/location con credenciales
-    # de usuario. Modo dispositivo inyecta un sender que habla el protocolo del hardware.
-    if sender is None:
-
-        def _enviar_como_usuario(lat, lon, velocidad, rumbo, medido_en) -> bool:
-            update_kwargs = {
-                "speed": velocidad,
-                "heading": rumbo,
-                "recorded_at": medido_en,
-                "headers": headers,
-            }
-            if on_unauthorized is not None:
-                update_kwargs["on_unauthorized"] = on_unauthorized
-            return actualizar_ubicacion(truck_id, lat, lon, **update_kwargs)
-
-        sender = _enviar_como_usuario
-
-    # El registro y la limpieza son operaciones de administración; la
-    # telemetría la puede enviar cualquier usuario de la organización.
-    registration_headers = admin_headers if admin_headers else headers
-
-    # Registrar el camión en su punto inicial
-    lat_inicial, lon_inicial = ruta[0]
-    registrar_camion(truck_id, lat_inicial, lon_inicial, plate, headers=registration_headers)
+    # Registrar el camión si aún no existe. Sin punto inicial: la primera
+    # ubicación la reporta el propio dispositivo en la primera vuelta.
+    registrar_camion(truck_id, plate, headers=registration_headers)
     if clear_history_on_start:
         limpiar_recorrido(truck_id, headers=registration_headers)
 
@@ -681,73 +596,44 @@ def ejecutar_simulaciones(
     intervalo: float,
     count: int,
     clear_history_on_start: bool = False,
-    mode: str = "user",
     force: bool = False,
     objetivo_kmh: float = 55.0,
 ):
     """Run all configured truck workers until interrupted.
 
-    `mode="user"` writes through PUT /trucks/{id}/location.
-    `mode="device"` provisions a simulated device per truck and writes through
-    POST /devices/ingest, the same path a real ESP32 uses, so the hardware
-    pipeline is exercised. Trucks already held by a real device are skipped
-    unless `force` is set.
+    Telemetry only enters through `POST /devices/ingest`: each truck gets a
+    simulated device and writes with its token, the same path a real ESP32
+    uses. Trucks held by a real device are skipped unless `force` is set.
     """
-    if mode not in ("user", "device"):
-        raise ValueError("mode must be 'user' or 'device'")
-
-    route_length = len(cargar_ruta())
-    configs = build_truck_configs(base_id, base_plate, count, route_length)
     admin_headers = dict(autenticar_admin())
     if not admin_headers:
-        print("ℹ️ Sin ADMIN_API_USER/ADMIN_API_PASSWORD: el registro usará la cuenta de telemetría.")  # noqa: RUF001
+        print("⛔ El simulador necesita ADMIN_API_USER/ADMIN_API_PASSWORD. Abortando.")
+        return False
 
-    if mode == "device":
-        if not admin_headers:
-            print("⛔ El modo dispositivo necesita ADMIN_API_USER/ADMIN_API_PASSWORD. Abortando.")
-            return False
-        trabajos = []
-        ruta = cargar_ruta()
-        lat_inicial, lon_inicial = ruta[0]
-        for config in configs:
-            registrar_camion(
-                config.truck_id, lat_inicial, lon_inicial, config.plate, headers=admin_headers
-            )
-            token = preparar_dispositivo(config.truck_id, admin_headers, force=force)
-            if token is None:
-                continue
-            trabajos.append(
-                (
-                    config,
-                    constructor_de_sender(
-                        token,
-                        # `partial` fija el truck_id: un cierre sobre el bucle
-                        # capturaría el último config y los tres camiones
-                        # compartirían el mismo dispositivo. La recuperación
-                        # renueva el JWT de admin antes de re-aprovisionar.
-                        on_unauthorized=partial(
-                            _reaprovisionar_dispositivo, config.truck_id, admin_headers
-                        ),
+    trabajos = []
+    for config in build_truck_configs(base_id, base_plate, count, len(cargar_ruta())):
+        registrar_camion(config.truck_id, config.plate, headers=admin_headers)
+        token = preparar_dispositivo(config.truck_id, admin_headers, force=force)
+        if token is None:
+            continue
+        trabajos.append(
+            (
+                config,
+                constructor_de_sender(
+                    token,
+                    # `partial` fija el truck_id: un cierre sobre el bucle
+                    # capturaría el último config y los tres camiones
+                    # compartirían el mismo dispositivo. La recuperación
+                    # renueva el JWT de admin antes de re-aprovisionar.
+                    on_unauthorized=partial(
+                        _reaprovisionar_dispositivo, config.truck_id, admin_headers
                     ),
-                )
+                ),
             )
-        if not trabajos:
-            print("⛔ Ningún camión quedó disponible para simular. Abortando.")
-            return False
-    else:
-        headers = dict(autenticar())
-        if not headers:
-            print("⛔ Sin token no se puede enviar telemetría. Abortando.")
-            return False
-        admin_headers = admin_headers or headers
-        trabajos = [(config, None) for config in configs]
-
-    refresh_lock = Lock()
-
-    def renovar_credenciales() -> dict:
-        """Re-login serializado: un token nuevo sirve a todos los camiones."""
-        with refresh_lock:
-            return dict(autenticar())
+        )
+    if not trabajos:
+        print("⛔ Ningún camión quedó disponible para simular. Abortando.")
+        return False
 
     stop_event = Event()
     executor = ThreadPoolExecutor(max_workers=max(len(trabajos), 1))
@@ -757,12 +643,10 @@ def ejecutar_simulaciones(
             config.truck_id,
             config.plate,
             intervalo,
-            {} if sender is not None else headers,
             stop_event,
             config.route_offset,
             clear_history_on_start=clear_history_on_start,
             admin_headers=admin_headers,
-            refresh_headers=None if sender is not None else renovar_credenciales,
             sender=sender,
             objetivo_kmh=objetivo_kmh,
         )
@@ -800,21 +684,11 @@ if __name__ == "__main__":
         help="Borra el historial existente de cada camión una sola vez al iniciar (opción destructiva)",
     )
     parser.add_argument(
-        "--mode",
-        choices=("user", "device"),
-        default="user",
-        help=(
-            "user: escribe por PUT /trucks/{id}/location. "
-            "device: aprovisiona un dispositivo simulado y escribe por "
-            "POST /devices/ingest, igual que un ESP32."
-        ),
-    )
-    parser.add_argument(
         "--force",
         action="store_true",
         help=(
-            "En modo device, revoca el dispositivo que ocupa el camión para poder "
-            "simularlo. Vas a tener que volver a aprovisionar ese ESP32."
+            "Revoca el dispositivo que ocupa el camión para poder simularlo. "
+            "Vas a tener que volver a aprovisionar ese ESP32."
         ),
     )
 
@@ -825,7 +699,6 @@ if __name__ == "__main__":
         intervalo=args.interval,
         count=args.count,
         clear_history_on_start=args.clear_history_on_start,
-        mode=args.mode,
         force=args.force,
         objetivo_kmh=args.speed_kmh,
     )
