@@ -92,7 +92,7 @@ echo "<PAT con read:packages>" | docker login ghcr.io -u octa-afk --password-std
 
 ```bash
 # Desde tu máquina, en el repo
-scp docker-compose.yml Caddyfile deploy/.env.example octa@IP_DE_LA_VM:~/itertrack/
+scp docker-compose.yml Caddyfile deploy/.env.example octa@57.156.58.24:~/itertrack/
 ```
 
 ```bash
@@ -137,12 +137,41 @@ Checklist mínimo:
 
 ## 7. Operación
 
+**Entrar a la VM**
+
+```bash
+ssh -i ~/.ssh/id_ed25519 octa@57.156.58.24
+```
+
 **Ver logs**
 
 ```bash
 docker compose logs -f web
 docker compose logs -f worker
 ```
+
+**¿Está viva la demo?** El worker puede parecer sano (`Up`) y no estar ingiriendo nada: el estado real es si entran puntos.
+
+```bash
+# En la VM: los últimos puntos y su antigüedad por camión
+docker compose exec -T web python - <<'PY'
+from datetime import UTC, datetime, timedelta
+from source.database.database import SessionLocal
+from source.models.ingestion import IngestedPoint
+from source.models.truck import TrackingPoint
+
+db = SessionLocal()
+now = datetime.now(UTC)
+print("ingeridos últimos 10 min:",
+      db.query(IngestedPoint).filter(IngestedPoint.received_at >= now - timedelta(minutes=10)).count())
+for tid in (1, 2, 3):
+    last = db.query(TrackingPoint).filter(TrackingPoint.truck_id == tid).order_by(TrackingPoint.id.desc()).first()
+    print(tid, last and f"hace {(now - last.received_at).total_seconds():.0f} s")
+db.close()
+PY
+```
+
+Si el worker muestra `Ingesta rechazada (401): {"detail":"Invalid device credentials"}` y `No se pudieron listar dispositivos (401)` a la vez, perdió el token del dispositivo **y** la credencial para recuperarlo: reiniciar `docker compose restart worker` lo devuelve al ruedo. Las imágenes con el fix de re-autenticación se recuperan solas.
 
 **Rebarrer la demo** (borra y recrea solo el tenant de demo; no toca la cuenta de plataforma)
 
@@ -151,6 +180,10 @@ docker compose exec web python -m scripts.seed_demo --reset
 ```
 
 Para automatizarlo, un cron del host cada 24 h con el mismo comando. Es necesario: el admin de la demo es público y puede borrar los datos.
+
+> El reset borra los dispositivos del tenant. En imágenes viejas, el worker se queda con tokens inválidos y sin forma de renovarlos: después del reset hay que hacer `docker compose restart worker`. Con el fix de re-autenticación ya no hace falta.
+>
+> **El cron corre con la hora del host, que está en UTC**: `0 4 * * *` son las 01:00 de Argentina. Si la demo se va a mostrar de madrugada, conviene moverlo.
 
 **Actualizar la imagen**
 
@@ -168,9 +201,11 @@ docker compose exec -T postgres pg_restore -d itertrack_db -U itertrack --clean 
 **Mirar la base desde tu máquina** (sin exponer el puerto)
 
 ```bash
-ssh -L 5433:localhost:5432 usuario@IP_DE_LA_VM
+ssh -L 5433:localhost:5432 -i ~/.ssh/id_ed25519 octa@57.156.58.24
 # DATABASE_URL=postgresql+psycopg2://itertrack:<pass>@localhost:5433/itertrack_db
 ```
+
+> La VM actual es la `itertrack-vm` de Azure (IP `57.156.58.24`, usuario `octa`, clave `~/.ssh/id_ed25519`). Ese `-i` es necesario: no hay entrada en `~/.ssh/config`.
 
 > Nunca corras migraciones desde tu máquina contra la base de la VM. Migra solo el contenedor `web`.
 
