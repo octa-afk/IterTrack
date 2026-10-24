@@ -332,3 +332,23 @@ Ajustes de la pantalla de login, todos en `develop`:
 Hallazgo local: la base de datos de desarrollo tenía aplicada la migración `c8d9e0f1a2b3` (rama `feat/ingest-alerts`, no mergeada en `develop`), por lo que `alembic upgrade head` fallaba con "Can't locate revision". La solución es recrear la base local y volver a migrar desde `develop`.
 
 Verificado: `make check` (ruff + mypy) y `make test` (206 tests) limpios tras los cambios de frontend.
+
+### L18 — Cadencia del simulador: off-by-one en la espera (2026-10-24)
+
+L15 quedó verificado contra el campo `speed` que el simulador **reporta**, no contra el desplazamiento real. Al medir los puntos guardados en la base apareció un segundo problema: la espera se calculaba con el tramo que el camión acababa de recorrer, pero se aplicaba **después** de emitir el punto, así que regía el tramo siguiente.
+
+Efecto: cada punto viajaba con el pacing del tramo anterior. Un tramo de 100 m precedido por uno de 30 m se emitía 3,1 s después del anterior, o sea 117 km/h reales con `speed=55` reportado; el panel, que mide desplazamiento, marcaba alerta por exceso de velocidad en un camión que iba a 55.
+
+- Arreglo: `espera_hacia_el_siguiente(ruta, indice, intervalo, objetivo)` calcula la espera del tramo `indice -> indice + 1` (el último enlaza con el primero, porque la ruta es un circuito) y es la única fuente de la espera del bucle. `espera_y_velocidad` sigue calculando la velocidad reportada del tramo recorrido.
+- Tests: `test_wait_after_a_point_covers_the_segment_to_the_next_point` (agenda exacta con tramos alternados) y `test_a_simulated_lap_never_exceeds_the_target_speed` (invariante sobre la ruta real: distancia/espera ≤ 55). Antes del arreglo fallaban con 251,94 km/h; el test previo no lo detectaba porque evaluaba cada tramo aislado y nunca la secuencia.
+
+Medición sobre la ruta completa (424 tramos) y sobre puntos reales de la base:
+
+| Métrica | Antes | Después |
+|---|---|---|
+| Velocidad real máxima (ruta) | 251,9 km/h | **55,0 km/h** |
+| Tramos sobre 90 km/h (umbral del panel) | 56 de 423 | **0** |
+| Tramos sobre 55 km/h | 101 de 423 | **0** |
+| Ejemplo real | 100,5 m en 3,1 s (117 km/h) | 100,5 m en 6,7 s (54 km/h) |
+
+`espera_y_velocidad` calcula la velocidad con la espera efectiva, así que en los tramos cortos (piso de `--interval`) el valor reportado es menor que el objetivo, y ahora coincide con lo que el panel mide.
