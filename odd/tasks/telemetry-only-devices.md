@@ -39,3 +39,6 @@ Rama `develop`. Backend FastAPI + simulador + frontend. Verificación: `make che
 
 **L6 — verificación de contrato.** Contra un backend real: alta plana → `200`; `GET /trucks/99/location` inmediato → `404`; `PUT /trucks/99/location` → `405`; aprovisionar dispositivo → `201`; `POST /devices/ingest` → `accepted`; `GET /trucks/99/location` → `200`. 194 tests, ruff y mypy limpios; `npm run lint` y `npm run build` OK.
 
+**L7 — despliegue.** La VM tiene su propia copia de `docker-compose.yml`, y ese archivo ya no pasa `--mode device`: hay que volver a copiarlo antes de recrear el `worker`, o el contenedor arranca con `unrecognized arguments: --mode device`. Queda anotado en `docs/DEPLOYMENT.md`.
+
+
