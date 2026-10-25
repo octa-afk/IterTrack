@@ -56,6 +56,9 @@
   .pin .lbl{display:none;position:absolute;top:calc(50% + 31px * var(--pin-scale,1) + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--g-solid);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
   .pin.sel .lbl{display:block}
 
+  /* Resumen de la ruta del viaje abierto, debajo del título del mapa. */
+  .route-summary{position:absolute;z-index:800;left:calc(var(--lx) + 52px);top:145px;background:var(--g-solid,#fff);color:var(--ink);border:1px solid var(--g-bd,var(--line));border-radius:1149px;padding:6px 12px;font-size:12px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,.18);pointer-events:none;white-space:nowrap;transition:left .3s ease}
+
   /* Fila inferior */
   .bottom{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;height:205px}
   .bottom .card{overflow:hidden}
@@ -393,6 +396,8 @@
     body[data-mobile-view="fleet"] .grid>.col:last-child>.card:not(.listcard){display:none}
     body[data-mobile-view="fleet"] .bottom{display:none}
     body[data-mobile-view="map"] .mapcard .card-h{position:absolute;left:12px;top:82px}
+    body[data-mobile-view="map"] .route-summary{left:12px;top:128px}
+    body[data-mobile-view="panel"] .route-summary,body[data-mobile-view="fleet"] .route-summary{display:none}
     body[data-mobile-view="map"] .bottom,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
   }
   @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom,.section-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
@@ -490,6 +495,7 @@
   .trips-table th:nth-child(1){width:112px}
   .trips-table th:nth-child(3){width:98px}
   .trips-table th:nth-child(4){width:158px}
+  .trips-table th:nth-child(5){width:132px}
   .trips-table td{overflow:hidden;text-overflow:ellipsis}
   .trips-table th{
     position:sticky;top:0;z-index:1;text-align:left;white-space:nowrap;
@@ -501,6 +507,12 @@
   .trips-table .estado{display:inline-flex;align-items:center;gap:6.9px;max-width:100%}
   .trips-table .estado .dot{grid-row:auto;flex:none}
   .trips-table .empty{cursor:default;text-align:center;color:var(--muted);white-space:normal}
+  .trip-link{
+    border:1px solid var(--line);border-radius:8px;padding:4.6px 9.2px;
+    background:rgba(31,42,61,.05);color:var(--ink);font:500 12.5px Poppins;cursor:pointer;
+  }
+  .trip-link:hover{background:rgba(90,126,230,.14)}
+  .trip-link:focus-visible{outline:2.3px solid var(--green);outline-offset:2px}
   .trip-form{display:flex;flex-direction:column;gap:10px}
   .field{display:flex;flex-direction:column;gap:4.6px;font-size:12px;color:var(--muted)}
   .field input,.field select{
@@ -535,3 +547,8 @@
     box-shadow:0 2px 6px rgba(15,25,50,.35);border:2px solid #fff;
   }
   .stop-pin.pending{background:var(--alert)}
+  .stop-pin.done{background:var(--stop);opacity:.8;font-weight:600}
+  .stop-pin.here{
+    background:var(--green);
+    box-shadow:0 0 0 4px rgba(90,126,230,.28),0 2px 6px rgba(15,25,50,.35);
+  }

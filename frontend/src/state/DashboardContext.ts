@@ -11,7 +11,11 @@ export interface DashboardState {
   ready: boolean;
   visibleTrucks: TruckState[];
   selectedTruck: TruckState | null;
+  /** Camión cuyo recorrido hecho se pidió ver desde Rutas; `null` = ninguno. */
+  recorridoId: number | null;
   select: (id: number) => void;
+  /** Selecciona el camión y habilita el trazo de su recorrido hecho en el mapa. */
+  verRecorrido: (id: number) => void;
   setFilter: (patch: Partial<Filters>) => void;
 }
 

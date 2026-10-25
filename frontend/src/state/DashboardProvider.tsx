@@ -25,6 +25,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [userInitials, setUserInitials] = useState('FL');
   const [role, setRole] = useState('member');
+  const [recorridoId, setRecorridoId] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -138,7 +139,17 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     ready,
     visibleTrucks,
     selectedTruck,
+    recorridoId,
     select,
+    /*
+     * El recorrido hecho ya no se dibuja por defecto: el mapa principal muestra
+     * sólo lo que falta. Este es el único camino que lo enciende, y existe
+     * porque el operador lo pide desde Rutas, no porque el mapa lo adivine.
+     */
+    verRecorrido: (id) => {
+      setRecorridoId(id);
+      select(id);
+    },
     setFilter: (patch) => setFilters((f) => ({ ...f, ...patch })),
   };
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import {
   createCharger,
@@ -48,7 +49,8 @@ function valorLocalPorDefecto(): string {
 }
 
 export default function TripsPage() {
-  const { role, trucks: flota } = useDashboard();
+  const { role, trucks: flota, verRecorrido } = useDashboard();
+  const navigate = useNavigate();
   const puedeEditar = role === 'org_admin' || role === 'platform_admin';
 
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -164,6 +166,12 @@ export default function TripsPage() {
   const patente = (id: number | null) =>
     id === null ? '—' : (flota.find((t) => t.id === id)?.plate ?? `#${id}`);
 
+  /* El recorrido hecho se mira en el mapa: acá sólo se pide y se navega. */
+  const verRecorridoDelViaje = (truckId: number) => {
+    verRecorrido(truckId);
+    navigate('/map');
+  };
+
   return (
     <div className={puedeEditar ? 'section-page' : 'section-page solo'}>
       <div className="card trips-card">
@@ -183,12 +191,13 @@ export default function TripsPage() {
                 <th>Dador de carga</th>
                 <th>Camión</th>
                 <th>Destinos</th>
+                <th>Recorrido</th>
               </tr>
             </thead>
             <tbody>
               {!trips.length && (
                 <tr>
-                  <td className="empty" colSpan={4}>
+                  <td className="empty" colSpan={5}>
                     {puedeEditar
                       ? 'Todavía no hay viajes. Creá el primero desde el formulario.'
                       : 'Todavía no hay viajes cargados.'}
@@ -197,6 +206,7 @@ export default function TripsPage() {
               )}
               {trips.map((trip) => {
                 const pendientes = trip.stops.filter((s) => s.needs_review).length;
+                const truckId = trip.truck_id;
                 return (
                   <tr key={trip.id}>
                     <td>{HORA_LOCAL(trip.departure_at)}</td>
@@ -210,11 +220,25 @@ export default function TripsPage() {
                         {nombreDador(trip.charger_id)}
                       </span>
                     </td>
-                    <td>{patente(trip.truck_id)}</td>
+                    <td>{patente(truckId)}</td>
                     <td>
                       {trip.stops.length}
                       {pendientes > 0 && (
                         <span className="badge-off">{pendientes} sin ubicar</span>
+                      )}
+                    </td>
+                    <td>
+                      {truckId === null ? (
+                        '—'
+                      ) : (
+                        <button
+                          type="button"
+                          className="trip-link"
+                          title={`Ver el recorrido hecho de ${patente(truckId)}`}
+                          onClick={() => verRecorridoDelViaje(truckId)}
+                        >
+                          Ver recorrido
+                        </button>
                       )}
                     </td>
                   </tr>

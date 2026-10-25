@@ -130,3 +130,16 @@ export interface TripCreatePayload {
   external_ref?: string | null;
   stops: { address: string; receiver?: string | null }[];
 }
+
+/** GET /trips/{id}/route — ruta por calles del tramo que falta. */
+export interface TripRoute {
+  trip_id: number;
+  /** Parada a la que apunta el tramo: el viaje es secuencial. */
+  stop_id: number;
+  stop_seq: number;
+  provider: string;
+  distance_m: number;
+  duration_s: number;
+  /** Pares [lat, lng] en orden de recorrido, listos para dibujar. */
+  geometry: [number, number][];
+}
