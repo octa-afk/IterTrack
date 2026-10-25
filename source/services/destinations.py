@@ -290,6 +290,27 @@ def create_trip(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Camión no encontrado"
             )
+        abiertos = (
+            db.query(models.Trip)
+            .filter(
+                models.Trip.organization_id == organization_id,
+                models.Trip.truck_id == truck.id,
+                models.Trip.status.in_(OPEN_TRIP_STATUSES),
+            )
+            .all()
+        )
+        if abiertos and not payload.replace_open_trip:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "El camión ya tiene un viaje abierto. Mandá "
+                    "`replace_open_trip: true` para reasignarlo."
+                ),
+            )
+        for abierto in abiertos:
+            # El viaje reemplazado no se borra: queda cancelado, así se ve en la
+            # lista que hubo uno y que se reemplazó.
+            abierto.status = "cancelled"
 
     depot_id = payload.depot_id
     if depot_id is not None:

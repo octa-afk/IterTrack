@@ -380,10 +380,10 @@ nos los reenvía. El modelo separa tres cosas que antes estaban mezcladas:
   necesitan revisión.
 
 La sección **Rutas** (`/viajes`) lista los viajes y, para `org_admin`, ofrece el
-formulario de alta: dador de carga, camión disponible, destino y hora de salida.
-Un camión es elegible si está activo y no tiene viaje abierto; el radio del
-depósito todavía no se chequea porque depende de telemetría fresca. `member` ve
-la lista sin formulario.
+formulario de alta: dador de carga, camión, destino y hora de salida. El selector
+muestra toda la flota y marca los camiones con viaje abierto: elegir uno reasigna
+el camión y **cancela** el viaje anterior, porque un camión no puede tener dos
+viajes en curso. `member` ve la lista sin formulario.
 
 La regla central: **la coordenada es la fuente de verdad, la dirección es texto
 para mostrar**. Se resuelve una sola vez, al importar, y se guarda en
@@ -457,7 +457,7 @@ git checkout IterTrack-Hardware
 | `GET` | `/chargers` | Dadores de carga de la organización | — | 🔒 Bearer |
 | `POST` | `/chargers` | Crea un dador de carga | `{"name": "Colchones Sur"}` | 🔒 org_admin |
 | `GET` | `/trips` | Viajes de la organización (`?charger_id=`, `?truck_id=`) | — | 🔒 Bearer |
-| `POST` | `/trips` | Importa un viaje con sus destinos; geocodifica al entrar | `{"charger_id": 1, "departure_at": "2026-10-26T07:30:00-03:00", "external_ref": "ENVIO-001", "stops": [{"address": "Av. Colón 1234, Córdoba"}]}` | 🔒 org_admin |
+| `POST` | `/trips` | Importa un viaje con sus destinos; geocodifica al entrar. Si el camión ya tiene un viaje abierto responde `409` salvo `replace_open_trip: true`, que cancela el anterior | `{"charger_id": 1, "departure_at": "2026-10-26T07:30:00-03:00", "external_ref": "ENVIO-001", "truck_id": 2, "replace_open_trip": true, "stops": [{"address": "Av. Colón 1234, Córdoba"}]}` | 🔒 org_admin |
 | `GET` | `/trips/{id}` | Un viaje con sus destinos | — | 🔒 Bearer |
 | `PATCH` | `/trips/{id}/stops/{stop_id}` | Pin manual: resuelve el destino y escribe la caché | `{"lat": -31.4135, "lng": -64.1811}` | 🔒 org_admin |
 | `GET` | `/destinations/pending` | Cola de destinos sin coordenada (`needs_review`) | — | 🔒 Bearer |
