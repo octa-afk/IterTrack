@@ -187,6 +187,21 @@ docker compose exec web python -m scripts.seed_demo --reset
 
 Para automatizarlo, un cron del host cada 24 h con el mismo comando. Es necesario: el admin de la demo es público y puede borrar los datos.
 
+**Mantener la demo con viajes en curso** (cron cada 15 min)
+
+El progreso automático cierra los viajes de la demo en unos 11 minutos de
+simulación: las tres paradas están en el mismo circuito que el camión recorre
+completo. Este comando abre un viaje nuevo para cada camión que quedó libre,
+clonando su último viaje de demo, y no toca nada más del tenant:
+
+```bash
+docker compose exec -T web python -m scripts.seed_demo --renew
+```
+
+```cron
+*/15 * * * * cd /home/octa/itertrack && docker compose exec -T web python -m scripts.seed_demo --renew >> /tmp/renew.log 2>&1
+```
+
 > El reset borra los dispositivos del tenant. En imágenes viejas, el worker se queda con tokens inválidos y sin forma de renovarlos: después del reset hay que hacer `docker compose restart worker`. Con el fix de re-autenticación ya no hace falta.
 >
 > **El cron corre con la hora del host, que está en UTC**: `0 4 * * *` son las 01:00 de Argentina. Si la demo se va a mostrar de madrugada, conviene moverlo.

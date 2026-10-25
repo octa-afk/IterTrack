@@ -57,6 +57,10 @@ DEFAULT_DEPOT_LNG = -64.1811
 # El último viaje se siembra cerrado a propósito: con los tres abiertos ningún
 # camión figura disponible y el formulario no tendría a quién asignarle uno nuevo.
 DEMO_TRIP_STATUSES = ("in_progress", "in_progress", "done")
+# Prefijo de las referencias de demo; `--renew` sigue la numeración desde acá.
+DEMO_TRIP_PREFIX = "DEMO-"
+# Estados que ocupan un camión: no se le abre otro viaje mientras tenga uno.
+OPEN_TRIP_STATUSES = ("planned", "in_progress")
 
 
 class SeedError(ValueError):
@@ -417,10 +421,23 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
                 for seq, (lat, lng) in enumerate(puntos, start=1)
             ]
 
+        # Un viaje sembrado como terminado no puede quedar con destinos pendientes,
+        # aunque sus coordenadas no hayan cambiado (datos de una corrida anterior).
+        if viaje.status == "done":
+            for parada in viaje.stops:
+                if parada.status == "delivered":
+                    continue
+                parada.status = "delivered"
+                parada.arrived_at = parada.arrived_at or viaje.departure_at
+                parada.departed_at = parada.departed_at or viaje.departure_at
+
         if not reescribir:
             continue
         viaje.stops.clear()
         db.flush()
+        # Un viaje sembrado como terminado tiene que tener las paradas entregadas:
+        # si no, la base dice "finalizado" con tres destinos pendientes.
+        entregado = viaje.status == "done"
         for seq, (lat, lng) in enumerate(puntos, start=1):
             viaje.stops.append(
                 TripStop(
@@ -430,6 +447,9 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
                     lng=lng,
                     geo_source="provided",
                     needs_review=False,
+                    status="delivered" if entregado else "pending",
+                    arrived_at=viaje.departure_at if entregado else None,
+                    departed_at=viaje.departure_at if entregado else None,
                 )
             )
         trips_rebuilt += 1
@@ -449,6 +469,113 @@ def seed_demo(db: Session, config: DemoSeedConfig, reset: bool = False) -> DemoS
     )
 
 
+@dataclass(frozen=True)
+class RenewResult:
+    organization_id: int
+    renewed: list[tuple[int, str]]
+    skipped: int
+
+
+def renew_demo_trips(db: Session, config: DemoSeedConfig) -> RenewResult:
+    """Abre un viaje nuevo para cada camión de la demo que quedó libre.
+
+    Un camión que ya tiene un viaje `planned`/`in_progress` no se toca. Al que
+    terminó se le clona su último viaje de demo (mismas paradas, dador y
+    depósito) con una referencia nueva, en estado `planned`: el progreso
+    automático lo va a ir marcando cuando el camión pase por las paradas.
+
+    Idempotente: correrlo dos veces seguidas no duplica nada, porque la segunda
+    encuentra a todos los camiones con viaje abierto.
+    """
+    organization = (
+        db.query(Organization).filter(Organization.name == config.org_name).first()
+    )
+    if organization is None:
+        raise SeedError(
+            f"No existe la organización de demo '{config.org_name}'. Corré el seed primero."
+        )
+
+    trucks = (
+        db.query(Truck)
+        .filter(Truck.organization_id == organization.id)
+        .order_by(Truck.id)
+        .all()
+    )
+    occupied = {
+        truck_id
+        for (truck_id,) in db.query(Trip.truck_id).filter(
+            Trip.organization_id == organization.id,
+            Trip.status.in_(OPEN_TRIP_STATUSES),
+        )
+    }
+
+    referencias = [
+        referencia
+        for (referencia,) in db.query(Trip.external_ref).filter(
+            Trip.organization_id == organization.id,
+            Trip.external_ref.isnot(None),
+        )
+    ]
+    siguiente = max(
+        (int(ref.split("-")[-1]) for ref in referencias if ref.startswith(DEMO_TRIP_PREFIX)),
+        default=0,
+    ) + 1
+
+    renewed: list[tuple[int, str]] = []
+    skipped = 0
+    for truck in trucks:
+        if truck.id in occupied:
+            skipped += 1
+            continue
+        previous = (
+            db.query(Trip)
+            .filter(
+                Trip.organization_id == organization.id,
+                Trip.truck_id == truck.id,
+                Trip.external_ref.startswith(DEMO_TRIP_PREFIX),
+            )
+            .order_by(Trip.departure_at.desc())
+            .first()
+        )
+        if previous is None:
+            skipped += 1
+            continue
+
+        referencia = f"{DEMO_TRIP_PREFIX}{siguiente:03d}"
+        siguiente += 1
+        trip = Trip(
+            organization_id=organization.id,
+            charger_id=previous.charger_id,
+            truck_id=truck.id,
+            departure_at=datetime.now(UTC),
+            status="planned",
+            external_ref=referencia,
+            depot_id=previous.depot_id,
+            driver_name=previous.driver_name,
+        )
+        db.add(trip)
+        db.flush()
+        for stop in previous.stops:
+            db.add(
+                TripStop(
+                    trip_id=trip.id,
+                    seq=stop.seq,
+                    address=stop.address,
+                    lat=stop.lat,
+                    lng=stop.lng,
+                    geo_source=stop.geo_source,
+                    needs_review=stop.needs_review,
+                    receiver=stop.receiver,
+                )
+            )
+        renewed.append((truck.id, referencia))
+
+    db.commit()
+    return RenewResult(
+        organization_id=organization.id, renewed=renewed, skipped=skipped
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Crea o resetea el tenant de demo (nunca toca otras organizaciones)."
@@ -458,13 +585,40 @@ def main() -> int:
         action="store_true",
         help="Borra los datos del tenant de demo antes de volver a sembrarlo.",
     )
+    parser.add_argument(
+        "--renew",
+        action="store_true",
+        help=(
+            "Abre un viaje nuevo para cada camión de la demo que quedó libre, sin "
+            "tocar el resto del tenant. Pensado para un cron: mantiene la demo con "
+            "viajes en curso."
+        ),
+    )
     args = parser.parse_args()
+    if args.renew and args.reset:
+        print("⛔ --renew y --reset no van juntos: --reset ya recrea los viajes.")
+        return 1
 
     try:
         config = config_from_env()
     except SeedError as error:
         print(f"⛔ {error}")
         return 1
+
+    if args.renew:
+        try:
+            with SessionLocal() as db:
+                renovado = renew_demo_trips(db, config)
+        except SeedError as error:
+            print(f"⛔ {error}")
+            return 1
+        if renovado.renewed:
+            detalle = ", ".join(f"#{truck} {ref}" for truck, ref in renovado.renewed)
+            print(f"🧭 Viajes abiertos: {detalle}")
+        else:
+            print("🧭 Ningún camión necesitaba un viaje nuevo.")
+        print(f"⏭️ Camiones salteados (con viaje abierto o sin historial): {renovado.skipped}")
+        return 0
 
     with SessionLocal() as db:
         result = seed_demo(db, config, reset=args.reset)
