@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import maplibregl from 'maplibre-gl';
@@ -10,6 +10,7 @@ import { useDashboard } from '../state/useDashboard';
 import { createTruckIcon } from '../lib/truckIcon';
 import { createMovementController, type ActiveMove } from '../lib/movement';
 import { POLL_MS, haversineM, splitPath } from '../lib/trucks';
+import { recortarRuta } from '../lib/route';
 
 /*
  * Ported from source/static/js/map.js (map boot + marker rendering) plus
@@ -45,61 +46,6 @@ const PIN_SCALE_PER_ZOOM = 0.09;
  */
 const DESVIO_MAX_M = 120;
 
-/* Largo de una polilínea, en metros. */
-function largoGeometria(geometry: [number, number][]): number {
-  let total = 0;
-  for (let i = 1; i < geometry.length; i += 1) {
-    total += haversineM(
-      geometry[i - 1][0],
-      geometry[i - 1][1],
-      geometry[i][0],
-      geometry[i][1],
-    );
-  }
-  return total;
-}
-
-/*
- * Recorta la ruta en el punto más cercano al camión. OSRM devuelve la geometría
- * desde donde estaba el camión al pedirla; a los segundos ese origen queda atrás
- * y la línea arranca en una esquina que el camión ya pasó.
- */
-function recortarRuta(
-  geometry: [number, number][],
-  lat: number,
-  lng: number,
-): { distancia: number; resto: [number, number][]; largo: number } {
-  let indice = 0;
-  let distancia = Number.POSITIVE_INFINITY;
-  geometry.forEach(([aLat, aLng], i) => {
-    const d = haversineM(lat, lng, aLat, aLng);
-    if (d < distancia) {
-      distancia = d;
-      indice = i;
-    }
-  });
-  const resto = geometry.slice(indice);
-  return { distancia, resto, largo: distancia + largoGeometria(resto) };
-}
-
-/*
- * "12,4 km · 18 min": lo que el operador necesita para decidir, sin decimales de
- * más. Un viaje de menos de un minuto igual se informa como 1 min: redondear a 0
- * haría pensar que ya llegó.
- */
-function describirRuta(distanceM: number, durationS: number): string {
-  const km = (distanceM / 1000).toLocaleString('es-AR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-  const minutos = Math.max(1, Math.round(durationS / 60));
-  const tiempo =
-    minutos < 60
-      ? `${minutos} min`
-      : `${Math.floor(minutos / 60)} h ${minutos % 60} min`;
-  return `Ruta ${km} km · ${tiempo}`;
-}
-
 function pinScale(zoom: number): number {
   const raw = 1 - (PIN_FULL_ZOOM - zoom) * PIN_SCALE_PER_ZOOM;
   return Math.min(1, Math.max(PIN_MIN_SCALE, raw));
@@ -127,10 +73,6 @@ export default function MapView() {
   const fittedRef = useRef(false);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
-  const [routeSummary, setRouteSummary] = useState<{
-    truckId: number;
-    text: string;
-  } | null>(null);
 
   useEffect(() => {
     trucksRef.current = trucks;
@@ -421,21 +363,8 @@ export default function MapView() {
     let cancelado = false;
     let estadoRuta = '';
     let pedida = false;
-    let resumen = '';
     let proxima: TripStop | null = null;
-    let ruta: {
-      geometry: [number, number][];
-      distance: number;
-      duration: number;
-      stopSeq: number;
-      total: number;
-    } | null = null;
-
-    const mostrarResumen = (text: string) => {
-      if (text === resumen) return;
-      resumen = text;
-      setRouteSummary({ truckId: selectedId, text });
-    };
+    let ruta: { geometry: [number, number][] } | null = null;
 
     const pintarParadas = (stops: TripStop[]) => {
       if (!tripRef.current) tripRef.current = L.layerGroup().addTo(map);
@@ -498,7 +427,6 @@ export default function MapView() {
             },
           ).addTo(linea);
         }
-        mostrarResumen('');
         return;
       }
 
@@ -510,13 +438,10 @@ export default function MapView() {
           lineJoin: 'round',
           lineCap: 'round',
         }).addTo(linea);
-        mostrarResumen(
-          `${describirRuta(ruta.distance, ruta.duration)} · parada ${ruta.stopSeq}`,
-        );
         return;
       }
 
-      const { distancia, resto, largo } = recortarRuta(
+      const { distancia, resto } = recortarRuta(
         ruta.geometry,
         origen[0],
         origen[1],
@@ -533,10 +458,6 @@ export default function MapView() {
           lineCap: 'round',
         }).addTo(linea);
       }
-      const ratio = ruta.total > 0 ? Math.min(1, largo / ruta.total) : 1;
-      mostrarResumen(
-        `${describirRuta(ruta.distance * ratio, ruta.duration * ratio)} · parada ${ruta.stopSeq}`,
-      );
     };
 
     const refrescar = async () => {
@@ -553,7 +474,6 @@ export default function MapView() {
           estadoRuta = '';
           pedida = false;
           ruta = null;
-          mostrarResumen('');
         }
         return;
       }
@@ -591,15 +511,7 @@ export default function MapView() {
         const nueva = await getTripRoute(activo.id).catch(() => null);
         if (cancelado) return;
         ruta =
-          nueva && nueva.geometry.length > 1
-            ? {
-                geometry: nueva.geometry,
-                distance: nueva.distance_m,
-                duration: nueva.duration_s,
-                stopSeq: nueva.stop_seq,
-                total: largoGeometria(nueva.geometry),
-              }
-            : null;
+          nueva && nueva.geometry.length > 1 ? { geometry: nueva.geometry } : null;
       }
 
       dibujarRuta(origen);
@@ -627,17 +539,9 @@ export default function MapView() {
     });
   }, [selectedId]);
 
-  const resumenVisible =
-    routeSummary && routeSummary.truckId === selectedId ? routeSummary.text : '';
-
   return (
     <>
       <div id="map" ref={containerRef} />
-      {resumenVisible && (
-        <span className="route-summary" aria-live="polite">
-          {resumenVisible}
-        </span>
-      )}
     </>
   );
 }

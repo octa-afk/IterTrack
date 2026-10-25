@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { MobileTabs } from '../components/MobileTabs';
-import { BottomCards } from '../components/BottomCards';
 import { FleetList } from '../components/FleetList';
 import { TruckDetail } from '../components/TruckDetail';
 
@@ -31,11 +30,10 @@ export default function MapPage() {
               </span>
             </div>
           </div>
-          <BottomCards />
+          <TruckDetail />
         </div>
         <div className="col">
           <FleetList />
-          <TruckDetail />
         </div>
       </div>
       <MobileTabs view={mobileView} onChange={setMobileView} />
