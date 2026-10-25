@@ -133,6 +133,7 @@ Checklist mínimo:
 - [ ] `GET /alerts` responde `401` sin token (el router está registrado) y `200 []` con la cuenta de la demo. Con un equipo mal aprovisionado aparece una alerta abierta.
 - [ ] El registro con el código de la demo responde `400`: la invitación nace revocada.
 - [ ] El mapa muestra 3 camiones moviéndose.
+- [ ] En Rutas, un viaje pasa solo de **Planificado** a **En curso** y sus paradas se van marcando: el estado lo mueve el camión al pasar cerca (120 m), no el operador.
 - [ ] `demo-admin` recibe 403 al intentar crear una organización.
 - [ ] El owner de plataforma (no público) ve `IterTrack` y `Demo Corp`.
 
@@ -149,6 +150,8 @@ ssh -i ~/.ssh/id_ed25519 octa@57.156.58.24
 ```bash
 docker compose logs -f web
 docker compose logs -f worker
+tail -f /home/octa/renew.log    # reposición de viajes de la demo (cada 15 min)
+tail -f /home/octa/reset.log    # reset diario del tenant de demo
 ```
 
 **¿Está viva la demo?** El worker puede parecer sano (`Up`) y no estar ingiriendo nada: el estado real es si entran puntos.
@@ -187,6 +190,17 @@ docker compose exec web python -m scripts.seed_demo --reset
 
 Para automatizarlo, un cron del host cada 24 h con el mismo comando. Es necesario: el admin de la demo es público y puede borrar los datos.
 
+La VM tiene dos cron instalados, los dos con `/usr/bin/docker` absoluto (cron no
+hereda el PATH interactivo) y el log en el home, que sobrevive a un reinicio:
+
+```cron
+0 4 * * *  cd /home/octa/itertrack && /usr/bin/docker compose exec -T web python -m scripts.seed_demo --reset >> /home/octa/reset.log 2>&1
+*/15 * * * * cd /home/octa/itertrack && /usr/bin/docker compose exec -T web python -m scripts.seed_demo --renew >> /home/octa/renew.log 2>&1
+```
+
+El `cd` no es opcional: `docker compose` busca el compose en el directorio actual
+y cron arranca en `$HOME`.
+
 **Mantener la demo con viajes en curso** (cron cada 15 min)
 
 El progreso automático cierra los viajes de la demo en unos 11 minutos de
@@ -201,8 +215,12 @@ docker compose exec -T web python -m scripts.seed_demo --renew
 ```
 
 ```cron
-*/15 * * * * cd /home/octa/itertrack && docker compose exec -T web python -m scripts.seed_demo --renew >> /tmp/renew.log 2>&1
+*/15 * * * * cd /home/octa/itertrack && /usr/bin/docker compose exec -T web python -m scripts.seed_demo --renew >> /home/octa/renew.log 2>&1
 ```
+
+Para comprobar que cron lo ejecuta de verdad —y no sólo que el comando funciona a
+mano— se puede dejar un minuto en `* * * * *`, esperar a que aparezca la línea en
+el log y volver a `*/15`.
 
 > El reset borra los dispositivos del tenant. En imágenes viejas, el worker se queda con tokens inválidos y sin forma de renovarlos: después del reset hay que hacer `docker compose restart worker`. Con el fix de re-autenticación ya no hace falta.
 >
