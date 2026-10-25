@@ -194,6 +194,37 @@ export function buildHistory(points: TrackingPoint[]): number[] {
  * Consecutive identical positions are dropped: a parked truck reports the same
  * coordinates repeatedly and they would add nothing to the drawn line.
  */
+/*
+ * Cierre de vuelta. El camión sale a dar la vuelta a un circuito y, al pasar de
+ * nuevo por el punto de partida, la vuelta terminó: lo dibujado hasta ahí era
+ * una vuelta completa y lo que siga es otra. Sin esto el trazado se superpone
+ * consigo mismo y el resumen suma kilómetros de dos vueltas.
+ *
+ * El radio tolera el error del GPS; el mínimo evita cerrar la vuelta en el
+ * primer punto (donde la distancia al inicio es cero por definición).
+ */
+export const LAP_RADIUS_M = 60;
+export const LAP_MIN_M = 1000;
+
+/** Recorta el recorrido para dejar sólo la vuelta en curso. */
+export function keepCurrentLap(path: PathPoint[]): PathPoint[] {
+  if (path.length < 2) return path;
+  let start = 0;
+  let meters = 0;
+  for (let i = 1; i < path.length; i++) {
+    meters += haversineM(path[i - 1].lat, path[i - 1].lng, path[i].lat, path[i].lng);
+    const volvioAlInicio =
+      meters >= LAP_MIN_M &&
+      haversineM(path[start].lat, path[start].lng, path[i].lat, path[i].lng) <=
+        LAP_RADIUS_M;
+    if (volvioAlInicio) {
+      start = i;
+      meters = 0;
+    }
+  }
+  return start === 0 ? path : path.slice(start);
+}
+
 export function buildPath(points: TrackingPoint[]): PathPoint[] {
   const chronological = points.slice().reverse();
   const path: PathPoint[] = [];
@@ -206,7 +237,7 @@ export function buildPath(points: TrackingPoint[]): PathPoint[] {
     }
     path.push({ lat: point.lat, lng: point.long, at });
   }
-  return path.slice(-TRIP_LIMIT);
+  return keepCurrentLap(path.slice(-TRIP_LIMIT));
 }
 
 /** Append a freshly polled location to an already seeded trail. */
