@@ -12,11 +12,21 @@ from scripts.simulate_trucks import (
     cargar_ruta,
     ejecutar_simulaciones,
     espera_y_velocidad,
+    reiniciar_viaje,
     rotate_route,
     route_offset,
     simular_ruta,
+    tramo_del_viaje,
     truck_plates,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_toca_la_api_real(monkeypatch):
+    """Sin esto, correr los tests con la demo levantada borra historial y viajes."""
+    monkeypatch.setattr("scripts.simulate_trucks.limpiar_recorrido", lambda *a, **k: None)
+    monkeypatch.setattr("scripts.simulate_trucks.reiniciar_viaje", lambda *a, **k: None)
+    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
 
 
 def test_simular_ruta_captures_measurement_time_for_each_ping(monkeypatch):
@@ -244,9 +254,200 @@ def test_ejecutar_simulaciones_clears_history_once_per_truck_when_requested(monk
     assert deleted_trucks == [7, 8, 9]
 
 
+def test_ejecutar_simulaciones_resets_trip_progress_once_per_truck(monkeypatch):
+    """Cada corrida nueva arranca con las paradas del viaje sin completar."""
+    route = [[-31.42, -64.18]]
+    reiniciados = []
+
+    class StopAfterFirstUpdate:
+        def __init__(self):
+            self.stopped = False
+
+        def is_set(self):
+            return self.stopped
+
+        def wait(self, _interval):
+            self.stopped = True
+
+        def set(self):
+            self.stopped = True
+
+    class CompletedWorker:
+        def result(self):
+            return None
+
+    class SynchronousExecutor:
+        def __init__(self, max_workers):
+            pass
+
+        def submit(self, worker, *args, **kwargs):
+            worker(*args, **kwargs)
+            return CompletedWorker()
+
+        def shutdown(self, **kwargs):
+            pass
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: route)
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.autenticar_admin", lambda: {"Authorization": "Bearer admin"}
+    )
+    monkeypatch.setattr("scripts.simulate_trucks.Event", StopAfterFirstUpdate)
+    monkeypatch.setattr("scripts.simulate_trucks.ThreadPoolExecutor", SynchronousExecutor)
+    monkeypatch.setattr("scripts.simulate_trucks.registrar_camion", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.preparar_dispositivo",
+        lambda truck_id, headers=None, force=False: f"tok-{truck_id}",
+    )
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.constructor_de_sender",
+        lambda token, on_unauthorized=None: (lambda *args, **kwargs: True),
+    )
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.reiniciar_viaje",
+        lambda truck_id, headers=None: reiniciados.append(truck_id),
+    )
+
+    ejecutar_simulaciones(base_id=7, base_plate="ABC123", intervalo=1, count=3)
+
+    assert reiniciados == [7, 8, 9]
+
+
+def test_tramo_del_viaje_pide_la_ruta_del_viaje_abierto(monkeypatch):
+    llamadas = []
+
+    class Respuesta:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    def get(url, **kwargs):
+        llamadas.append((url, kwargs.get("params")))
+        if url.endswith("/trips"):
+            return Respuesta(
+                [
+                    {"id": 4, "status": "done"},
+                    {"id": 5, "status": "in_progress"},
+                ]
+            )
+        return Respuesta({"geometry": [[-31.4, -64.2], [-31.41, -64.19]]})
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.get", get)
+
+    puntos = tramo_del_viaje(2, {"Authorization": "Bearer admin"})
+
+    assert puntos == [[-31.4, -64.2], [-31.41, -64.19]]
+    assert llamadas[0] == (llamadas[0][0], {"truck_id": 2})
+    assert llamadas[1][0].endswith("/trips/5/route")
+
+
+def _stop_after(cantidad):
+    class StopAfter:
+        def __init__(self):
+            self.restantes = cantidad
+
+        def is_set(self):
+            return self.restantes <= 0
+
+        def wait(self, _interval=None):
+            self.restantes -= 1
+
+        def set(self):
+            self.restantes = 0
+
+    return StopAfter()
+
+
+def _sender_que_anota(enviados):
+    def sender(lat, lon, velocidad, rumbo, cuando):
+        enviados.append((lat, lon))
+        return True
+
+    return sender
+
+
+def test_simular_ruta_sigue_la_ruta_del_viaje(monkeypatch):
+    """El camión emite los puntos de la ruta OSRM, no los del circuito."""
+    circuito = [[-31.40, -64.20], [-31.41, -64.19], [-31.42, -64.18]]
+    tramo = [[-31.50, -64.30], [-31.51, -64.31], [-31.52, -64.32]]
+    enviados: list[tuple[float, float]] = []
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: circuito)
+    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: tramo)
+
+    simular_ruta(
+        truck_id=1,
+        plate="ABC123",
+        intervalo=0,
+        stop_event=_stop_after(2),
+        admin_headers={"Authorization": "Bearer admin"},
+        sender=_sender_que_anota(enviados),
+    )
+
+    assert enviados == [tuple(punto) for punto in tramo[:2]]
+
+
+def test_simular_ruta_usa_el_circuito_si_no_hay_viaje_abierto(monkeypatch):
+    circuito = [[-31.40, -64.20], [-31.41, -64.19], [-31.42, -64.18]]
+    enviados: list[tuple[float, float]] = []
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: circuito)
+    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
+
+    simular_ruta(
+        truck_id=1,
+        plate="ABC123",
+        intervalo=0,
+        stop_event=_stop_after(2),
+        admin_headers={"Authorization": "Bearer admin"},
+        sender=_sender_que_anota(enviados),
+    )
+
+    assert enviados == [tuple(punto) for punto in circuito[:2]]
+
+
+def test_reiniciar_viaje_resetea_el_viaje_abierto_del_camion(monkeypatch):
+    llamadas = []
+
+    class Respuesta:
+        def __init__(self, status_code, payload=None):
+            self.status_code = status_code
+            self._payload = payload or {}
+
+        def json(self):
+            return self._payload
+
+    def get(url, **kwargs):
+        llamadas.append(("GET", url, kwargs.get("params")))
+        return Respuesta(
+            200,
+            [
+                {"id": 4, "status": "done"},
+                {"id": 5, "status": "in_progress"},
+            ],
+        )
+
+    def post(url, **kwargs):
+        llamadas.append(("POST", url, None))
+        return Respuesta(200, {})
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.get", get)
+    monkeypatch.setattr("scripts.simulate_trucks.requests.post", post)
+
+    reiniciar_viaje(2, {"Authorization": "Bearer admin"})
+
+    assert llamadas[0] == ("GET", llamadas[0][1], {"truck_id": 2})
+    assert llamadas[1][0] == "POST"
+    assert llamadas[1][1].endswith("/trips/5/reset")
+
+
+
 def test_ejecutar_simulaciones_keeps_history_when_asked(monkeypatch):
     """`--keep-history` es la salida para quien quiere acumular la telemetría."""
     deleted_trucks = []
+    reiniciados = []
 
     class StopNow:
         def is_set(self):
@@ -291,12 +492,17 @@ def test_ejecutar_simulaciones_keeps_history_when_asked(monkeypatch):
         "scripts.simulate_trucks.limpiar_recorrido",
         lambda truck_id, headers=None: deleted_trucks.append(truck_id),
     )
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.reiniciar_viaje",
+        lambda truck_id, headers=None: reiniciados.append(truck_id),
+    )
 
     ejecutar_simulaciones(
         base_id=7, base_plate="ABC123", intervalo=1, count=2, keep_history=True
     )
 
     assert deleted_trucks == []
+    assert reiniciados == []
 
 
 def test_ejecutar_simulaciones_never_clears_a_truck_held_by_real_hardware(monkeypatch):

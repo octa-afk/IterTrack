@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 
+import pytest
 import requests
 
 from scripts.simulate_trucks import (
@@ -11,6 +12,14 @@ from scripts.simulate_trucks import (
     enviar_ingesta,
     preparar_dispositivo,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_toca_la_api_real(monkeypatch):
+    """Sin esto, correr los tests con la demo levantada borra historial y viajes."""
+    monkeypatch.setattr("scripts.simulate_trucks.limpiar_recorrido", lambda *a, **k: None)
+    monkeypatch.setattr("scripts.simulate_trucks.reiniciar_viaje", lambda *a, **k: None)
+    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
 
 
 class FakeResponse:
