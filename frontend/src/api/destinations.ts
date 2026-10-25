@@ -1,6 +1,6 @@
 /* Destinos y viajes. Contract: source/services/destinations.py. */
 import { apiRequest } from './client';
-import type { Charger, Depot, Trip, TripCreatePayload } from './types';
+import type { Charger, Depot, Trip, TripCreatePayload, TripRoute } from './types';
 
 /** GET /chargers — dadores de carga de la organización. */
 export function listChargers(): Promise<Charger[]> {
@@ -39,4 +39,10 @@ export function createTrip(payload: TripCreatePayload): Promise<Trip> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+}
+
+/** GET /trips/{id}/route — ruta por calles desde el camión hasta las paradas. */
+export function getTripRoute(tripId: number): Promise<TripRoute> {
+  // Cambia con cada entrega y con cada metro del camión: nunca reusar caché.
+  return apiRequest<TripRoute>(`/trips/${tripId}/route`, { cache: 'no-store' });
 }
