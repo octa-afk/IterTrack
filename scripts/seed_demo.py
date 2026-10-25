@@ -477,15 +477,16 @@ class RenewResult:
 
 
 def renew_demo_trips(db: Session, config: DemoSeedConfig) -> RenewResult:
-    """Abre un viaje nuevo para cada camión de la demo que quedó libre.
+    """Reinicia el viaje de cada camión de la demo que terminó.
 
-    Un camión que ya tiene un viaje `planned`/`in_progress` no se toca. Al que
-    terminó se le clona su último viaje de demo (mismas paradas, dador y
-    depósito) con una referencia nueva, en estado `planned`: el progreso
-    automático lo va a ir marcando cuando el camión pase por las paradas.
+    Se reusa el mismo viaje (`DEMO-001/002/003`) en lugar de crear uno nuevo:
+    con un cron cada 15 minutos, clonar dejaría cientos de viajes por día en la
+    lista de Rutas. El viaje vuelve a `planned` con las paradas pendientes y la
+    salida en ahora; el progreso automático lo vuelve a marcar cuando el camión
+    pase por cada parada.
 
-    Idempotente: correrlo dos veces seguidas no duplica nada, porque la segunda
-    encuentra a todos los camiones con viaje abierto.
+    Un camión con viaje `planned`/`in_progress` no se toca. Idempotente: correrlo
+    dos veces seguidas no cambia nada, porque la segunda los encuentra abiertos.
     """
     organization = (
         db.query(Organization).filter(Organization.name == config.org_name).first()
@@ -509,18 +510,6 @@ def renew_demo_trips(db: Session, config: DemoSeedConfig) -> RenewResult:
         )
     }
 
-    referencias = [
-        referencia
-        for (referencia,) in db.query(Trip.external_ref).filter(
-            Trip.organization_id == organization.id,
-            Trip.external_ref.isnot(None),
-        )
-    ]
-    siguiente = max(
-        (int(ref.split("-")[-1]) for ref in referencias if ref.startswith(DEMO_TRIP_PREFIX)),
-        default=0,
-    ) + 1
-
     renewed: list[tuple[int, str]] = []
     skipped = 0
     for truck in trucks:
@@ -541,34 +530,13 @@ def renew_demo_trips(db: Session, config: DemoSeedConfig) -> RenewResult:
             skipped += 1
             continue
 
-        referencia = f"{DEMO_TRIP_PREFIX}{siguiente:03d}"
-        siguiente += 1
-        trip = Trip(
-            organization_id=organization.id,
-            charger_id=previous.charger_id,
-            truck_id=truck.id,
-            departure_at=datetime.now(UTC),
-            status="planned",
-            external_ref=referencia,
-            depot_id=previous.depot_id,
-            driver_name=previous.driver_name,
-        )
-        db.add(trip)
-        db.flush()
+        previous.status = "planned"
+        previous.departure_at = datetime.now(UTC)
         for stop in previous.stops:
-            db.add(
-                TripStop(
-                    trip_id=trip.id,
-                    seq=stop.seq,
-                    address=stop.address,
-                    lat=stop.lat,
-                    lng=stop.lng,
-                    geo_source=stop.geo_source,
-                    needs_review=stop.needs_review,
-                    receiver=stop.receiver,
-                )
-            )
-        renewed.append((truck.id, referencia))
+            stop.status = "pending"
+            stop.arrived_at = None
+            stop.departed_at = None
+        renewed.append((truck.id, previous.external_ref or ""))
 
     db.commit()
     return RenewResult(
@@ -589,9 +557,9 @@ def main() -> int:
         "--renew",
         action="store_true",
         help=(
-            "Abre un viaje nuevo para cada camión de la demo que quedó libre, sin "
-            "tocar el resto del tenant. Pensado para un cron: mantiene la demo con "
-            "viajes en curso."
+            "Reinicia el viaje de cada camión de la demo que terminó, sin crear "
+            "filas nuevas ni tocar el resto del tenant. Pensado para un cron: "
+            "mantiene la demo con viajes en curso."
         ),
     )
     args = parser.parse_args()
@@ -614,9 +582,9 @@ def main() -> int:
             return 1
         if renovado.renewed:
             detalle = ", ".join(f"#{truck} {ref}" for truck, ref in renovado.renewed)
-            print(f"🧭 Viajes abiertos: {detalle}")
+            print(f"🧭 Viajes reiniciados: {detalle}")
         else:
-            print("🧭 Ningún camión necesitaba un viaje nuevo.")
+            print("🧭 Ningún camión necesitaba reiniciar su viaje.")
         print(f"⏭️ Camiones salteados (con viaje abierto o sin historial): {renovado.skipped}")
         return 0
 
