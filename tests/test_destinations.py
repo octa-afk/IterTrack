@@ -8,7 +8,7 @@ pendientes y aislamiento por organización—, no la calidad de un proveedor.
 import pytest
 
 from source.main import app
-from source.models.destination import AddressCache, Charger
+from source.models.destination import AddressCache, Charger, Trip
 from source.services.auth import get_current_user
 from source.services.geocoding import GeoResult, get_geocoder, normalize_address
 
@@ -274,3 +274,50 @@ def test_camiones_disponibles_excluye_los_que_tienen_viaje_abierto(
     assert [t["plate"] for t in admin_client.get("/trips/available-trucks").json()] == [
         "LIBRE2"
     ]
+
+
+def test_a_busy_truck_needs_an_explicit_replacement(
+    admin_client, charger, test_truck, usar_geocoder
+):
+    """Cancelar el viaje de otro sin avisar sería una sorpresa: primero 409."""
+    usar_geocoder({"Av. Colón 1234": (-31.4135, -64.1811)})
+    primero = admin_client.post(
+        "/trips",
+        json=_trip_payload(charger.id, [_stop("Av. Colón 1234")], truck_id=test_truck.id),
+    )
+    assert primero.status_code == 201
+
+    segundo = admin_client.post(
+        "/trips",
+        json=_trip_payload(charger.id, [_stop("Av. Colón 1234")], truck_id=test_truck.id),
+    )
+
+    assert segundo.status_code == 409
+    assert "replace_open_trip" in segundo.json()["detail"]
+
+
+def test_replacing_the_open_trip_cancels_the_previous_one(
+    admin_client, charger, test_truck, db_session, usar_geocoder
+):
+    usar_geocoder({"Av. Colón 1234": (-31.4135, -64.1811)})
+    primero = admin_client.post(
+        "/trips",
+        json=_trip_payload(charger.id, [_stop("Av. Colón 1234")], truck_id=test_truck.id),
+    )
+
+    segundo = admin_client.post(
+        "/trips",
+        json=_trip_payload(
+            charger.id,
+            [_stop("Av. Colón 1234")],
+            truck_id=test_truck.id,
+            replace_open_trip=True,
+        ),
+    )
+
+    assert segundo.status_code == 201, segundo.text
+    reemplazado = db_session.get(Trip, primero.json()["id"])
+    db_session.refresh(reemplazado)
+    # No se borra: queda cancelado, así se ve que hubo uno y se reemplazó.
+    assert reemplazado.status == "cancelled"
+    assert db_session.get(Trip, segundo.json()["id"]).status == "planned"

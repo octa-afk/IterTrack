@@ -63,6 +63,9 @@ class TripCreate(BaseModel):
     external_ref: str | None = Field(default=None, max_length=64)
     truck_id: int | None = None
     depot_id: int | None = None
+    # Un camión puede tener otro viaje abierto. Sin este permiso explícito la
+    # creación falla: cancelar el viaje de otro sin avisar sería una sorpresa.
+    replace_open_trip: bool = False
     driver_name: str | None = Field(default=None, max_length=120)
     notes: str | None = None
     stops: list[StopCreate] = Field(..., min_length=1, max_length=200)

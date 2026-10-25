@@ -3,10 +3,10 @@ import { ApiError } from '../api/client';
 import {
   createCharger,
   createTrip,
-  listAvailableTrucks,
   listChargers,
   listTrips,
 } from '../api/destinations';
+import { listTrucks } from '../api/trucks';
 import type { Charger, Trip } from '../api/types';
 import { useDashboard } from '../state/useDashboard';
 
@@ -53,7 +53,7 @@ export default function TripsPage() {
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [chargers, setChargers] = useState<Charger[]>([]);
-  const [disponibles, setDisponibles] = useState<{ id: number; plate: string }[]>([]);
+  const [camiones, setCamiones] = useState<{ id: number; plate: string }[]>([]);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -72,15 +72,15 @@ export default function TripsPage() {
 
     async function cargar() {
       try {
-        const [viajes, dadores, disponibles] = await Promise.all([
+        const [viajes, dadores, camiones] = await Promise.all([
           listTrips(),
           listChargers(),
-          puedeEditar ? listAvailableTrucks() : Promise.resolve([]),
+          puedeEditar ? listTrucks() : Promise.resolve([]),
         ]);
         if (cancelado) return;
         setTrips(viajes);
         setChargers(dadores);
-        setDisponibles(disponibles);
+        setCamiones(camiones);
         setError('');
       } catch (fallo) {
         if (cancelado) return;
@@ -96,10 +96,22 @@ export default function TripsPage() {
     };
   }, [puedeEditar, reloadKey]);
 
+  // Un camión ocupado no se oculta: se puede elegir y el viaje anterior se
+  // cancela. La lista completa viene de /trucks; la ocupación, de los viajes.
+  const ocupados = new Set(
+    trips
+      .filter((trip) => trip.status === 'planned' || trip.status === 'in_progress')
+      .map((trip) => trip.truck_id)
+      .filter((id): id is number => id !== null),
+  );
+
   // El valor por defecto se deriva en render: escribirlo desde el efecto
-  // dispara un render en cascada sin necesidad.
+  // dispara un render en cascada sin necesidad. Sólo se preselecciona un camión
+  // libre: con todos ocupados se arranca en "Sin asignar", porque elegir uno
+  // cancela su viaje y eso no puede pasar sin que alguien lo decida.
   const chargerSeleccionado = chargerId || String(chargers[0]?.id ?? '');
-  const truckSeleccionado = truckId || String(disponibles[0]?.id ?? '');
+  const primerLibre = camiones.find((t) => !ocupados.has(t.id));
+  const truckSeleccionado = truckId || String(primerLibre?.id ?? '');
 
   const agregarDador = async () => {
     const nombre = nuevoDador.trim();
@@ -116,6 +128,8 @@ export default function TripsPage() {
     }
   };
 
+  const camionOcupado = truckSeleccionado !== '' && ocupados.has(Number(truckSeleccionado));
+
   const enviar = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
@@ -125,6 +139,7 @@ export default function TripsPage() {
       const viaje = await createTrip({
         charger_id: Number(chargerSeleccionado),
         truck_id: truckSeleccionado ? Number(truckSeleccionado) : null,
+        replace_open_trip: camionOcupado,
         // `datetime-local` no lleva zona: el ISO la agrega en UTC y el backend
         // la exige, así que "07:30" no se interpreta como UTC por accidente.
         departure_at: new Date(salida).toISOString(),
@@ -283,12 +298,19 @@ export default function TripsPage() {
                 aria-label="Camión del depósito"
               >
                 <option value="">Sin asignar</option>
-                {disponibles.map((t) => (
+                {camiones.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.plate}
+                    {ocupados.has(t.id) ? ' · con viaje abierto' : ''}
                   </option>
                 ))}
               </select>
+              {camionOcupado && (
+                <p className="hint">
+                  {camiones.find((t) => String(t.id) === truckSeleccionado)?.plate} tiene un
+                  viaje abierto: al crear este, el anterior queda cancelado.
+                </p>
+              )}
             </div>
 
             <div className="field">

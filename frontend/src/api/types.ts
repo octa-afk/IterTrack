@@ -124,6 +124,8 @@ export interface TripCreatePayload {
   departure_at: string;
   truck_id?: number | null;
   depot_id?: number | null;
+  /** Reasigna el camión aunque tenga un viaje abierto (ese viaje se cancela). */
+  replace_open_trip?: boolean;
   driver_name?: string | null;
   external_ref?: string | null;
   stops: { address: string; receiver?: string | null }[];
