@@ -57,11 +57,17 @@ def test_auth_styles_stay_scoped_to_the_auth_page():
 
 
 @requires_build
-def test_bottom_cards_surfaces():
+def test_fleet_panel_and_truck_panel_surfaces():
     text = built_css()
-    assert ".bars{" in text
-    assert ".bar{" in text
-    assert ".donuts{" in text
+    # Panel de flota: cada unidad es una tarjeta con dot, patente y velocidad.
+    assert re.search(r"\.listcard li button\{[^}]*grid-template-columns:10px", text)
+    assert re.search(r"\.listcard \.sp\{[^}]*grid-(column:3|area:1/3)", text)
+    # Panel del camión: grilla 2x2 de métricas y el resumen de la próxima parada.
+    assert ".dc-tiles{" in text
+    assert ".dc-tile{" in text
+    assert ".dc-trip{" in text
+    # Sobre el mapa el panel del camión flota abajo a la izquierda.
+    assert re.search(r"\.grid \.detailcard\{[^}]*position:absolute[^}]*bottom:39px", text)
 
 
 @requires_build
@@ -69,8 +75,8 @@ def test_truck_active_state_and_trip_summary():
     text = built_css()
     assert ".badge-off{" in text
     assert ".pin.off .truck-img{" in text
-    assert re.search(r"\.detail \.trip\{[^}]*border-radius:12px", text)
-    assert re.search(r"\.detail \.trip-st\{[^}]*grid-template-columns:repeat\(3,1fr\)", text)
+    assert re.search(r"\.dc-trip .spark\{[^}]*height:56px", text)
+    assert ".dc-trip-none{" in text
 
 
 @requires_build

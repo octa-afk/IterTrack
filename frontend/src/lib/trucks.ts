@@ -6,8 +6,6 @@ import type { TrackingPoint, Truck } from '../api/types';
  * and the inline helpers in source/static/js/map.js.
  */
 
-export type TruckStatus = 'move' | 'idle' | 'stop' | 'alert';
-
 /** A recorded position of the selected truck's recent trail. */
 export interface PathPoint {
   lat: number;
@@ -16,12 +14,7 @@ export interface PathPoint {
   at: number;
 }
 
-export interface TripSummary {
-  km: number;
-  minutes: number;
-  points: number;
-}
-
+export type TruckStatus = 'move' | 'idle' | 'stop' | 'alert';
 export interface TruckState {
   id: number;
   plate: string;
@@ -100,6 +93,14 @@ export function ago(ms: number): string {
   return `hace ${Math.round(s / 3600)} h`;
 }
 
+const RUMBOS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+
+/** Punto cardinal (8 rumbos) del rumbo en grados, para el panel del camión. */
+export function rumboCardinal(heading: number): string {
+  const h = ((heading % 360) + 360) % 360;
+  return RUMBOS[Math.round(h / 45) % 8];
+}
+
 /** True when the truck reported within the last five minutes ("Con señal"). */
 export function isFresh(updated: number, now: number = Date.now()): boolean {
   return updated > 0 && now - updated < FRESH_MS;
@@ -159,6 +160,12 @@ export function aplicarPunto(t: TruckState, p: TrackingPoint): void {
   const lat = p.lat;
   const lng = p.long;
   const ts = Date.parse(p.timestamp) || Date.now();
+  /*
+   * El polling repite la última posición mientras el equipo no reporta nada
+   * nuevo. Sin este corte, cada vuelta empujaba una muestra idéntica a la
+   * gráfica y en un minuto borraba el historial real.
+   */
+  const muestraNueva = ts > t.updated;
   if (t.lat !== null && t.lng !== null) {
     const dtMs = ts - t.updated;
     const distance = haversineM(t.lat, t.lng, lat, lng);
@@ -170,8 +177,10 @@ export function aplicarPunto(t: TruckState, p: TrackingPoint): void {
   t.lat = lat;
   t.lng = lng;
   t.updated = ts;
-  t.history.push(t.speed);
-  if (t.history.length > HISTORY_MAX) t.history.shift();
+  if (muestraNueva) {
+    t.history.push(t.speed);
+    if (t.history.length > HISTORY_MAX) t.history.shift();
+  }
   t.status = estadoDe(t);
 }
 
@@ -299,25 +308,23 @@ export function splitPath(path: PathPoint[], maxKmh = MAX_TRAIL_KMH): PathPoint[
   return segments;
 }
 
-/** Distance and duration of a trail; null when there is nothing to measure. */
-export function tripSummary(path: PathPoint[]): TripSummary | null {
-  // Sólo el último tramo continuo: si hubo un corte, el resumen del recorrido
-  // actual no puede sumar kilómetros de un trazado anterior.
-  const segments = splitPath(path);
-  const current = segments[segments.length - 1];
-  if (!current || current.length < 2) return null;
-  let meters = 0;
-  for (let i = 1; i < current.length; i++) {
-    meters += haversineM(current[i - 1].lat, current[i - 1].lng, current[i].lat, current[i].lng);
-  }
-  const minutes = Math.max(0, (current[current.length - 1].at - current[0].at) / 60000);
-  return { km: meters / 1000, minutes, points: current.length };
+/*
+ * Cómo se lee una distancia y un tiempo de llegada en el panel. Un trayecto de
+ * menos de un minuto igual se informa como "1 min": redondear a 0 haría pensar
+ * que ya llegó.
+ */
+export function formatMinutes(seconds: number): string {
+  const minutos = Math.max(1, Math.round(seconds / 60));
+  if (minutos < 60) return `${minutos} min`;
+  return `${Math.floor(minutos / 60)} h ${minutos % 60} min`;
 }
 
-/** Compact duration for the trip summary: 45 min, 2.3 h. */
-export function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${Math.round(minutes)} min`;
-  return `${(minutes / 60).toFixed(1)} h`;
+export function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters / 10) * 10} m`;
+  return `${(meters / 1000).toLocaleString('es-AR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} km`;
 }
 
 const normalize = (value: string) =>

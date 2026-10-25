@@ -56,30 +56,8 @@
   .pin .lbl{display:none;position:absolute;top:calc(50% + 31px * var(--pin-scale,1) + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--g-solid);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.2)}
   .pin.sel .lbl{display:block}
 
-  /* Resumen de la ruta del viaje abierto, debajo del título del mapa. */
-  .route-summary{position:absolute;z-index:800;left:calc(var(--lx) + 52px);top:145px;background:var(--g-solid,#fff);color:var(--ink);border:1px solid var(--g-bd,var(--line));border-radius:1149px;padding:6px 12px;font-size:12px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,.18);pointer-events:none;white-space:nowrap;transition:left .3s ease}
+  /* Resumen de la ruta del viaje abierto: ahora vive en el panel del camión. */
 
-  /* Fila inferior */
-  .bottom{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;height:205px}
-  .bottom .card{overflow:hidden}
-  .bars{height:129px;position:relative;display:flex;align-items:flex-end;gap:6.9px;padding-top:4.6px}
-  .bars .limit{position:absolute;left:0;right:0;border-top:1.5px dashed var(--idle);pointer-events:none}
-  .bars .limit span{position:absolute;right:0;top:-17px;font-size:10px;color:var(--idle);background:#fff;padding-left:4.6px}
-  .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;border:0;background:none;padding:0;cursor:pointer;font-family:inherit}
-  .bar i{width:100%;max-width:30px;background:#e9ebe8;border-radius:4.6px 4.6px 0 0;transition:background .2s}
-  .bar:hover i{background:var(--green-l)}
-  .bar.sel i{background:var(--green-l)}
-  .bar b{font-size:10px;font-weight:500;color:var(--muted);margin-top:4.6px;white-space:nowrap}
-  .bar.sel b{color:var(--green);font-weight:600}
-  .bar:focus-visible{outline:2.3px solid var(--green)}
-  .donuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:10px;height:calc(100% - 32px)}
-  .dn{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center}
-  .dn > div:first-child{position:relative;flex:none}
-  .dn svg{width:54px;height:54px;transform:rotate(-90deg);flex:none}
-  .dn circle{fill:none;stroke-width:9}
-  .dn .t{font-size:11px;color:var(--muted);line-height:1.25;min-width:0;max-width:100%;overflow-wrap:break-word}
-  .dn .t b{display:block;color:var(--ink);font-size:14px;font-weight:600;white-space:normal}
-  .dn .pc{position:absolute;inset:0;display:grid;place-items:center;font-weight:600;font-size:13px}
 
   /* Columna derecha */
   .listcard{flex:1;display:flex;flex-direction:column;padding:18px 0 0}
@@ -102,31 +80,41 @@
   .sb{font-size:12px;color:var(--muted);grid-column:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .sp{font-weight:600;font-size:15px;text-align:right;color:var(--green)}
   .sp small{font-weight:400;color:var(--muted);font-size:11px}
-  .fu{grid-column:3;text-align:right;font-size:12px;color:var(--muted)}
-  .fu.low{color:var(--alert);font-weight:600}
   li button:focus-visible,.chip:focus-visible,.seg button:focus-visible,select:focus-visible{outline:2.3px solid var(--green);outline-offset:-2.3px}
   .empty{padding:25px 18px;color:var(--muted);font-size:14px}
 
-  .detail{background:var(--bg);border-radius:16px;padding:14px}
-  .detail .when{font-size:12px;color:var(--muted);margin-bottom:9.2px;display:flex;justify-content:space-between}
-  .detail .st{display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border-radius:12px;padding:12px 4.6px;text-align:center}
-  .detail .st b{display:block;font-size:20px;font-weight:600;color:var(--green)}
-  .detail .st span{font-size:11px;color:var(--muted)}
-  .detail .info{font-size:13px;margin:12px 2.3px 4.6px;display:grid;grid-template-columns:auto 1fr;gap:3.5px 14px}
-  .detail .info dt{color:var(--muted)} .detail .info dd{text-align:right;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* Panel del camión actual: encabezado, grilla 2x2 de métricas y recorrido. */
+  .detail{background:none;padding:0;min-width:0}
+  .dc-h{display:flex;align-items:center;gap:9px;margin-bottom:11px;min-width:0}
+  .dc-h b{font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap}
+  .dc-h span{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dc-body{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:stretch;min-width:0}
+  .dc-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;min-width:0}
+  .dc-tile{background:var(--g-fill,#eef1f6);border-radius:12px;padding:8px 12px;min-width:0}
+  .dc-tile span{display:block;font-size:11px;color:var(--muted);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dc-tile b{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dc-tile b.big{font-size:20px;color:var(--green)}
+  .dc-rumbo{width:15px;height:15px;flex:none;fill:var(--green)}
+  .dc-trip{display:flex;flex-direction:column;min-width:0;padding-top:1px}
+  .dc-trip-h{font-size:12px;color:var(--muted);text-align:right}
+  .dc-trip-st{display:flex;justify-content:flex-end;gap:14px;margin-top:4px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+  .dc-trip-st b{font-size:14px;font-weight:600;color:var(--ink)}
+  .dc-trip-none{font-size:12.5px;color:var(--muted);text-align:right;margin:4px 0 0}
   .spark{width:100%;height:74px;margin-top:6.9px}
+  .dc-trip .spark{margin-top:auto;height:56px}
   .noSel{color:var(--muted);font-size:14px;text-align:center;padding:21px 9.2px}
+  /* En el panel flota sobre el mapa, abajo a la izquierda, junto al panel de flota. */
+  .grid .detailcard{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;padding:15px 18px;border-radius:28px;transition:left .3s ease}
+  /* En la sección Camiones el detalle vive en una columna angosta. */
+  .section-page .dc-body{grid-template-columns:minmax(0,1fr)}
+  .section-page .dc-trip-h,.section-page .dc-trip-none,.section-page .dc-trip-st{text-align:left;justify-content:flex-start}
+
 
   /* Camión inactivo: conserva su historial pero ya no transmite. */
   .badge-off{display:inline-block;margin-left:6px;padding:1px 7px;border:1px solid var(--line);border-radius:1149px;background:var(--bg);color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle}
   .pin.off .truck-img{opacity:.55;filter:grayscale(1)}
 
-  /* Resumen del recorrido reciente del camión seleccionado. */
-  .detail .trip{margin-top:9.2px;background:#fff;border-radius:12px;padding:10px 12px}
-  .detail .trip-h{display:flex;justify-content:space-between;font-size:11px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);margin-bottom:6.9px}
-  .detail .trip-st{display:grid;grid-template-columns:repeat(3,1fr);text-align:center}
-  .detail .trip-st b{display:block;font-size:16px;font-weight:600;color:var(--ink)}
-  .detail .trip-st span{font-size:11px;color:var(--muted)}
+  /* Resumen del recorrido reciente del camión seleccionado (histórico). */
   .detail .trip-none{font-size:12px;color:var(--muted);margin:0}
 
   @media (max-width:1265px){
@@ -141,8 +129,6 @@
     .content{padding:16px}
     .top{flex-wrap:wrap} .search{flex:1 1 100%}
     .mapcard{min-height:391px}
-    .bottom{grid-template-columns:1fr;height:auto} .bottom .card{height:219px}
-    .donuts{flex-wrap:wrap;gap:6.9px}
   }
 
   /* ===== Chrome unido (lateral + superior) con glass, estilo DeepSeek ===== */
@@ -331,13 +317,8 @@
   .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
   .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:97px;bottom:39px;width:var(--rp);gap:14px}
   .card{border-radius:28px}
-  .bottom{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;height:202px;gap:14px;transition:left .3s ease}
-  .dn{gap:6px}.dn svg{width:52px;height:52px}.dn .t{font-size:10.5px}.dn .t b{font-size:13px}.dn .pc{font-size:12px}
-  .detail,.detail .st,.detail .trip{background:var(--g-fill)}
   .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
   .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
-  .bar i{background:var(--g-fill2)}.bar:hover i,.bar.sel i{background:var(--green-l)}
-  .bars .limit span{background:transparent}.dn circle:first-child{stroke:var(--g-fill2)}
   .leaflet-top.leaflet-left{left:var(--lx);top:147px;transition:left .3s ease}.leaflet-left .leaflet-control{margin-left:0}
   .leaflet-bar,.leaflet-touch .leaflet-bar{border:1px solid var(--g-bd)!important;border-radius:18px;overflow:hidden}
   .leaflet-bar a{background:transparent;color:var(--ink);border-bottom:1px solid var(--g-bd);width:39px;height:39px;line-height:39px}
@@ -353,10 +334,10 @@
   @media (max-width:1265px){
     body{display:block;overflow:auto}.app{height:auto;min-height:100vh;display:block;padding:14px}
     .content,.grid,.grid>.col:first-child,.mapcard{display:block}
-    .side,.top,.bottom,.mapcard .card-h,.grid>.col:last-child{position:relative;inset:auto;width:auto;height:auto;margin:0 0 14px}
+    .side,.top,.detailcard,.mapcard .card-h,.grid>.col:last-child{position:relative;inset:auto;width:auto;height:auto;margin:0 0 14px}
     .grid>.col:last-child{display:flex}.side{flex-direction:row;padding:0}.side-in{height:auto;min-height:64px;flex-direction:row;padding:12px 16px;align-items:center}
     .logo{margin:0}.mapbox{position:relative;inset:auto;height:64vh;margin-bottom:14px;border-radius:28px}
-    .mapcard .card-h{display:inline-flex}.bottom{display:grid;grid-template-columns:1fr}.bottom .card{height:219px}
+    .mapcard .card-h{display:inline-flex}
     .leaflet-top.leaflet-left{left:0;top:0}.leaflet-bottom.leaflet-right{left:auto;right:0}
   }
   @media (max-width:640px){
@@ -385,22 +366,19 @@
     .leaflet-bar,.leaflet-control-attribution{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
     .leaflet-top.leaflet-left{left:auto;right:10px;top:10px}
     .leaflet-bottom.leaflet-right{left:auto;right:0;bottom:0}
-    .bottom,.grid>.col:last-child{display:none}
-    body[data-mobile-view="panel"] .bottom{display:grid;position:absolute;z-index:5;left:12px;right:12px;top:154px;bottom:82px;height:auto;overflow:auto;align-content:start;grid-template-columns:1fr;gap:12px}
-    body[data-mobile-view="panel"] .bottom .card{height:205px;padding:14px;border-radius:22px}
-    body[data-mobile-view="panel"] .grid>.col:last-child{display:block;position:absolute;z-index:5;left:12px;right:12px;top:calc(154px + 430px);bottom:82px;width:auto;overflow:auto}
-    body[data-mobile-view="panel"] .listcard{display:none}
+    .detailcard,.grid>.col:last-child{display:none}
+    body[data-mobile-view="panel"] .detailcard{display:block;position:absolute;z-index:5;left:12px;right:12px;top:154px;bottom:auto;height:260px;overflow:auto;padding:14px;border-radius:22px}
+    body[data-mobile-view="panel"] .detailcard .dc-body{grid-template-columns:minmax(0,1fr);gap:12px}
+    body[data-mobile-view="panel"] .grid>.col:last-child{display:block;position:absolute;z-index:5;left:12px;right:12px;top:calc(154px + 272px);bottom:82px;width:auto;overflow:auto}
     body[data-mobile-view="panel"] .grid>.col:last-child>.card{border-radius:22px}
     body[data-mobile-view="fleet"] .grid>.col:last-child{display:block;position:absolute;z-index:5;left:12px;right:12px;top:82px;bottom:82px;width:auto;overflow:auto}
     body[data-mobile-view="fleet"] .listcard{min-height:0;height:100%;border-radius:22px;overflow:hidden}
     body[data-mobile-view="fleet"] .grid>.col:last-child>.card:not(.listcard){display:none}
-    body[data-mobile-view="fleet"] .bottom{display:none}
+    body[data-mobile-view="fleet"] .detailcard{display:none}
     body[data-mobile-view="map"] .mapcard .card-h{position:absolute;left:12px;top:82px}
-    body[data-mobile-view="map"] .route-summary{left:12px;top:128px}
-    body[data-mobile-view="panel"] .route-summary,body[data-mobile-view="fleet"] .route-summary{display:none}
-    body[data-mobile-view="map"] .bottom,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
+    body[data-mobile-view="map"] .detailcard,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
   }
-  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.bottom,.section-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
+  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.section-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
   @media (min-width:641px){
     :root{
       --g-bg:rgba(255,255,255,.90);--g-solid:rgba(248,250,254,.97);
@@ -486,6 +464,34 @@
   @media (max-width:1265px){
     .app.app-section{background:#dfe8f6}
   }
+
+  /* ===== Panel de flota: tarjeta única, filtros y unidades como tarjetas ===== */
+  .listcard{padding:16px 14px 14px}
+  .listcard > *:not(ul){margin-left:0;margin-right:0}
+  .listcard .seg{margin-bottom:14px;padding:4px}
+  .listcard .seg button{padding:9px 8px;font-size:13px}
+  .listcard .seg button[aria-pressed="true"]{background:var(--g-solid);color:var(--ink);font-weight:600;box-shadow:0 2px 6px rgba(25,45,95,.10)}
+  .listcard .chips{gap:8px;margin-bottom:14px}
+  .listcard .chip{padding:7px 13px;font-size:12.5px;background:var(--g-fill)}
+  .listcard .chip[aria-pressed="true"]{background:var(--g-fill2);color:var(--ink);font-weight:600}
+  .listcard .sorts{gap:8px;margin-bottom:10px}
+  .listcard select{padding:9px 10px;border-radius:11px;background:var(--g-fill);border-color:transparent;font-size:12.5px}
+  .listcard .count{margin-bottom:10px;font-size:13px}
+  .listcard ul{display:grid;gap:9px;align-content:start;padding:0;overflow:auto;border:0}
+  .listcard li button{
+    all:unset;box-sizing:border-box;display:grid;width:100%;
+    grid-template-columns:10px minmax(0,1fr) auto;gap:1px 12px;align-items:center;
+    padding:12px 14px;border-radius:14px;background:var(--g-fill);cursor:pointer;
+  }
+  .listcard li button:hover{background:var(--g-fill2)}
+  .listcard li.sel button{background:rgba(90,126,230,.16);box-shadow:none}
+  .listcard li button:focus-visible{outline:2.3px solid var(--green);outline-offset:-2.3px}
+  .listcard .dot{width:10px;height:10px;grid-row:1;box-shadow:0 0 0 2px rgba(255,255,255,.65)}
+  .listcard .nm{grid-column:2;font-size:14px;font-weight:600}
+  .listcard .sb{grid-column:2;font-size:12px}
+  .listcard .sp{grid-column:3;grid-row:1 / span 2;font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap}
+  .listcard .sp small{font-size:11px;font-weight:400;color:var(--muted)}
+  .listcard .empty{padding:18px 4px;text-align:center}
 
   /* ===== Sección Rutas: viajes y formulario de alta ===== */
   .section-page.solo{grid-template-columns:minmax(0,1fr)}

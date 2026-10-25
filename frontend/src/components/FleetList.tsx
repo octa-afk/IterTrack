@@ -100,16 +100,14 @@ export function FleetList() {
                 {!truck.active && <span className="badge-off">Inactivo</span>}
               </span>
               <span className="sp">
-                {truck.speed}
+                {truck.active && truck.status !== 'stop' ? truck.speed : '—'}
                 <small> km/h</small>
               </span>
               <span className="sb">
-                {[truck.driver, truck.updated ? ago(truck.updated) : 'Sin señal']
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-              <span className={'fu' + (truck.fuel != null && truck.fuel < 25 ? ' low' : '')}>
-                {truck.fuel != null ? `${truck.fuel}% comb.` : '—'}
+                {[
+                  truck.active ? STATUS[truck.status].label : 'Apagado',
+                  truck.updated ? ago(truck.updated) : 'Sin señal',
+                ].join(' · ')}
               </span>
             </button>
           </li>

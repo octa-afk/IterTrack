@@ -132,6 +132,6 @@ SPA en **React 19 + TypeScript + Vite**, compilada a `frontend/dist` y servida p
 * **Mapa en vivo (`src/components/MapView.tsx`):** reconciliación de marcadores por camión y `flyTo` al seleccionar una unidad.
 * **Orientación cenital (`src/lib/truckIcon.ts`):** ícono SVG del camión con faros y flecha de rumbo que rota con `transform: rotate(var(--heading))` según el *bearing*.
 * **Movimiento (`src/lib/movement.ts`):** interpolación entre la posición anterior y la nueva con `requestAnimationFrame` para que el camión no salte entre pings.
-* **Panel de telemetría (`TruckDetail`):** velocidad, rumbo, punto cardinal y último punto conocido.
-* **Tarjetas inferiores (`SpeedBars`, `FleetDonuts`, `BottomCards`):** distribución de velocidades y estado de la flota.
+* **Panel de flota (`FleetList`):** tarjeta única con segmento "Toda la flota / Solo alertas", filtros por estado, orden y una tarjeta por unidad (patente, estado, última señal y velocidad).
+* **Panel del camión actual (`TruckDetail`):** flota abajo a la izquierda sobre el mapa; encabezado con patente y estado, grilla 2x2 (velocidad, combustible, chofer, rumbo) y, a la derecha, la próxima parada con la distancia y el tiempo estimado (`useNextStop`) más el historial de velocidad.
 * **Estado (`src/state/DashboardProvider.tsx`):** guard de sesión contra `/auth/me`, polling cada 3 s (`POLL_MS`) y carga del historial (`/trucks/{id}/iter`) al seleccionar un camión.
