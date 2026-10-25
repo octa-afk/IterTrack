@@ -11,6 +11,7 @@ from .destination import (
     StopResponse,
     TripCreate,
     TripResponse,
+    TripRouteResponse,
 )
 from .device import (
     DeviceAssignmentInfo,
@@ -44,6 +45,7 @@ __all__ = [
     "Token",
     "TripCreate",
     "TripResponse",
+    "TripRouteResponse",
     "Truck",
     "UserCreate",
     "UserResponse",

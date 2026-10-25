@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     geocoder_provider: str = "none"
     geocoder_url: str = "https://nominatim.openstreetmap.org"
     geocoder_user_agent: str = "IterTrack/1.0 (fleet telemetry; contacto@itertrack.local)"
+
+    # Ruteo por calles entre la posición del camión y las paradas del viaje.
+    # `none` deja el mapa con la línea recta entre destinos. Valores: none | osrm.
+    # `routing_url` acepta una instancia propia: el servidor público de OSRM es
+    # solo para la demo.
+    routing_provider: str = "none"
+    routing_url: str = "https://router.project-osrm.org"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @field_validator("database_url")
