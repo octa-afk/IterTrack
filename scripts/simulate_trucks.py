@@ -259,7 +259,7 @@ def espera_y_velocidad(
 
 
 def espera_hacia_el_siguiente(
-    ruta, indice: int, intervalo_minimo: float, objetivo_kmh: float
+    ruta, indice: int, intervalo_minimo: float, objetivo_kmh: float, bucle: bool = True
 ) -> float:
     """Segundos a esperar después de emitir el punto `indice`.
 
@@ -269,9 +269,12 @@ def espera_hacia_el_siguiente(
     del anterior y un tramo de 160 m precedido por uno de 20 m se recorre en
     2 s (≈290 km/h), que es justo lo que este cálculo evita.
 
-    El circuito se recorre en bucle, así que el último punto enlaza con el
-    primero.
+    Con `bucle=True` el circuito se recorre en bucle y el último punto enlaza
+    con el primero. Una ruta de OSRM es de ida: al llegar al destino no hay
+    tramo siguiente que esperar.
     """
+    if not bucle and indice >= len(ruta) - 1:
+        return 0.0
     actual = ruta[indice]
     siguiente = ruta[(indice + 1) % len(ruta)]
     dist = calcular_distancia_metros(actual[0], actual[1], siguiente[0], siguiente[1])
@@ -332,6 +335,94 @@ def limpiar_recorrido(truck_id: int, headers=None):
             print(f"⚠️ No se pudo borrar el recorrido: {response.status_code}")
     except requests.RequestException as e:
         print(f"⚠️ Error al borrar recorrido: {e}")
+
+def reiniciar_viaje(truck_id: int, headers=None):
+    """Deja el viaje abierto del camión sin paradas hechas, para la corrida nueva.
+
+    Sin esto el camión arranca en la parada 1 con las paradas 2 y 3 marcadas de
+    la corrida anterior, y la ruta se dibuja hacia la última. Al reiniciar la
+    simulación el recorrido es nuevo: el progreso del viaje también.
+    """
+    auth = HEADERS if headers is None else headers
+    try:
+        listado = requests.get(
+            f"{_api_root(BASE_URL)}/trips",
+            params={"truck_id": truck_id},
+            headers=auth,
+            timeout=5,
+        )
+        if listado.status_code != 200:
+            print(
+                f"⚠️ No se pudieron listar los viajes del camión #{truck_id}: "
+                f"{listado.status_code}"
+            )
+            return
+        abiertos = [
+            viaje
+            for viaje in listado.json()
+            if viaje.get("status") in ("planned", "in_progress")
+        ]
+        if not abiertos:
+            return
+        viaje = abiertos[0]
+        response = requests.post(
+            f"{_api_root(BASE_URL)}/trips/{viaje['id']}/reset",
+            headers=auth,
+            timeout=5,
+        )
+        if response.status_code == 200:
+            print(
+                f"🔄 Viaje #{viaje['id']} del camión #{truck_id} reiniciado: "
+                "todas las paradas quedaron pendientes."
+            )
+        else:
+            print(
+                f"⚠️ No se pudo reiniciar el viaje #{viaje['id']}: "
+                f"{response.status_code}"
+            )
+    except requests.RequestException as e:
+        print(f"⚠️ Error al reiniciar el viaje del camión #{truck_id}: {e}")
+
+
+def tramo_del_viaje(truck_id: int, headers=None) -> list[list[float]] | None:
+    """Ruta por calles hasta la próxima parada del viaje abierto del camión.
+
+    Es la misma que dibuja el mapa: si el camión la sigue, el trayecto real y la
+    ruta coinciden y cada parada se cumple en orden. Devuelve `None` cuando no
+    hay viaje abierto, no hay proveedor de ruteo o la API no responde; en ese
+    caso el llamador sigue con el circuito fijo.
+    """
+    auth = HEADERS if headers is None else headers
+    try:
+        listado = requests.get(
+            f"{_api_root(BASE_URL)}/trips",
+            params={"truck_id": truck_id},
+            headers=auth,
+            timeout=5,
+        )
+        if listado.status_code != 200:
+            return None
+        abiertos = [
+            viaje
+            for viaje in listado.json()
+            if viaje.get("status") in ("planned", "in_progress")
+        ]
+        if not abiertos:
+            return None
+        viaje = abiertos[0]
+        respuesta = requests.get(
+            f"{_api_root(BASE_URL)}/trips/{viaje['id']}/route",
+            headers=auth,
+            timeout=20,
+        )
+        if respuesta.status_code != 200:
+            return None
+        geometry = respuesta.json().get("geometry") or []
+        puntos = [[float(lat), float(lng)] for lat, lng in geometry]
+        return puntos if len(puntos) > 1 else None
+    except (requests.RequestException, TypeError, ValueError):
+        return None
+
 
 def listar_dispositivos(headers=None):
     """Return the devices visible to the caller, or None when the request fails."""
@@ -592,7 +683,6 @@ def simular_ruta(
     intervalo: float,
     stop_event: StopSignal | None = None,
     phase_offset: int = 0,
-    clear_history_on_start: bool = False,
     admin_headers=None,
     sender=None,
     objetivo_kmh: float = 55.0,
@@ -621,29 +711,31 @@ def simular_ruta(
     if stop_event is None:
         stop_event = Event()
 
-    # El registro y la limpieza son operaciones de administración.
-    registration_headers = admin_headers
+    ultimo: list[float] | None = None
 
-    # Registrar el camión si aún no existe. Sin punto inicial: la primera
-    # ubicación la reporta el propio dispositivo en la primera vuelta.
-    registrar_camion(truck_id, plate, headers=registration_headers)
-    if clear_history_on_start:
-        limpiar_recorrido(truck_id, headers=registration_headers)
-
-    vuelta = 1
-    while not stop_event.is_set():
-        print(f"\n--- 🔄 Iniciando Vuelta #{vuelta} del circuito ---")
-        for i, (lat, lon) in enumerate(ruta):
+    def recorrer(puntos: list[list[float]], bucle: bool) -> None:
+        """Emite un tramo punto por punto, con la espera del tramo siguiente."""
+        nonlocal ultimo
+        total = len(puntos)
+        for i, (lat, lon) in enumerate(puntos):
             if stop_event.is_set():
-                break
-            # Rumbo y velocidad del tramo recorrido hasta este punto.
-            if i > 0:
-                prev_lat, prev_lon = ruta[i - 1]
-                dist = calcular_distancia_metros(prev_lat, prev_lon, lat, lon)
-                rumbo = calcular_rumbo(prev_lat, prev_lon, lat, lon)
+                return
+            referencia = puntos[i - 1] if i > 0 else ultimo
+            dist = 0.0
+            if referencia is not None:
+                dist = calcular_distancia_metros(
+                    referencia[0], referencia[1], lat, lon
+                )
+            if referencia is not None and dist >= 1:
+                rumbo = calcular_rumbo(referencia[0], referencia[1], lat, lon)
                 cardinal = punto_cardinal(rumbo)
-                _, velocidad_kmh = espera_y_velocidad(dist, intervalo, objetivo_kmh)
-                telemetria_str = f"| Rumbo: {rumbo:5.1f}° {cardinal:2} | Vel: {velocidad_kmh:4.1f} km/h | Tramo: {dist:4.1f}m"
+                _, velocidad_kmh = espera_y_velocidad(
+                    dist, intervalo, objetivo_kmh
+                )
+                telemetria_str = (
+                    f"| Rumbo: {rumbo:5.1f}° {cardinal:2}"
+                    f" | Vel: {velocidad_kmh:4.1f} km/h | Tramo: {dist:4.1f}m"
+                )
             else:
                 rumbo = 0
                 velocidad_kmh = 0
@@ -651,16 +743,37 @@ def simular_ruta(
 
             # La espera es la del tramo que viene: el camión tarda en llegar al
             # próximo punto, no en llegar al que acaba de reportar.
-            espera = espera_hacia_el_siguiente(ruta, i, intervalo, objetivo_kmh)
+            espera = espera_hacia_el_siguiente(
+                puntos, i, intervalo, objetivo_kmh, bucle=bucle
+            )
 
             # Hora de medición: el instante en que el simulador toma la lectura, no el envío.
             medido_en = datetime.now(UTC)
             ok = sender(lat, lon, velocidad_kmh, rumbo, medido_en)
             status = "🟢 OK" if ok else "🔴 FAIL"
 
-            print(f"[{i + 1:3}/{total_puntos}] {status} | Lat: {lat:10.6f}, Long: {lon:10.6f} {telemetria_str}")
+            print(
+                f"[{i + 1:3}/{total}] {status} | Lat: {lat:10.6f}, Long: {lon:10.6f} "
+                f"{telemetria_str}"
+            )
+            ultimo = [lat, lon]
             stop_event.wait(espera)
 
+    vuelta = 1
+    while not stop_event.is_set():
+        # Primero la ruta del viaje: es la que el mapa dibuja y la que pasa por
+        # las paradas en orden. El circuito queda como respaldo para cuando no
+        # hay viaje abierto (o no hay proveedor de ruteo configurado).
+        tramo = tramo_del_viaje(truck_id, admin_headers) if admin_headers else None
+        if tramo is not None:
+            print(
+                f"\n--- 🧭 Camión #{truck_id}: siguiendo la ruta OSRM hasta la "
+                f"próxima parada ({len(tramo)} puntos) ---"
+            )
+            recorrer(tramo, bucle=False)
+            continue
+        print(f"\n--- 🔄 Iniciando Vuelta #{vuelta} del circuito ---")
+        recorrer(ruta, bucle=True)
         vuelta += 1
 
 
@@ -697,6 +810,9 @@ def ejecutar_simulaciones(
         token = preparar_dispositivo(config.truck_id, admin_headers, force=force)
         if token is None:
             continue
+        if not keep_history:
+            limpiar_recorrido(config.truck_id, headers=admin_headers)
+            reiniciar_viaje(config.truck_id, headers=admin_headers)
         trabajos.append(
             (
                 config,
@@ -726,7 +842,6 @@ def ejecutar_simulaciones(
             intervalo,
             stop_event,
             config.route_offset,
-            clear_history_on_start=not keep_history,
             route_file=config.route_file,
             admin_headers=admin_headers,
             sender=sender,
