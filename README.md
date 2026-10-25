@@ -569,7 +569,7 @@ Las contraseñas están en [`deploy/.env.example`](./deploy/.env.example). Son p
 
 Qué mirar: los tres camiones de `Demo Corp` recorren cada uno su propio circuito por Córdoba a 55 km/h, con rumbo real, su recorrido en azul cósmico y el círculo que marca dónde empezó la corrida. El `org_admin` de la demo no puede crear organizaciones (`403`) ni ver otra empresa (`404`, para no revelar que existe).
 
-La invitación de `Demo Corp` nace revocada: la demo se entra por el botón, no por registro, y así nadie crea cuentas que sobrevivan a los resets. Los datos se rebarrer cada 24 h con `env/bin/python -m scripts.seed_demo --reset`, que nunca toca la cuenta de plataforma ni otras organizaciones.
+La invitación de `Demo Corp` nace revocada: la demo se entra por el botón, no por registro, y así nadie crea cuentas que sobrevivan a los resets. Los datos se rebarrer cada 24 h con `env/bin/python -m scripts.seed_demo --reset`, que nunca toca la cuenta de plataforma ni otras organizaciones. Además, un cron cada 15 minutos corre `scripts.seed_demo --renew`, que abre un viaje nuevo para cada camión que quedó libre: el progreso automático cierra los viajes de la demo en unos 11 minutos, y sin esto la sección Rutas se quedaría sin nada en curso.
 
 ---
 

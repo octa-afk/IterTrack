@@ -9,7 +9,7 @@ from scripts.bootstrap_platform import (
     PlatformBootstrapConfig,
     bootstrap_platform,
 )
-from scripts.seed_demo import DemoSeedConfig, SeedError, seed_demo
+from scripts.seed_demo import DemoSeedConfig, SeedError, renew_demo_trips, seed_demo
 from scripts.simulate_trucks import calcular_distancia_metros
 from source.models.destination import Trip
 from source.models.device import Device, DeviceAssignment
@@ -273,3 +273,62 @@ def test_seed_leaves_the_demo_invitation_closed(db_session):
     organization = db_session.get(Organization, result.organization_id)
 
     assert organization.invitation_active is False
+
+
+def test_renew_opens_a_trip_for_the_truck_that_finished(db_session):
+    """La demo se queda sin viaje cuando el camión termina: --renew lo repone."""
+    seed_demo(db_session, demo_config())
+    finished = (
+        db_session.query(Trip)
+        .filter(Trip.external_ref == "DEMO-003")
+        .one()
+    )
+    assert finished.status == "done"
+    paradas = [(stop.seq, stop.lat, stop.lng) for stop in finished.stops]
+
+    result = renew_demo_trips(db_session, demo_config())
+
+    assert result.renewed == [(3, "DEMO-004")]
+    assert result.skipped == 2
+    nueva = db_session.query(Trip).filter(Trip.external_ref == "DEMO-004").one()
+    assert nueva.truck_id == 3
+    assert nueva.status == "planned"
+    assert nueva.charger_id == finished.charger_id
+    assert [(s.seq, s.lat, s.lng) for s in nueva.stops] == paradas
+    assert all(stop.status == "pending" for stop in nueva.stops)
+
+
+def test_renew_is_idempotent(db_session):
+    seed_demo(db_session, demo_config())
+    first = renew_demo_trips(db_session, demo_config())
+    second = renew_demo_trips(db_session, demo_config())
+
+    assert len(first.renewed) == 1
+    assert second.renewed == []
+    assert second.skipped == 3
+
+
+def test_renew_does_not_touch_a_truck_with_an_open_trip(db_session):
+    seed_demo(db_session, demo_config())
+
+    renew_demo_trips(db_session, demo_config())
+
+    truck_1 = db_session.query(Trip).filter(Trip.truck_id == 1).all()
+    assert [trip.external_ref for trip in truck_1] == ["DEMO-001"]
+    assert truck_1[0].status == "in_progress"
+
+
+def test_renew_requires_the_demo_tenant(db_session):
+    with pytest.raises(SeedError):
+        renew_demo_trips(db_session, demo_config())
+
+
+def test_a_seeded_done_trip_has_its_stops_delivered(db_session):
+    """"Finalizado" con tres destinos pendientes es una contradicción en la base."""
+    seed_demo(db_session, demo_config())
+
+    done = db_session.query(Trip).filter(Trip.external_ref == "DEMO-003").one()
+
+    assert all(stop.status == "delivered" for stop in done.stops)
+    assert all(stop.arrived_at is not None for stop in done.stops)
+    assert all(stop.departed_at is not None for stop in done.stops)
