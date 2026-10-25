@@ -13,7 +13,7 @@ from math import asin, cos, radians, sin, sqrt
 
 from sqlalchemy.orm import Session
 
-from source.models.destination import Depot, Trip
+from source.models.destination import Depot, Trip, TripStop
 
 OPEN_TRIP_STATUSES = ("planned", "in_progress")
 # Un destino es una dirección, no un punto: 120 m cubre la vereda de enfrente, el
@@ -54,26 +54,40 @@ def _start_at_depot(db: Session, trip: Trip, lat: float, lng: float) -> None:
         trip.status = "in_progress"
 
 
+def _next_pending_stop(trip: Trip) -> TripStop | None:
+    """La parada que toca: la primera por orden que no está entregada.
+
+    El viaje es secuencial. Si el camión pasa cerca de la parada 3 antes de
+    llegar a la 1, no se marca nada: darla por hecha desordenaría el recorrido
+    que el dador de carga pactó.
+    """
+    for stop in trip.stops:
+        if stop.status in ("pending", "arrived"):
+            return stop
+    return None
+
+
 def _advance_stops(trip: Trip, lat: float, lng: float, measured_at: datetime) -> None:
     """Marca llegada al entrar al radio y entrega al salir.
 
-    Un destino sin coordenada no se puede confirmar: se saltea y deja el viaje
-    abierto, porque darlo por entregado sería inventar la entrega.
+    Sólo se evalúa la próxima parada del orden. Un destino sin coordenada no se
+    puede confirmar: se saltea y deja el viaje abierto, porque darlo por
+    entregado sería inventar la entrega.
     """
-    for stop in trip.stops:
-        if stop.lat is None or stop.lng is None:
-            continue
-        distance = distance_m(lat, lng, stop.lat, stop.lng)
-        if stop.status == "pending" and distance <= STOP_RADIUS_M:
-            stop.status = "arrived"
-            stop.arrived_at = measured_at
-            # Si no hay depósito —o el camión no pasó por él— llegar a la primera
-            # parada también significa que el viaje arrancó.
-            if trip.status == "planned":
-                trip.status = "in_progress"
-        elif stop.status == "arrived" and distance > STOP_RADIUS_M:
-            stop.status = "delivered"
-            stop.departed_at = measured_at
+    stop = _next_pending_stop(trip)
+    if stop is None or stop.lat is None or stop.lng is None:
+        return
+    distance = distance_m(lat, lng, stop.lat, stop.lng)
+    if stop.status == "pending" and distance <= STOP_RADIUS_M:
+        stop.status = "arrived"
+        stop.arrived_at = measured_at
+        # Si no hay depósito —o el camión no pasó por él— llegar a la primera
+        # parada también significa que el viaje arrancó.
+        if trip.status == "planned":
+            trip.status = "in_progress"
+    elif stop.status == "arrived" and distance > STOP_RADIUS_M:
+        stop.status = "delivered"
+        stop.departed_at = measured_at
 
 
 def _finish_if_complete(trip: Trip) -> None:

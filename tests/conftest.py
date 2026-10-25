@@ -3,6 +3,10 @@ import os
 # Provide required settings before importing the app so tests run without a .env
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-0123456789abcdef0123456789")
+# Los proveedores externos se apagan salvo que el entorno diga lo contrario: un
+# `.env` local con `ROUTING_PROVIDER=osrm` haría que los tests salgan a la red.
+os.environ.setdefault("ROUTING_PROVIDER", "none")
+os.environ.setdefault("GEOCODER_PROVIDER", "none")
 
 import pytest
 from fastapi.testclient import TestClient

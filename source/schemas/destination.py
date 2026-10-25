@@ -115,3 +115,21 @@ class StopCoordinates(BaseModel):
 
     lat: float = Field(..., ge=-90, le=90)
     lng: float = Field(..., ge=-180, le=180)
+
+
+class TripRouteResponse(BaseModel):
+    """Ruta por calles hasta la próxima parada del viaje.
+
+    `geometry` va en pares [lat, lng] y en orden de recorrido: el mapa dibuja
+    exactamente lo que recibe, sin reinterpretar el formato de OSRM. `stop_id` y
+    `stop_seq` identifican el destino: el viaje es secuencial y sólo se dibuja
+    el tramo que falta hasta la parada que toca.
+    """
+
+    trip_id: int
+    stop_id: int
+    stop_seq: int
+    provider: str
+    distance_m: float
+    duration_s: float
+    geometry: list[list[float]]

@@ -16,6 +16,8 @@ from source import models, schemas
 from source.database.database import get_db
 from source.services.auth import get_current_user, require_org_admin
 from source.services.geocoding import Geocoder, get_geocoder, normalize_address
+from source.services.routing import Router, get_router
+from source.services.tracking import MEASUREMENT_ORDER
 
 router = APIRouter(prefix="/chargers", tags=["chargers"])
 depots_router = APIRouter(prefix="/depots", tags=["depots"])
@@ -118,6 +120,30 @@ def _get_trip(db: Session, organization_id: int, trip_id: int) -> models.Trip:
     return trip
 
 
+def _trip_origin(
+    db: Session, trip: models.Trip
+) -> tuple[float, float] | None:
+    """Desde dónde se calcula la ruta: el camión, o el depósito si no reportó.
+
+    La posición medida manda sobre la planificada: en un viaje en curso la ruta
+    útil arranca donde está el camión, no donde salió.
+    """
+    if trip.truck_id is not None:
+        point = (
+            db.query(models.TrackingPoint)
+            .filter(models.TrackingPoint.truck_id == trip.truck_id)
+            .order_by(*MEASUREMENT_ORDER)
+            .first()
+        )
+        if point is not None:
+            return (point.lat, point.long)
+    if trip.depot_id is not None:
+        depot = db.get(models.Depot, trip.depot_id)
+        if depot is not None:
+            return (depot.lat, depot.lng)
+    return None
+
+
 @router.get("", response_model=list[schemas.ChargerResponse])
 def list_chargers(
     db: Session = Depends(get_db),
@@ -199,6 +225,10 @@ def create_depot(
 
 
 OPEN_TRIP_STATUSES = ("planned", "in_progress")
+# Destino de la ruta: la próxima parada sin llegar. Una parada ya alcanzada
+# (`arrived`) no se vuelve a pedir: el camión ya está en su radio y lo que sigue
+# es la siguiente.
+ROUTE_TARGET_STATUS = "pending"
 
 
 @trips_router.get("/available-trucks")
@@ -394,6 +424,98 @@ def get_trip(
     current_user: models.User = Depends(get_current_user),
 ):
     return _get_trip(db, current_user.organization_id, trip_id)
+
+
+@trips_router.post("/{trip_id}/reset", response_model=schemas.TripResponse)
+def reset_trip(
+    trip_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_org_admin),
+):
+    """Vuelve el viaje a cero: planificado y con todas las paradas pendientes.
+
+    Lo usan la demo y la operación cuando el camión arranca un recorrido nuevo:
+    las entregas de la corrida anterior no cuentan para la nueva. No borra el
+    viaje ni sus destinos, sólo su progreso.
+    """
+    trip = _get_trip(db, current_user.organization_id, trip_id)
+    trip.status = "planned"
+    for stop in trip.stops:
+        stop.status = "pending"
+        stop.arrived_at = None
+        stop.departed_at = None
+    db.commit()
+    db.refresh(trip)
+    return trip
+
+
+@trips_router.get("/{trip_id}/route", response_model=schemas.TripRouteResponse)
+def get_trip_route(
+    trip_id: int,
+    db: Session = Depends(get_db),
+    router: Router = Depends(get_router),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Ruta por calles desde el camión hasta la próxima parada del viaje.
+
+    Es de lectura y por eso la puede pedir un `member`: ver el recorrido no
+    cambia nada. Se dibuja **sólo el tramo hasta la parada que toca**, en orden:
+    el viaje es secuencial y mostrar el atajo a una parada posterior haría creer
+    que se salteó una. Si el proveedor no está configurado o falla, el mapa
+    vuelve a la línea recta entre destinos; nunca se inventa una geometría.
+    """
+    trip = _get_trip(db, current_user.organization_id, trip_id)
+
+    origin = _trip_origin(db, trip)
+    if origin is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "El viaje no tiene origen: el camión no reportó posición y no "
+                "hay depósito asignado"
+            ),
+        )
+
+    next_stop: models.TripStop | None = None
+    destination: tuple[float, float] | None = None
+    for stop in trip.stops:
+        if (
+            stop.status == ROUTE_TARGET_STATUS
+            and stop.lat is not None
+            and stop.lng is not None
+        ):
+            next_stop = stop
+            destination = (stop.lat, stop.lng)
+            break
+
+    if next_stop is None or destination is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El viaje no tiene paradas pendientes con coordenada",
+        )
+
+    if router.name == "none":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="El ruteo no está configurado (ROUTING_PROVIDER)",
+        )
+
+    result = router.route([origin, destination])
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo calcular la ruta con el proveedor de ruteo",
+        )
+
+    return {
+        "trip_id": trip.id,
+        "stop_id": next_stop.id,
+        "stop_seq": next_stop.seq,
+        "provider": result.provider,
+        "distance_m": result.distance_m,
+        "duration_s": result.duration_s,
+        "geometry": [[lat, lng] for lat, lng in result.points],
+    }
 
 
 @trips_router.patch(

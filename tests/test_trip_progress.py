@@ -114,6 +114,30 @@ def test_the_trip_is_done_when_every_stop_is_delivered(
     assert trip.status == "done"
 
 
+def test_a_later_stop_is_not_delivered_before_the_next_one_in_order(
+    db_session, test_org, test_truck
+):
+    """El viaje es secuencial: pasar cerca de la 2 no reemplaza llegar a la 1."""
+    parada1 = (-31.4200, -64.1800)
+    parada2 = (-31.4100, -64.1800)
+    parada3 = (-31.4000, -64.1800)
+    trip = _trip(db_session, test_org, test_truck, stops=[parada1, parada2, parada3])
+
+    _advance(db_session, test_truck, parada2)
+
+    assert [stop.status for stop in trip.stops] == ["pending", "pending", "pending"]
+
+    _advance(db_session, test_truck, parada1)
+    assert trip.stops[0].status == "arrived"
+
+    _advance(db_session, test_truck, FAR)
+    assert trip.stops[0].status == "delivered"
+
+    _advance(db_session, test_truck, parada2)
+    assert trip.stops[1].status == "arrived"
+    assert trip.stops[2].status == "pending"
+
+
 def test_a_stop_without_coordinates_keeps_the_trip_open(
     db_session, test_org, test_truck
 ):
