@@ -25,6 +25,7 @@ from source.schemas.device import (
 )
 from source.schemas.ingestion import DeviceIngestBatch, DeviceIngestPoint
 from source.services.auth import require_org_admin, require_org_admin_or_platform
+from source.services.trip_progress import advance_trip_progress
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 device_bearer = HTTPBearer(auto_error=False)
@@ -332,6 +333,15 @@ def ingest_device_batch(
                         heading=point.heading, recorded_at=point.recorded_at,
                     ))
                     db.flush()
+                    # El viaje lo mueve el camión: cada punto aceptado puede
+                    # marcar salida, llegada o entrega.
+                    advance_trip_progress(
+                        db,
+                        truck_id=truck.id,
+                        lat=point.lat,
+                        lng=point.long,
+                        measured_at=point.recorded_at,
+                    )
                 results.append({"sequence": point.sequence, "status": "accepted", "replayed": False})
                 continue
             except IntegrityError:

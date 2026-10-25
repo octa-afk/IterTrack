@@ -119,9 +119,10 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * El pin manual (`PATCH /trips/{id}/stops/{stop_id}`) resuelve el destino y **escribe la caché** con `resolved_by_user_id`.
    * El proveedor vive detrás de la interfaz `Geocoder` (`source/services/geocoding.py`), inyectada con `Depends(get_geocoder)`. `GEOCODER_PROVIDER` acepta `none` (default, no llama a nadie) y `nominatim`. Los tests siempre la sobrescriben y nunca salen a la red.
    * `trips.departure_at` es `datetime` con zona (no una fecha): "salir a las 07:30" no entra en un `date` y sin zona la salida se corre tres horas.
-   * `depots` guarda nombre, lat/lng y `radius_m`. La elegibilidad **no** usa el radio todavía: un camión está disponible si está activo y no tiene viaje en `planned`/`in_progress` (`GET /trips/available-trucks`). El radio queda para cuando exista detección de llegada.
+   * `depots` guarda nombre, lat/lng y `radius_m`. La **elegibilidad** de un camión no usa el radio: está disponible si está activo y no tiene viaje en `planned`/`in_progress` (`GET /trips/available-trucks`). El radio del depósito sí se usa para detectar la llegada (ver progreso automático).
    * Lecturas con `get_current_user` y scoping por organización; escrituras con `require_org_admin`. Así `member` puede ver viajes pero no crearlos, y la sección Rutas le oculta el formulario.
    * La instancia pública de Nominatim no sirve en producción: 1 request/segundo y 4 por minuto para scripts periódicos. El análisis y las alternativas están en `odd/tasks/destinations.md`.
+   * **Progreso automático (`source/services/trip_progress.py`):** cada punto aceptado por la ingesta mueve el viaje abierto del camión. Entrar al radio del depósito (`depots.radius_m`) lo pasa a `in_progress`; entrar a 120 m de una parada la marca `arrived` y salir la marca `delivered`; cuando todas están `delivered` el viaje queda `done`. Una parada sin coordenada se saltea y mantiene el viaje abierto. La transacción es del llamador: el módulo no hace commit.
 
 ---
 

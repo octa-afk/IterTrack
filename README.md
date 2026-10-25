@@ -393,6 +393,13 @@ dirección no vuelve a consultar al proveedor. Si el proveedor no la encuentra
 `GET /destinations/pending` y se resuelve con un pin manual, que a su vez
 alimenta la caché.
 
+El estado del viaje lo mueve el camión. Cada punto aceptado por la ingesta mira
+la distancia a las paradas y al depósito: entrar al radio del depósito pone el
+viaje en curso, entrar a 120 m de una parada la marca como llegada y salir la da
+por entregada. Cuando están todas entregadas, el viaje pasa a finalizado. Una
+parada sin ubicar se saltea: no se puede confirmar una entrega en un lugar que no
+sabemos dónde está, así que el viaje queda abierto.
+
 El proveedor de geocoding está detrás de la interfaz `Geocoder` (inyectada con
 `Depends`) y se elige por `GEOCODER_PROVIDER` (`none` | `nominatim`). El default
 es `none`: no se llama a ningún servicio externo y todo destino queda pendiente.
