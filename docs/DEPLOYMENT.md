@@ -191,8 +191,10 @@ Para automatizarlo, un cron del host cada 24 h con el mismo comando. Es necesari
 
 El progreso automático cierra los viajes de la demo en unos 11 minutos de
 simulación: las tres paradas están en el mismo circuito que el camión recorre
-completo. Este comando abre un viaje nuevo para cada camión que quedó libre,
-clonando su último viaje de demo, y no toca nada más del tenant:
+completo. Este comando **reinicia el mismo viaje** (`DEMO-001/002/003`) de cada
+camión que terminó —vuelve a `planned` con las paradas pendientes— y no toca nada
+más del tenant. No crea filas nuevas: con un cron cada 15 minutos, clonar dejaría
+cientos de viajes por día en la lista de Rutas:
 
 ```bash
 docker compose exec -T web python -m scripts.seed_demo --renew

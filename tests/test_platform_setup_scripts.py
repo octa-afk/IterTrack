@@ -275,27 +275,24 @@ def test_seed_leaves_the_demo_invitation_closed(db_session):
     assert organization.invitation_active is False
 
 
-def test_renew_opens_a_trip_for_the_truck_that_finished(db_session):
-    """La demo se queda sin viaje cuando el camión termina: --renew lo repone."""
+def test_renew_restarts_the_same_trip_of_the_truck_that_finished(db_session):
+    """Se reusa el viaje: con un cron cada 15 min, clonar llenaría Rutas de filas."""
     seed_demo(db_session, demo_config())
-    finished = (
-        db_session.query(Trip)
-        .filter(Trip.external_ref == "DEMO-003")
-        .one()
-    )
+    finished = db_session.query(Trip).filter(Trip.external_ref == "DEMO-003").one()
     assert finished.status == "done"
+    trip_id = finished.id
     paradas = [(stop.seq, stop.lat, stop.lng) for stop in finished.stops]
 
     result = renew_demo_trips(db_session, demo_config())
 
-    assert result.renewed == [(3, "DEMO-004")]
+    assert result.renewed == [(3, "DEMO-003")]
     assert result.skipped == 2
-    nueva = db_session.query(Trip).filter(Trip.external_ref == "DEMO-004").one()
-    assert nueva.truck_id == 3
-    assert nueva.status == "planned"
-    assert nueva.charger_id == finished.charger_id
-    assert [(s.seq, s.lat, s.lng) for s in nueva.stops] == paradas
-    assert all(stop.status == "pending" for stop in nueva.stops)
+    assert db_session.query(Trip).count() == 3
+    reiniciado = db_session.get(Trip, trip_id)
+    assert reiniciado.status == "planned"
+    assert [(s.seq, s.lat, s.lng) for s in reiniciado.stops] == paradas
+    assert all(stop.status == "pending" for stop in reiniciado.stops)
+    assert all(stop.arrived_at is None for stop in reiniciado.stops)
 
 
 def test_renew_is_idempotent(db_session):
@@ -306,6 +303,7 @@ def test_renew_is_idempotent(db_session):
     assert len(first.renewed) == 1
     assert second.renewed == []
     assert second.skipped == 3
+    assert db_session.query(Trip).count() == 3
 
 
 def test_renew_does_not_touch_a_truck_with_an_open_trip(db_session):
