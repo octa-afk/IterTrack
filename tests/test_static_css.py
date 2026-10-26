@@ -38,6 +38,28 @@ def test_pin_geometry_and_heading_rotation():
 
 
 @requires_build
+def test_stop_pins_are_neutral_and_only_the_target_pulses():
+    """Las paradas del viaje son negras; el destino se distingue por el halo.
+
+    El color de las paradas competía con la ruta azul: se retiró el rojo de las
+    pendientes y el gris de las entregadas (queda sólo la opacidad). La parada a
+    la que va el camión lleva `target`, con un halo animado que se apaga con
+    `prefers-reduced-motion`.
+    """
+    text = built_css()
+    pin = re.search(r"\.stop-pin\{([^}]*)\}", text)
+    assert pin and "background:#1f2a3d" in pin.group(1)
+    assert not re.search(r"\.stop-pin\.pending\{", text)
+    assert "stop-halo" in text
+    # El minificador reescribe `::after` como `:after` y reordena las
+    # propiedades: se busca la animación, no el texto exacto.
+    target = re.search(r"\.stop-pin\.target:?:?after\{([^}]*)\}", text)
+    assert target and "animation:" in target.group(1) and "stop-halo" in target.group(1)
+    halo = re.search(r"@keyframes stop-halo\{(.*?)\}\}", text)
+    assert halo and "scale(2.4)" in halo.group(1)
+
+
+@requires_build
 def test_dashboard_glass_layer():
     text = built_css()
     assert "--g-bg:#173674b8" in text  # rgba(23,54,116,.72)

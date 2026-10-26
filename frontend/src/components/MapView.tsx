@@ -46,6 +46,10 @@ const PIN_SCALE_PER_ZOOM = 0.09;
  */
 const DESVIO_MAX_M = 120;
 
+/* Grosor de la ruta hasta la próxima parada. La recta de respaldo (sin
+ * proveedor de ruteo) va dos píxeles más fina para no leerse como calle. */
+const ROUTE_WEIGHT = 6;
+
 function pinScale(zoom: number): number {
   const raw = 1 - (PIN_FULL_ZOOM - zoom) * PIN_SCALE_PER_ZOOM;
   return Math.min(1, Math.max(PIN_MIN_SCALE, raw));
@@ -414,11 +418,18 @@ export default function MapView({
         if (!proxima && stop.status === 'pending') {
           proxima = stop;
         }
+        /*
+         * La parada destino —la primera `pending`— lleva el halo que late: es
+         * a la que apunta la ruta, y sin él el número azul se confundía con
+         * las demás. Una parada `arrived` ya se está visitando y no compite.
+         */
+        const esDestino = !proxima && stop.status === 'pending';
         const clases = [
           'stop-pin',
           stop.needs_review ? 'pending' : '',
           entregada ? 'done' : '',
           enCurso ? 'here' : '',
+          esDestino ? 'target' : '',
         ]
           .filter(Boolean)
           .join(' ');
@@ -451,9 +462,9 @@ export default function MapView({
             [origen, [proxima.lat, proxima.lng]],
             {
               color: '#3f6fe0',
-              weight: 2,
-              opacity: 0.7,
-              dashArray: '7 6',
+              weight: ROUTE_WEIGHT - 2,
+              opacity: 0.85,
+              dashArray: '9 7',
             },
           ).addTo(linea);
         }
@@ -463,8 +474,8 @@ export default function MapView({
       if (origen === null) {
         L.polyline(ruta.geometry, {
           color: '#3f6fe0',
-          weight: 4,
-          opacity: 0.85,
+          weight: ROUTE_WEIGHT,
+          opacity: 0.9,
           lineJoin: 'round',
           lineCap: 'round',
         }).addTo(linea);
@@ -482,8 +493,8 @@ export default function MapView({
       if (puntos.length > 1) {
         L.polyline(puntos, {
           color: '#3f6fe0',
-          weight: 4,
-          opacity: 0.85,
+          weight: ROUTE_WEIGHT,
+          opacity: 0.9,
           lineJoin: 'round',
           lineCap: 'round',
         }).addTo(linea);

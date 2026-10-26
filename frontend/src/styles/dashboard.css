@@ -546,15 +546,33 @@
   .aviso.ok{background:rgba(90,126,230,.10);color:var(--ink)}
   .aviso.error{background:rgba(224,103,92,.14);color:#8c2f28}
 
-  /* Marcador de destino del viaje en curso (el número es el orden de parada). */
+  /* Marcador de destino del viaje en curso (el número es el orden de parada).
+     Todas las paradas son negras: el color no compite con la ruta azul. Lo
+     único que se destaca es el halo de la parada a la que va el camión. */
   .stop-pin{
-    display:grid;place-items:center;width:22px;height:22px;border-radius:50%;
+    position:relative;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;
     background:#1f2a3d;color:#fff;font:600 11px Poppins;
     box-shadow:0 2px 6px rgba(15,25,50,.35);border:2px solid #fff;
   }
-  .stop-pin.pending{background:var(--alert)}
-  .stop-pin.done{background:var(--stop);opacity:.8;font-weight:600}
+  .stop-pin.done{opacity:.6}
   .stop-pin.here{
     background:var(--green);
     box-shadow:0 0 0 4px rgba(90,126,230,.28),0 2px 6px rgba(15,25,50,.35);
+  }
+  /* Parada activa: el halo late alrededor del pin, fuera del número para no
+     taparlo. Se dibuja con un pseudo-elemento centrado en el pin. */
+  .stop-pin.target{background:var(--green)}
+  .stop-pin.target::after{
+    content:'';position:absolute;left:50%;top:50%;width:100%;height:100%;
+    margin:-50% 0 0 -50%;border-radius:50%;pointer-events:none;
+    border:2px solid var(--green);background:rgba(90,126,230,.22);
+    animation:stop-halo 1.8s ease-out infinite;
+  }
+  @keyframes stop-halo{
+    0%{transform:scale(.6);opacity:.9}
+    70%{transform:scale(2.4);opacity:0}
+    100%{transform:scale(2.4);opacity:0}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .stop-pin.target::after{animation:none;transform:scale(1.6);opacity:.5}
   }
