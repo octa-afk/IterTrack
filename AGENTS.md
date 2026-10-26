@@ -138,6 +138,7 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Nunca confíes en los datos recibidos de clientes o módulos GPS externos. Valida tipos, formatos, longitudes y rangos numéricos.
 3. **Prevención de Inyección:**
    * Utiliza siempre el ORM de SQLAlchemy o consultas parametrizadas. Nunca concatenes strings en consultas SQL.
+4. **Nunca desplegar en la VM:** ningún agente ejecuta despliegues ni cambios en la VM (`itertrack-vm`, `57.156.58.24`). El deploy es decisión y acción del humano; el agente puede preparar push, documentar el runbook y leer diagnósticos si el humano lo pide explícitamente, pero `docker compose`/`ssh` contra la VM nunca de él.
 
 ---
 
