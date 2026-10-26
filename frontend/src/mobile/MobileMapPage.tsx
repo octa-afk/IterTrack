@@ -112,7 +112,7 @@ export default function MobileMapPage() {
           </button>
         </div>
 
-        <div className={`m-sheet${flotaAbierta ? ' m-sheet--flota' : ''}`}>
+        <div className="m-sheet">
           <div className="m-sheet__handle" />
           {camion && estado ? (
             <>
