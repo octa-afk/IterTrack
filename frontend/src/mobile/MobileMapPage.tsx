@@ -33,18 +33,13 @@ export default function MobileMapPage() {
   };
 
   /*
-   * Elegir un camión desde la vista previa lo selecciona y encuadra el mapa en
-   * él: si quedaba fuera de la vista, el pin azul aparecía en un lugar que el
-   * operador no estaba mirando.
+   * Elegir un camión desde la vista previa lo selecciona y pliega la hoja. El
+   * encuadre no se pide acá: `MapView` encuadra el camión junto con las paradas
+   * de su viaje abierto cuando las tiene, y si no hay viaje vuela al camión.
    */
-  const elegirCamion = (id: number, lat: number | null, lng: number | null) => {
+  const elegirCamion = (id: number) => {
     select(id);
     setFlotaAbierta(false);
-    const instancia = map.current;
-    if (!instancia || lat === null || lng === null) return;
-    instancia.flyTo([lat, lng], Math.max(instancia.getZoom() || 15, 15), {
-      duration: 0.5,
-    });
   };
 
   /*
@@ -159,7 +154,7 @@ export default function MobileMapPage() {
                               t.id === selectedId ? ' m-flota-row--sel' : ''
                             }`}
                             type="button"
-                            onClick={() => elegirCamion(t.id, t.lat, t.lng)}
+                            onClick={() => elegirCamion(t.id)}
                           >
                             <span className="m-dot" style={{ background: estadoFila.color }} />
                             <span className="m-flota-row__plate">{t.plate}</span>

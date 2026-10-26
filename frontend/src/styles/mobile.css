@@ -678,17 +678,15 @@
  * transición correría a distinta velocidad en cada sentido. La lista se
  * autolimita con su propio `max-height` y es la que scrollea.
  *
- * El cierre es el despliegue al revés, no la misma curva hacia atrás. Con una
- * sola curva en los dos sentidos, el repliegue arranca disparado porque la
- * curva acelera al principio; la inversa exacta de `cubic-bezier(.2, 0, 0, 1)`
- * es su espejo `cubic-bezier(1, 0, .8, 1)` (mismo `x(t)` monótono, puntos de
- * control reflejados), así que el cierre empieza lento y termina rápido. Cae
- * en la regla base porque la transición usa la curva del estado de destino.
+ * El cierre arranca lento, como la reproducción inversa del despliegue, pero
+ * termina con una curva suave: el espejo exacto de la apertura llegaba al
+ * final en pocos frames y se sentía brusco. Por eso dura más (450 ms contra
+ * 330) y usa una curva en S que frena al llegar.
  */
 .m-sheet__flota {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.33s cubic-bezier(1, 0, 0.8, 1);
+  transition: grid-template-rows 0.45s cubic-bezier(0.55, 0, 0.45, 1);
 }
 
 .m-sheet__flota--open {
@@ -715,10 +713,11 @@
   -webkit-overflow-scrolling: touch;
   opacity: 0;
   transform: translateY(8px);
-  /* `ease-in` es la inversa exacta de `ease-out`, la curva de apertura. */
+  /* `ease-in-out` frena al final: con `ease-in` el contenido desaparecía de
+     golpe antes de que la hoja terminara de encogerse. */
   transition:
-    opacity 0.33s ease-in,
-    transform 0.33s ease-in;
+    opacity 0.45s ease-in-out,
+    transform 0.45s ease-in-out;
 }
 
 .m-sheet__flota--open .m-flota-lista {

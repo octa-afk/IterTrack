@@ -41,7 +41,7 @@ export function MobileLayout() {
     <DashboardProvider>
       <div className="m-app">
         <div className={enPanel ? 'mapbox' : 'mapbox mapbox-off'} aria-hidden={!enPanel}>
-          <MapView onReady={handleReady} showZoomControl={false} />
+          <MapView onReady={handleReady} showZoomControl={false} fitSelection />
         </div>
 
         <div className="m-content">
