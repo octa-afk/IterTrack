@@ -115,8 +115,10 @@ def test_mobile_selected_pin_and_fleet_preview():
     """El pin elegido y la vista previa de la flota en la hoja del mapa.
 
     El pin seleccionado va pintado entero (fondo celeste, texto blanco), no
-    blanco con marco. La hoja gana `m-sheet--flota` cuando se despliega y es la
-    lista la que scrollea, para que el botón quede siempre a la vista.
+    blanco con marco. La hoja se despliega y se pliega con la misma transición
+    de altura (`grid-template-rows` 0fr ↔ 1fr), sin cambiar de layout: si el
+    contenedor cambiara de `display`, la misma transición correría a distinta
+    velocidad en cada sentido.
     """
     text = built_css()
     label = re.search(r"\.m-app \.pin\.sel \.lbl\{([^}]*)\}", text)

@@ -672,17 +672,15 @@
  * camiones visibles, sin cambiar de sección. La lista queda montada y la
  * animación es una transición, no una animación de entrada: así desplegar y
  * plegar recorren el mismo camino, y el botón puede hacer las dos cosas.
+ *
+ * La hoja no cambia de layout al abrir ni al cerrar (nada de `display` ni
+ * `max-height` condicional): si el contenedor cambiara de tipo, la misma
+ * transición correría a distinta velocidad en cada sentido. La lista se
+ * autolimita con su propio `max-height` y es la que scrollea.
  */
-.m-sheet--flota {
-  display: flex;
-  flex-direction: column;
-  max-height: min(64dvh, 520px);
-}
-
 .m-sheet__flota {
   display: grid;
   grid-template-rows: 0fr;
-  min-height: 0;
   transition: grid-template-rows 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
