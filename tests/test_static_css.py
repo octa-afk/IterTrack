@@ -38,6 +38,28 @@ def test_pin_geometry_and_heading_rotation():
 
 
 @requires_build
+def test_stop_pins_are_neutral_and_only_the_target_pulses():
+    """Las paradas del viaje son negras; el destino se distingue por el halo.
+
+    El color de las paradas competía con la ruta azul: se retiró el rojo de las
+    pendientes y el gris de las entregadas (queda sólo la opacidad). La parada a
+    la que va el camión lleva `target`, con un halo animado que se apaga con
+    `prefers-reduced-motion`.
+    """
+    text = built_css()
+    pin = re.search(r"\.stop-pin\{([^}]*)\}", text)
+    assert pin and "background:#1f2a3d" in pin.group(1)
+    assert not re.search(r"\.stop-pin\.pending\{", text)
+    assert "stop-halo" in text
+    # El minificador reescribe `::after` como `:after` y reordena las
+    # propiedades: se busca la animación, no el texto exacto.
+    target = re.search(r"\.stop-pin\.target:?:?after\{([^}]*)\}", text)
+    assert target and "animation:" in target.group(1) and "stop-halo" in target.group(1)
+    halo = re.search(r"@keyframes stop-halo\{(.*?)\}\}", text)
+    assert halo and "scale(2.4)" in halo.group(1)
+
+
+@requires_build
 def test_dashboard_glass_layer():
     text = built_css()
     assert "--g-bg:#173674b8" in text  # rgba(23,54,116,.72)
@@ -92,6 +114,88 @@ def test_truck_marker_image_ships_inside_the_served_assets_directory():
     scripts = sorted((DIST / "assets").glob("*.js"))
     bundled = "".join(path.read_text(encoding="utf-8") for path in scripts)
     assert "/truck.webp" not in bundled
+
+
+@requires_build
+def test_mobile_design_is_scoped_to_the_mobile_shell():
+    """El diseño de extras/mobile/itertrack vive sólo dentro de `.m-app`.
+
+    El dashboard ya usa `.card`, `.nav` y `.count` con otro significado, así
+    que la UI móvil se prefija con `m-`. El reset de botones usa `:where()`
+    para no ganarle por especificidad al fondo de tarjetas y chips.
+    """
+    text = built_css()
+    assert ".m-app{" in text
+    assert re.search(r"\.m-app\{[^}]*--m-bg:#eef1f8", text)
+    for selector in (".m-screen{", ".m-sheet{", ".m-drawer{", ".m-chip{"):
+        assert selector in text
+    assert ".m-app :where(button)" in text
+
+
+@requires_build
+def test_mobile_selected_pin_and_fleet_preview():
+    """El pin elegido y la vista previa de la flota en la hoja del mapa.
+
+    El pin seleccionado va pintado entero (fondo celeste, texto blanco), no
+    blanco con marco. La hoja se despliega y se pliega con una transición de
+    altura (`grid-template-rows` 0fr ↔ 1fr) sin cambiar de layout: si el
+    contenedor cambiara de `display`, la misma transición correría a distinta
+    velocidad en cada sentido. El cierre dura más que el despliegue y usa una
+    curva en S (`cubic-bezier(.55, 0, .45, 1)` contra `cubic-bezier(.2, 0, 0, 1)`):
+    arranca lento como la reproducción inversa, pero frena al llegar en vez de
+    rematar de golpe.
+    """
+    text = built_css()
+    label = re.search(r"\.m-app \.pin\.sel \.lbl\{([^}]*)\}", text)
+    assert label, "the selected pin label rule is missing"
+    assert "background:var(--m-accent)" in label.group(1)
+    assert "color:var(--m-surface)" in label.group(1)
+    # La hoja se despliega y se pliega con la misma transición de altura.
+    hoja = re.search(r"\.m-sheet__flota\{([^}]*)\}", text)
+    assert hoja, "the fleet preview wrapper is missing"
+    assert "grid-template-rows:0fr" in hoja.group(1)
+    # El cierre arranca lento y frena al llegar: más largo que el despliegue.
+    assert "transition:grid-template-rows .45s cubic-bezier(.55,0,.45,1)" in hoja.group(1)
+    abierta = re.search(r"\.m-sheet__flota--open\{([^}]*)\}", text)
+    assert abierta and "grid-template-rows:1fr" in abierta.group(1)
+    assert "transition:grid-template-rows .33s cubic-bezier(.2,0,0,1)" in abierta.group(1)
+    lista = re.search(r"\.m-flota-lista\{([^}]*)\}", text)
+    assert lista and "overflow-y:auto" in lista.group(1)
+    assert "transition:opacity .45s ease-in-out,transform .45s ease-in-out" in lista.group(1)
+    abierta_lista = re.search(r"\.m-sheet__flota--open \.m-flota-lista\{([^}]*)\}", text)
+    assert abierta_lista and "ease-out" in abierta_lista.group(1)
+
+
+@requires_build
+def test_mobile_map_screen_lets_gestures_reach_leaflet():
+    """El panel del mapa no puede capturar los punteros.
+
+    Es una capa transparente sobre el mapa: sin `pointer-events: none` se come
+    el arrastre y el pellizco, y Leaflet nunca los ve. Sus controles flotantes
+    (buscador, botones, hoja inferior) vuelven a habilitarlos por hijo.
+    """
+    text = built_css()
+    screen = re.search(r"\.m-screen--map\{([^}]*)\}", text)
+    assert screen, "the mobile map screen rule is missing"
+    assert "pointer-events:none" in screen.group(1)
+    assert re.search(r"\.m-screen--map>\*\{[^}]*pointer-events:auto", text)
+
+
+@requires_build
+def test_mobile_pinch_only_zooms_the_map():
+    """Pellizcar sobre la UI no escala la página: sólo el mapa.
+
+    `touch-action` vive en la capa de pantallas y en el drawer, nunca en
+    `.m-app`: el navegador intersecta el valor con el de los ancestros, así que
+    un `pan-x pan-y` arriba apagaría también el zoom táctil de Leaflet, que
+    necesita su propio `touch-action: none`.
+    """
+    text = built_css()
+    assert re.search(r"\.m-content,\.m-drawer\{[^}]*touch-action:pan-x pan-y", text), (
+        "the mobile shell still lets the browser pinch-zoom the whole page"
+    )
+    shell = re.search(r"\.m-app\{[^}]*\}", text)
+    assert shell and "touch-action" not in shell.group(0)
 
 
 @requires_build
