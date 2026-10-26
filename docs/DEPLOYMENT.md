@@ -102,6 +102,11 @@ mv .env.example .env
 # completar DOMAIN, POSTGRES_PASSWORD, SECRET_KEY,
 # PLATFORM_ADMIN_PASSWORD, DEMO_*_PASSWORD
 
+# La ruta por calles hasta la próxima parada: sin esto el mapa cae al
+# respaldo (recta punteada). La instancia pública de OSRM es solo para la demo:
+# ROUTING_PROVIDER=osrm
+# ROUTING_URL=https://router.project-osrm.org
+
 # La base tiene que ser accesible desde el host del compose:
 # DATABASE_URL=postgresql+psycopg2://itertrack:<pass>@postgres:5432/itertrack_db
 
