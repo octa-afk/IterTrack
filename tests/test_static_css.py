@@ -111,6 +111,38 @@ def test_mobile_design_is_scoped_to_the_mobile_shell():
 
 
 @requires_build
+def test_mobile_map_screen_lets_gestures_reach_leaflet():
+    """El panel del mapa no puede capturar los punteros.
+
+    Es una capa transparente sobre el mapa: sin `pointer-events: none` se come
+    el arrastre y el pellizco, y Leaflet nunca los ve. Sus controles flotantes
+    (buscador, botones, hoja inferior) vuelven a habilitarlos por hijo.
+    """
+    text = built_css()
+    screen = re.search(r"\.m-screen--map\{([^}]*)\}", text)
+    assert screen, "the mobile map screen rule is missing"
+    assert "pointer-events:none" in screen.group(1)
+    assert re.search(r"\.m-screen--map>\*\{[^}]*pointer-events:auto", text)
+
+
+@requires_build
+def test_mobile_pinch_only_zooms_the_map():
+    """Pellizcar sobre la UI no escala la página: sólo el mapa.
+
+    `touch-action` vive en la capa de pantallas y en el drawer, nunca en
+    `.m-app`: el navegador intersecta el valor con el de los ancestros, así que
+    un `pan-x pan-y` arriba apagaría también el zoom táctil de Leaflet, que
+    necesita su propio `touch-action: none`.
+    """
+    text = built_css()
+    assert re.search(r"\.m-content,\.m-drawer\{[^}]*touch-action:pan-x pan-y", text), (
+        "the mobile shell still lets the browser pinch-zoom the whole page"
+    )
+    shell = re.search(r"\.m-app\{[^}]*\}", text)
+    assert shell and "touch-action" not in shell.group(0)
+
+
+@requires_build
 def test_mobile_layout_only_below_phone_widths():
     """La UI móvil no está curada: no debe aparecer al angostar una ventana de PC.
 
