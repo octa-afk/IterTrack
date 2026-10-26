@@ -91,14 +91,6 @@ export default function MobileMapPage() {
         >
           <Icon name="locate" />
         </button>
-        <div className="m-zoom">
-          <button type="button" aria-label="Acercar" onClick={() => map.current?.zoomIn()}>
-            <Icon name="plus" size={20} />
-          </button>
-          <button type="button" aria-label="Alejar" onClick={() => map.current?.zoomOut()}>
-            <Icon name="minus" size={20} />
-          </button>
-        </div>
       </div>
 
       <div className="m-sheet">
