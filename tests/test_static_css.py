@@ -123,10 +123,15 @@ def test_mobile_selected_pin_and_fleet_preview():
     assert label, "the selected pin label rule is missing"
     assert "background:var(--m-accent)" in label.group(1)
     assert "color:var(--m-surface)" in label.group(1)
-    sheet = re.search(r"\.m-sheet--flota\{([^}]*)\}", text)
-    assert sheet and "max-height" in sheet.group(1)
-    lista = re.search(r"\.m-sheet__flota\{([^}]*)\}", text)
+    # La hoja se despliega y se pliega con la misma transición de altura.
+    hoja = re.search(r"\.m-sheet__flota\{([^}]*)\}", text)
+    assert hoja, "the fleet preview wrapper is missing"
+    assert "grid-template-rows:0fr" in hoja.group(1)
+    assert "transition:grid-template-rows" in hoja.group(1)
+    assert re.search(r"\.m-sheet__flota--open\{grid-template-rows:1fr\}", text)
+    lista = re.search(r"\.m-flota-lista\{([^}]*)\}", text)
     assert lista and "overflow-y:auto" in lista.group(1)
+    assert "transition:opacity .3s" in lista.group(1)
 
 
 @requires_build
