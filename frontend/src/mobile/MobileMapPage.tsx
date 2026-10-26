@@ -136,38 +136,49 @@ export default function MobileMapPage() {
                   <span>km/h</span>
                 </div>
               </button>
-              {flotaAbierta && (
-                <ul className="m-sheet__flota" id="m-flota">
-                  {visibleTrucks.map((t) => {
-                    const estadoFila = t.active
-                      ? STATUS[t.status]
-                      : { label: 'Inactivo', color: 'var(--m-muted)' };
-                    return (
-                      <li key={t.id}>
-                        <button
-                          className={`m-flota-row${
-                            t.id === selectedId ? ' m-flota-row--sel' : ''
-                          }`}
-                          type="button"
-                          onClick={() => elegirCamion(t.id, t.lat, t.lng)}
-                        >
-                          <span className="m-dot" style={{ background: estadoFila.color }} />
-                          <span className="m-flota-row__plate">{t.plate}</span>
-                          <span className="m-flota-row__meta">{estadoFila.label}</span>
-                          <span className="m-flota-row__speed">
-                            <b>{t.active && t.status !== 'stop' ? t.speed : '—'}</b> km/h
-                          </span>
-                        </button>
+              {/*
+               * La lista queda montada: el despliegue y el repliegue son la
+               * misma transición de altura (0fr ↔ 1fr) más el fundido de la
+               * lista, así el botón puede cerrarla con la animación inversa.
+               * `inert` la saca del foco y de los toques mientras está plegada.
+               */}
+              <div
+                className={`m-sheet__flota${flotaAbierta ? ' m-sheet__flota--open' : ''}`}
+                inert={!flotaAbierta}
+              >
+                <div className="m-sheet__flota-in">
+                  <ul className="m-flota-lista" id="m-flota">
+                    {visibleTrucks.map((t) => {
+                      const estadoFila = t.active
+                        ? STATUS[t.status]
+                        : { label: 'Inactivo', color: 'var(--m-muted)' };
+                      return (
+                        <li key={t.id}>
+                          <button
+                            className={`m-flota-row${
+                              t.id === selectedId ? ' m-flota-row--sel' : ''
+                            }`}
+                            type="button"
+                            onClick={() => elegirCamion(t.id, t.lat, t.lng)}
+                          >
+                            <span className="m-dot" style={{ background: estadoFila.color }} />
+                            <span className="m-flota-row__plate">{t.plate}</span>
+                            <span className="m-flota-row__meta">{estadoFila.label}</span>
+                            <span className="m-flota-row__speed">
+                              <b>{t.active && t.status !== 'stop' ? t.speed : '—'}</b> km/h
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                    {!visibleTrucks.length && (
+                      <li>
+                        <p className="m-sheet__empty">No hay camiones con este filtro.</p>
                       </li>
-                    );
-                  })}
-                  {!visibleTrucks.length && (
-                    <li>
-                      <p className="m-sheet__empty">No hay camiones con este filtro.</p>
-                    </li>
-                  )}
-                </ul>
-              )}
+                    )}
+                  </ul>
+                </div>
+              </div>
               <div className="m-sheet__foot">
                 <span>
                   {visibleTrucks.length} de {trucks.length} camiones

@@ -669,8 +669,9 @@
 
 /*
  * Vista previa de la flota: la misma hoja crece hacia arriba con la lista de
- * camiones visibles, sin cambiar de sección. La lista es la que scrollea, así
- * el camión seleccionado y el botón quedan siempre a la vista.
+ * camiones visibles, sin cambiar de sección. La lista queda montada y la
+ * animación es una transición, no una animación de entrada: así desplegar y
+ * plegar recorren el mismo camino, y el botón puede hacer las dos cosas.
  */
 .m-sheet--flota {
   display: flex;
@@ -679,17 +680,43 @@
 }
 
 .m-sheet__flota {
+  display: grid;
+  grid-template-rows: 0fr;
+  min-height: 0;
+  transition: grid-template-rows 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m-sheet__flota--open {
+  grid-template-rows: 1fr;
+}
+
+/* El recorte es lo que permite animar la altura sin medirla en JS. */
+.m-sheet__flota-in {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.m-flota-lista {
   list-style: none;
   margin: 10px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 0;
+  max-height: min(46dvh, 360px);
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  animation: m-flota-in 0.18s ease-out;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.3s ease-out,
+    transform 0.3s ease-out;
+}
+
+.m-sheet__flota--open .m-flota-lista {
+  opacity: 1;
+  transform: none;
 }
 
 .m-flota-row {
@@ -742,17 +769,6 @@
 .m-sheet__chevron {
   display: flex;
   transition: transform 0.18s ease;
-}
-
-@keyframes m-flota-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 /* ===== Drawer ===== */
@@ -910,10 +926,9 @@
 @media (prefers-reduced-motion: reduce) {
   .m-drawer,
   .m-scrim,
-  .m-sheet__chevron {
+  .m-sheet__chevron,
+  .m-sheet__flota,
+  .m-flota-lista {
     transition: none;
-  }
-  .m-sheet__flota {
-    animation: none;
   }
 }
