@@ -111,6 +111,25 @@ def test_mobile_design_is_scoped_to_the_mobile_shell():
 
 
 @requires_build
+def test_mobile_selected_pin_and_fleet_preview():
+    """El pin elegido y la vista previa de la flota en la hoja del mapa.
+
+    El pin seleccionado va pintado entero (fondo celeste, texto blanco), no
+    blanco con marco. La hoja gana `m-sheet--flota` cuando se despliega y es la
+    lista la que scrollea, para que el botón quede siempre a la vista.
+    """
+    text = built_css()
+    label = re.search(r"\.m-app \.pin\.sel \.lbl\{([^}]*)\}", text)
+    assert label, "the selected pin label rule is missing"
+    assert "background:var(--m-accent)" in label.group(1)
+    assert "color:var(--m-surface)" in label.group(1)
+    sheet = re.search(r"\.m-sheet--flota\{([^}]*)\}", text)
+    assert sheet and "max-height" in sheet.group(1)
+    lista = re.search(r"\.m-sheet__flota\{([^}]*)\}", text)
+    assert lista and "overflow-y:auto" in lista.group(1)
+
+
+@requires_build
 def test_mobile_map_screen_lets_gestures_reach_leaflet():
     """El panel del mapa no puede capturar los punteros.
 

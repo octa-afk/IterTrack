@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { STATUS, ago } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
@@ -12,8 +12,11 @@ import { Icon } from './icons';
  */
 export default function MobileMapPage() {
   const { map, openDrawer } = useOutletContext<MobileOutletContext>();
-  const { trucks, visibleTrucks, selectedTruck, filters, setFilter, select } = useDashboard();
+  const { trucks, visibleTrucks, selectedTruck, selectedId, filters, setFilter, select } =
+    useDashboard();
   const navigate = useNavigate();
+  /* La vista previa de la flota es una alternancia local: no cambia de ruta. */
+  const [flotaAbierta, setFlotaAbierta] = useState(false);
 
   const camion = selectedTruck ?? trucks[0] ?? null;
   const estado = camion
@@ -27,6 +30,21 @@ export default function MobileMapPage() {
   const verDetalle = (id: number) => {
     select(id);
     navigate(`/fleet?truck=${id}`);
+  };
+
+  /*
+   * Elegir un camión desde la vista previa lo selecciona y encuadra el mapa en
+   * él: si quedaba fuera de la vista, el pin azul aparecía en un lugar que el
+   * operador no estaba mirando.
+   */
+  const elegirCamion = (id: number, lat: number | null, lng: number | null) => {
+    select(id);
+    setFlotaAbierta(false);
+    const instancia = map.current;
+    if (!instancia || lat === null || lng === null) return;
+    instancia.flyTo([lat, lng], Math.max(instancia.getZoom() || 15, 15), {
+      duration: 0.5,
+    });
   };
 
   /*
@@ -94,7 +112,7 @@ export default function MobileMapPage() {
           </button>
         </div>
 
-        <div className="m-sheet">
+        <div className={`m-sheet${flotaAbierta ? ' m-sheet--flota' : ''}`}>
           <div className="m-sheet__handle" />
           {camion && estado ? (
             <>
@@ -118,6 +136,38 @@ export default function MobileMapPage() {
                   <span>km/h</span>
                 </div>
               </button>
+              {flotaAbierta && (
+                <ul className="m-sheet__flota" id="m-flota">
+                  {visibleTrucks.map((t) => {
+                    const estadoFila = t.active
+                      ? STATUS[t.status]
+                      : { label: 'Inactivo', color: 'var(--m-muted)' };
+                    return (
+                      <li key={t.id}>
+                        <button
+                          className={`m-flota-row${
+                            t.id === selectedId ? ' m-flota-row--sel' : ''
+                          }`}
+                          type="button"
+                          onClick={() => elegirCamion(t.id, t.lat, t.lng)}
+                        >
+                          <span className="m-dot" style={{ background: estadoFila.color }} />
+                          <span className="m-flota-row__plate">{t.plate}</span>
+                          <span className="m-flota-row__meta">{estadoFila.label}</span>
+                          <span className="m-flota-row__speed">
+                            <b>{t.active && t.status !== 'stop' ? t.speed : '—'}</b> km/h
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {!visibleTrucks.length && (
+                    <li>
+                      <p className="m-sheet__empty">No hay camiones con este filtro.</p>
+                    </li>
+                  )}
+                </ul>
+              )}
               <div className="m-sheet__foot">
                 <span>
                   {visibleTrucks.length} de {trucks.length} camiones
@@ -125,10 +175,17 @@ export default function MobileMapPage() {
                 <button
                   className="m-btn-dark"
                   type="button"
-                  onClick={() => navigate('/fleet')}
+                  aria-expanded={flotaAbierta}
+                  aria-controls="m-flota"
+                  onClick={() => setFlotaAbierta((abierta) => !abierta)}
                 >
-                  Ver flota
-                  <Icon name="chevronUp" size={16} stroke={2.2} />
+                  {flotaAbierta ? 'Ocultar flota' : 'Ver flota'}
+                  <span
+                    className="m-sheet__chevron"
+                    style={{ transform: `rotate(${flotaAbierta ? 180 : 0}deg)` }}
+                  >
+                    <Icon name="chevronUp" size={16} stroke={2.2} />
+                  </span>
                 </button>
               </div>
             </>
