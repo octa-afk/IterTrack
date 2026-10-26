@@ -99,6 +99,20 @@
   pointer-events: none;
 }
 
+/*
+ * El pellizco sobre la página no escala el viewport: sólo el mapa.
+ *
+ * Va en la capa de pantallas y en el drawer, no en `.m-app`, porque el
+ * contenedor del mapa ya trae su propio `touch-action: none` de Leaflet y el
+ * navegador intersecta los valores de los ancestros: si el `pan-x pan-y`
+ * estuviera arriba, apagaría también el zoom táctil del mapa. Acá el mapa
+ * queda fuera del alcance y sigue con sus gestos completos.
+ */
+.m-content,
+.m-drawer {
+  touch-action: pan-x pan-y;
+}
+
 .m-screen {
   position: absolute;
   inset: 0;
@@ -112,6 +126,9 @@
   padding: 0;
   overflow: hidden;
   background: transparent;
+  /* El panel del mapa es transparente: si capturara los punteros, Leaflet no
+     recibiría ni el arrastre ni el pellizco. Sólo sus controles los toman. */
+  pointer-events: none;
 }
 
 .m-screen--map > * {
