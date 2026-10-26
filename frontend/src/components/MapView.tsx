@@ -59,7 +59,17 @@ type MaplibreFactory = (options: {
 
 const maplibreGL = (L as unknown as { maplibreGL: MaplibreFactory }).maplibreGL;
 
-export default function MapView() {
+interface MapViewProps {
+  /**
+   * Entrega el mapa ya creado. La UI móvil lo necesita para sus propios
+   * controles de zoom y ubicación; el escritorio usa el control de Leaflet.
+   */
+  onReady?: (map: L.Map) => void;
+  /** Oculta el control de zoom de Leaflet (la UI móvil dibuja el suyo). */
+  showZoomControl?: boolean;
+}
+
+export default function MapView({ onReady, showZoomControl = true }: MapViewProps = {}) {
   const { trucks, visibleTrucks, selectedId, recorridoId, select } = useDashboard();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -84,8 +94,12 @@ export default function MapView() {
     const el = containerRef.current;
     if (!el) return;
 
-    const map = L.map(el).setView(CITY_CENTER, OPEN_ZOOM);
+    const map = L.map(el, { zoomControl: showZoomControl }).setView(
+      CITY_CENTER,
+      OPEN_ZOOM,
+    );
     mapRef.current = map;
+    onReady?.(map);
     const markers = markersRef.current;
     const lastPos = lastPosRef.current;
     const moves = movesRef.current;
@@ -212,7 +226,7 @@ export default function MapView() {
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [onReady, showZoomControl]);
 
   /*
    * Encuadre inicial: al recargar, el mapa se abre sobre la flota con el zoom
@@ -528,15 +542,23 @@ export default function MapView() {
     };
   }, [selectedId]);
 
-  /* Fly to the selected truck when the selection changes. */
+  /*
+   * Fly to the selected truck when the selection changes. El mapa puede estar
+   * oculto (el shell móvil lo monta también en las secciones sin mapa y lo
+   * muestra con `display:none`): con tamaño cero o zoom indefinido, `flyTo`
+   * proyecta NaN y tumba la app. En ese caso se deja la vista como está.
+   */
   useEffect(() => {
     if (selectedId === null) return;
     const truck = trucksRef.current.find((t) => t.id === selectedId);
     const map = mapRef.current;
     if (!truck || truck.lat === null || truck.lng === null || !map) return;
-    map.flyTo([truck.lat, truck.lng], Math.max(map.getZoom(), OPEN_ZOOM), {
-      duration: 0.8,
-    });
+    if (!Number.isFinite(truck.lat) || !Number.isFinite(truck.lng)) return;
+    const size = map.getSize();
+    if (size.x === 0 || size.y === 0) return;
+    const currentZoom = map.getZoom();
+    const zoom = Math.max(Number.isFinite(currentZoom) ? currentZoom : OPEN_ZOOM, OPEN_ZOOM);
+    map.flyTo([truck.lat, truck.lng], zoom, { duration: 0.8 });
   }, [selectedId]);
 
   return (

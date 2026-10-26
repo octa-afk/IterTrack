@@ -95,6 +95,22 @@ def test_truck_marker_image_ships_inside_the_served_assets_directory():
 
 
 @requires_build
+def test_mobile_design_is_scoped_to_the_mobile_shell():
+    """El diseño de extras/mobile/itertrack vive sólo dentro de `.m-app`.
+
+    El dashboard ya usa `.card`, `.nav` y `.count` con otro significado, así
+    que la UI móvil se prefija con `m-`. El reset de botones usa `:where()`
+    para no ganarle por especificidad al fondo de tarjetas y chips.
+    """
+    text = built_css()
+    assert ".m-app{" in text
+    assert re.search(r"\.m-app\{[^}]*--m-bg:#eef1f8", text)
+    for selector in (".m-screen{", ".m-sheet{", ".m-drawer{", ".m-chip{"):
+        assert selector in text
+    assert ".m-app :where(button)" in text
+
+
+@requires_build
 def test_mobile_layout_only_below_phone_widths():
     """La UI móvil no está curada: no debe aparecer al angostar una ventana de PC.
 
