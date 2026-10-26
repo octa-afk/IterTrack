@@ -1,0 +1,943 @@
+/*
+ * UI móvil (extras/mobile/itertrack).
+ *
+ * Todo cuelga de `.m-app`: el diseño original reusaba `.app`, `.card`, `.nav`
+ * y `.count`, que ya existen en dashboard.css con otros significados. El
+ * prefijo `m-` en clases y tokens evita que el CSS móvil toque el escritorio.
+ * Este shell sólo se monta por debajo de 640 px (ver App.tsx), así que no
+ * necesita media queries propias.
+ */
+.m-app {
+  --m-bg: #eef1f8;
+  --m-map-bg: #ece8e0;
+  --m-surface: #ffffff;
+  --m-surface-muted: #f1f3f8;
+  --m-ink: #1b2033;
+  --m-muted: #4a5168;
+  --m-accent: #4f6bed;
+  --m-accent-ink: #3f55c9;
+  --m-accent-soft: #e1e7fb;
+  --m-chip-count: #dde2ef;
+  --m-warn: #f0a93b;
+  --m-line: #e3e6ee;
+  --m-r-card: 24px;
+  --m-r-sheet: 32px;
+  --m-r-pill: 999px;
+  --m-tap: 44px;
+  --m-shadow-1: 0 4px 14px rgba(27, 32, 51, 0.12);
+  --m-shadow-2: 0 10px 30px rgba(27, 32, 51, 0.22);
+  --m-top: calc(env(safe-area-inset-top, 0px) + 16px);
+  --m-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--m-bg);
+  color: var(--m-ink);
+  font-family: Poppins, system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.m-app *,
+.m-app *::before,
+.m-app *::after {
+  box-sizing: border-box;
+}
+
+/*
+ * El reset usa `:where()` para no ganarle por especificidad a las clases de
+ * componente: `.m-card` y `.m-chip` son botones y su fondo tiene que sobrevivir.
+ */
+.m-app :where(button) {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.m-app :where(a) {
+  color: inherit;
+  text-decoration: none;
+}
+
+.m-app :where(h1),
+.m-app :where(h2),
+.m-app :where(p) {
+  margin: 0;
+}
+
+.m-app :where(input) {
+  font: inherit;
+  color: inherit;
+}
+
+.m-app svg {
+  display: block;
+}
+
+.m-app :focus-visible {
+  outline: 3px solid var(--m-accent);
+  outline-offset: 2px;
+}
+
+.m-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+/* Capa de pantallas: deja pasar los gestos al mapa salvo en sus controles. */
+.m-content {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/*
+ * El pellizco sobre la página no escala el viewport: sólo el mapa.
+ *
+ * Va en la capa de pantallas y en el drawer, no en `.m-app`, porque el
+ * contenedor del mapa ya trae su propio `touch-action: none` de Leaflet y el
+ * navegador intersecta los valores de los ancestros: si el `pan-x pan-y`
+ * estuviera arriba, apagaría también el zoom táctil del mapa. Acá el mapa
+ * queda fuera del alcance y sigue con sus gestos completos.
+ */
+.m-content,
+.m-drawer {
+  touch-action: pan-x pan-y;
+}
+
+.m-screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: calc(var(--m-top) + 40px) 16px 32px;
+  background: var(--m-bg);
+  pointer-events: auto;
+}
+
+.m-screen--map {
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  /* El panel del mapa es transparente: si capturara los punteros, Leaflet no
+     recibiría ni el arrastre ni el pellizco. Sólo sus controles los toman. */
+  pointer-events: none;
+}
+
+.m-screen--map > * {
+  pointer-events: auto;
+}
+
+/* Los marcadores del mapa muestran la patente siempre, no sólo al elegirlos. */
+.m-app .pin .lbl {
+  display: block;
+  background: #fff;
+  color: #3a4157;
+  border: 1px solid var(--m-line);
+}
+
+.m-app .pin.sel .lbl {
+  background: var(--m-accent);
+  border-color: var(--m-accent);
+  color: var(--m-surface);
+  font-weight: 600;
+}
+
+/* ===== Botones ===== */
+.m-btn-round {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--m-r-pill);
+  background: var(--m-surface);
+  box-shadow: var(--m-shadow-1);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.m-btn-ghost {
+  width: var(--m-tap);
+  height: var(--m-tap);
+  border-radius: var(--m-r-pill);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.m-btn-ghost--fill {
+  background: var(--m-surface-muted);
+}
+
+/* Ubicación: usa el celeste del diseño (`--m-accent-soft`, el de la tarjeta
+   seleccionada) para diferenciarlo de los botones blancos de menú. */
+.m-btn-round--locate {
+  background: var(--m-accent-soft);
+  color: var(--m-accent-ink);
+}
+
+.m-btn-dark {
+  height: 48px;
+  padding: 0 20px;
+  border-radius: var(--m-r-pill);
+  background: var(--m-ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.m-btn-soft {
+  height: 48px;
+  padding: 0 16px;
+  border-radius: var(--m-r-pill);
+  background: var(--m-bg);
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+/* ===== Barra superior ===== */
+.m-appbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.m-appbar h1 {
+  flex: 1;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.m-appbar__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.m-appbar__sub {
+  font-size: 13px;
+  color: var(--m-accent-ink);
+}
+
+.m-count {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--m-r-pill);
+  background: var(--m-chip-count);
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+/* ===== Buscador flotante ===== */
+.m-searchbar {
+  position: absolute;
+  z-index: 5;
+  left: 16px;
+  right: 16px;
+  top: var(--m-top);
+  height: 52px;
+  padding: 0 16px 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--m-surface);
+  border-radius: var(--m-r-pill);
+  box-shadow: var(--m-shadow-1);
+}
+
+.m-searchbar input {
+  flex: 1;
+  min-width: 0;
+  height: var(--m-tap);
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 14px;
+}
+
+.m-searchbar__icon {
+  color: var(--m-muted);
+  flex: none;
+}
+
+/* ===== Chips y herramientas ===== */
+.m-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 -16px 16px;
+  padding: 0 16px;
+  scrollbar-width: none;
+}
+
+.m-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.m-chip {
+  height: var(--m-tap);
+  flex: none;
+  padding: 0 18px;
+  border-radius: var(--m-r-pill);
+  background: var(--m-surface);
+  font-size: 14px;
+}
+
+.m-chip[aria-pressed='true'] {
+  background: var(--m-ink);
+  color: #fff;
+  font-weight: 500;
+}
+
+.m-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--m-muted);
+}
+
+.m-toolbar button {
+  height: var(--m-tap);
+  padding: 0 16px;
+  border-radius: var(--m-r-pill);
+  background: var(--m-surface);
+  font-size: 14px;
+  color: var(--m-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== Tarjetas ===== */
+.m-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.m-card {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--m-r-card);
+  background: var(--m-surface);
+  text-align: left;
+}
+
+.m-card--selected {
+  background: var(--m-accent-soft);
+}
+
+.m-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.m-card__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-card__meta {
+  font-size: 12px;
+  color: var(--m-muted);
+  white-space: nowrap;
+}
+
+.m-card__grid {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.m-card__grid > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.m-card__heading {
+  flex: none;
+  width: 96px;
+}
+
+.m-label {
+  font-size: 11px;
+  color: var(--m-muted);
+}
+
+.m-value {
+  font-size: 15px;
+  font-weight: 500;
+  padding-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.m-value b {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.m-card .m-btn-soft {
+  margin-top: 14px;
+}
+
+.m-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--m-r-pill);
+  background: var(--m-accent);
+  flex: none;
+}
+
+.m-empty {
+  color: var(--m-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 2px;
+}
+
+.m-aviso {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.m-aviso--error {
+  background: #f7dcd9;
+  color: #8c2f28;
+}
+
+/* ===== Aviso (solo lectura) ===== */
+.m-notice {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px 16px;
+  border-radius: var(--m-r-card);
+  background: #e4e8f3;
+}
+
+.m-notice__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--m-r-pill);
+  background: #fff;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--m-muted);
+}
+
+.m-notice h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.m-notice p {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #3a4157;
+}
+
+/* ===== Detalle del camión ===== */
+.m-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.m-stat {
+  padding: 14px 16px;
+  border-radius: 22px;
+  background: var(--m-surface);
+}
+
+.m-stat__value {
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.m-stat__value--big {
+  font-size: 26px;
+  color: var(--m-accent);
+}
+
+.m-row-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  background: var(--m-surface);
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.m-row-card span:first-child {
+  font-size: 13px;
+  color: var(--m-muted);
+}
+
+.m-row-card span:last-child {
+  text-align: right;
+}
+
+.m-chart {
+  padding: 16px;
+  border-radius: 22px;
+  background: var(--m-surface);
+}
+
+.m-chart p {
+  font-size: 13px;
+  color: var(--m-muted);
+  margin-bottom: 12px;
+}
+
+.m-chart .spark {
+  width: 100%;
+  height: 90px;
+  margin: 0;
+}
+
+.m-cta {
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  width: 100%;
+  height: 56px;
+  font-size: 15px;
+}
+
+/* ===== Controles del mapa y hoja inferior =====
+   Un stack anclado al borde inferior: el botón de ubicación se apoya sobre la
+   hoja y sube o baja con la altura real de ésta (texto que envuelve, safe-area,
+   pantallas chicas). Nada de `bottom` fijo que se superponga en otro tamaño.
+   Sin botones de zoom: en un teléfono el pinch y el doble toque son el gesto
+   natural. */
+.m-map-bottom {
+  position: absolute;
+  z-index: 4;
+  left: 12px;
+  right: 12px;
+  bottom: var(--m-bottom);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.m-map-bottom > * {
+  pointer-events: auto;
+}
+
+.m-map-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ===== Hoja inferior ===== */
+.m-sheet {
+  width: 100%;
+  padding: 10px 14px 14px;
+  background: var(--m-surface);
+  border-radius: var(--m-r-sheet);
+  box-shadow: var(--m-shadow-2);
+}
+
+.m-sheet__handle {
+  width: 36px;
+  height: 4px;
+  margin: 0 auto 12px;
+  border-radius: var(--m-r-pill);
+  background: #c9cedb;
+}
+
+.m-sheet__selected {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 22px;
+  background: #eaeefc;
+  text-align: left;
+}
+
+.m-sheet__selected > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.m-sheet__selected b {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.m-sheet__selected span {
+  font-size: 12px;
+  color: var(--m-muted);
+}
+
+/* Estado y último reporte envuelven como unidades: "hace 3 s" nunca se parte. */
+.m-sheet__selected .m-sheet__sub {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 6px;
+  row-gap: 0;
+}
+
+.m-sheet__sub span {
+  white-space: nowrap;
+}
+
+.m-sheet__selected .m-sheet__speed span {
+  font-size: 12px;
+}
+
+.m-sheet__speed {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.m-sheet__speed b {
+  display: inline;
+  font-size: 20px;
+}
+
+.m-sheet__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--m-muted);
+}
+
+.m-sheet__empty {
+  padding: 12px 4px;
+  font-size: 13px;
+  color: var(--m-muted);
+}
+
+/*
+ * Vista previa de la flota: la misma hoja crece hacia arriba con la lista de
+ * camiones visibles, sin cambiar de sección. La lista queda montada y la
+ * animación es una transición, no una animación de entrada: así desplegar y
+ * plegar recorren el mismo camino, y el botón puede hacer las dos cosas.
+ *
+ * La hoja no cambia de layout al abrir ni al cerrar (nada de `display` ni
+ * `max-height` condicional): si el contenedor cambiara de tipo, la misma
+ * transición correría a distinta velocidad en cada sentido. La lista se
+ * autolimita con su propio `max-height` y es la que scrollea.
+ *
+ * El cierre arranca lento, como la reproducción inversa del despliegue, pero
+ * termina con una curva suave: el espejo exacto de la apertura llegaba al
+ * final en pocos frames y se sentía brusco. Por eso dura más (450 ms contra
+ * 330) y usa una curva en S que frena al llegar.
+ */
+.m-sheet__flota {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s cubic-bezier(0.55, 0, 0.45, 1);
+}
+
+.m-sheet__flota--open {
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.33s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* El recorte es lo que permite animar la altura sin medirla en JS. */
+.m-sheet__flota-in {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.m-flota-lista {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(46dvh, 360px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  opacity: 0;
+  transform: translateY(8px);
+  /* `ease-in-out` frena al final: con `ease-in` el contenido desaparecía de
+     golpe antes de que la hoja terminara de encogerse. */
+  transition:
+    opacity 0.45s ease-in-out,
+    transform 0.45s ease-in-out;
+}
+
+.m-sheet__flota--open .m-flota-lista {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.33s ease-out,
+    transform 0.33s ease-out;
+}
+
+.m-flota-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: var(--m-surface-muted);
+  text-align: left;
+}
+
+.m-flota-row--sel {
+  background: var(--m-accent-soft);
+}
+
+.m-flota-row__plate {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.m-flota-row__meta {
+  flex: none;
+  font-size: 12px;
+  color: var(--m-muted);
+  white-space: nowrap;
+}
+
+.m-flota-row__speed {
+  flex: none;
+  min-width: 68px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--m-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.m-flota-row__speed b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--m-ink);
+}
+
+.m-sheet__chevron {
+  display: flex;
+  transition: transform 0.18s ease;
+}
+
+/* ===== Drawer ===== */
+.m-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(27, 32, 51, 0.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.m-scrim--on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.m-drawer {
+  position: absolute;
+  z-index: 11;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(312px, 86%);
+  padding: calc(var(--m-top) + 40px) 16px 28px;
+  display: flex;
+  flex-direction: column;
+  background: var(--m-surface);
+  border-radius: 0 var(--m-r-sheet) var(--m-r-sheet) 0;
+  box-shadow: 10px 0 40px rgba(27, 32, 51, 0.25);
+  transform: translateX(-105%);
+  transition: transform 0.25s ease;
+}
+
+.m-drawer--on {
+  transform: none;
+}
+
+.m-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 12px;
+  margin-bottom: 24px;
+}
+
+.m-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.m-brand .mark {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  --m1: #6a8cee;
+  --m2: #3a58b4;
+  --m3: #5472d2;
+}
+
+.m-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.m-nav a {
+  height: 52px;
+  padding: 0 16px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 16px;
+  color: var(--m-muted);
+}
+
+.m-nav a.m-on {
+  background: #e9ecf3;
+  color: var(--m-ink);
+  font-weight: 500;
+}
+
+.m-nav a.m-soon {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.m-nav__alerts {
+  margin-top: 16px;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: 16px;
+  background: var(--m-surface-muted);
+  color: var(--m-ink);
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.m-nav__alerts span {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.m-nav__alerts small {
+  font-size: 13px;
+  color: var(--m-muted);
+}
+
+.m-drawer__user {
+  margin-top: auto;
+  padding: 12px 12px 12px 16px;
+  border-top: 1px solid var(--m-line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.m-drawer__user span:nth-child(2) {
+  flex: 1;
+}
+
+.m-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--m-r-pill);
+  background: var(--m-accent);
+  color: #fff;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.m-logout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: var(--m-r-pill);
+  background: var(--m-surface-muted);
+  font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-drawer,
+  .m-scrim,
+  .m-sheet__chevron,
+  .m-sheet__flota,
+  .m-flota-lista {
+    transition: none;
+  }
+}

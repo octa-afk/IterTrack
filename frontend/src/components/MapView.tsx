@@ -46,6 +46,10 @@ const PIN_SCALE_PER_ZOOM = 0.09;
  */
 const DESVIO_MAX_M = 120;
 
+/* Grosor de la ruta hasta la próxima parada. La recta de respaldo (sin
+ * proveedor de ruteo) va dos píxeles más fina para no leerse como calle. */
+const ROUTE_WEIGHT = 6;
+
 function pinScale(zoom: number): number {
   const raw = 1 - (PIN_FULL_ZOOM - zoom) * PIN_SCALE_PER_ZOOM;
   return Math.min(1, Math.max(PIN_MIN_SCALE, raw));
@@ -59,7 +63,27 @@ type MaplibreFactory = (options: {
 
 const maplibreGL = (L as unknown as { maplibreGL: MaplibreFactory }).maplibreGL;
 
-export default function MapView() {
+interface MapViewProps {
+  /**
+   * Entrega el mapa ya creado. La UI móvil lo necesita para sus propios
+   * controles de zoom y ubicación; el escritorio usa el control de Leaflet.
+   */
+  onReady?: (map: L.Map) => void;
+  /** Oculta el control de zoom de Leaflet (la UI móvil dibuja el suyo). */
+  showZoomControl?: boolean;
+  /**
+   * Al elegir un camión, encuadra la vista sobre él **y** su viaje abierto
+   * (paradas que faltan y ruta hasta la próxima). El escritorio conserva el
+   * vuelo al camión: ahí el panel lateral deja ver el contexto.
+   */
+  fitSelection?: boolean;
+}
+
+export default function MapView({
+  onReady,
+  showZoomControl = true,
+  fitSelection = false,
+}: MapViewProps = {}) {
   const { trucks, visibleTrucks, selectedId, recorridoId, select } = useDashboard();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -71,6 +95,8 @@ export default function MapView() {
   const tripRef = useRef<L.LayerGroup | null>(null);
   const routeRef = useRef<L.LayerGroup | null>(null);
   const fittedRef = useRef(false);
+  /* Pedido de encuadre pendiente: se resuelve cuando llegan las paradas. */
+  const fitPendingRef = useRef(false);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
 
@@ -84,8 +110,12 @@ export default function MapView() {
     const el = containerRef.current;
     if (!el) return;
 
-    const map = L.map(el).setView(CITY_CENTER, OPEN_ZOOM);
+    const map = L.map(el, { zoomControl: showZoomControl }).setView(
+      CITY_CENTER,
+      OPEN_ZOOM,
+    );
     mapRef.current = map;
+    onReady?.(map);
     const markers = markersRef.current;
     const lastPos = lastPosRef.current;
     const moves = movesRef.current;
@@ -212,7 +242,7 @@ export default function MapView() {
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [onReady, showZoomControl]);
 
   /*
    * Encuadre inicial: al recargar, el mapa se abre sobre la flota con el zoom
@@ -365,14 +395,18 @@ export default function MapView() {
     let pedida = false;
     let proxima: TripStop | null = null;
     let ruta: { geometry: [number, number][] } | null = null;
+    /* Paradas dibujadas, para encuadrar la vista sobre el viaje abierto. */
+    let puntosParadas: [number, number][] = [];
 
     const pintarParadas = (stops: TripStop[]) => {
       if (!tripRef.current) tripRef.current = L.layerGroup().addTo(map);
       const capa = tripRef.current;
       capa.clearLayers();
       proxima = null;
+      puntosParadas = [];
       for (const stop of stops) {
         if (stop.lat === null || stop.lng === null) continue;
+        puntosParadas.push([stop.lat, stop.lng]);
         /*
          * El estado de la parada se ve en el pin: el número es el orden del
          * viaje, el check una parada ya entregada y el aro la que se está
@@ -384,11 +418,18 @@ export default function MapView() {
         if (!proxima && stop.status === 'pending') {
           proxima = stop;
         }
+        /*
+         * La parada destino —la primera `pending`— lleva el halo que late: es
+         * a la que apunta la ruta, y sin él el número azul se confundía con
+         * las demás. Una parada `arrived` ya se está visitando y no compite.
+         */
+        const esDestino = !proxima && stop.status === 'pending';
         const clases = [
           'stop-pin',
           stop.needs_review ? 'pending' : '',
           entregada ? 'done' : '',
           enCurso ? 'here' : '',
+          esDestino ? 'target' : '',
         ]
           .filter(Boolean)
           .join(' ');
@@ -421,9 +462,9 @@ export default function MapView() {
             [origen, [proxima.lat, proxima.lng]],
             {
               color: '#3f6fe0',
-              weight: 2,
-              opacity: 0.7,
-              dashArray: '7 6',
+              weight: ROUTE_WEIGHT - 2,
+              opacity: 0.85,
+              dashArray: '9 7',
             },
           ).addTo(linea);
         }
@@ -433,8 +474,8 @@ export default function MapView() {
       if (origen === null) {
         L.polyline(ruta.geometry, {
           color: '#3f6fe0',
-          weight: 4,
-          opacity: 0.85,
+          weight: ROUTE_WEIGHT,
+          opacity: 0.9,
           lineJoin: 'round',
           lineCap: 'round',
         }).addTo(linea);
@@ -452,17 +493,59 @@ export default function MapView() {
       if (puntos.length > 1) {
         L.polyline(puntos, {
           color: '#3f6fe0',
-          weight: 4,
-          opacity: 0.85,
+          weight: ROUTE_WEIGHT,
+          opacity: 0.9,
           lineJoin: 'round',
           lineCap: 'round',
         }).addTo(linea);
       }
     };
 
+    /*
+     * Encuadre de la selección en móvil: camión + paradas del viaje abierto.
+     * Se resuelve acá y no al tocar el pin porque las paradas llegan después
+     * de la consulta de viajes; con una sola coordenada —sin viaje abierto o
+     * sin proveedor de ruteo— se vuela al camión como en escritorio.
+     */
+    const encuadrar = (origen: [number, number] | null) => {
+      const map = mapRef.current;
+      if (!map || !fitPendingRef.current) return;
+      fitPendingRef.current = false;
+
+      const puntos: [number, number][] = origen ? [origen] : [];
+      for (const punto of puntosParadas) puntos.push(punto);
+      if (!puntos.length) return;
+
+      if (puntos.length === 1) {
+        const zoom = map.getZoom();
+        map.flyTo(puntos[0], Math.max(Number.isFinite(zoom) ? zoom : OPEN_ZOOM, 13), {
+          duration: 0.8,
+        });
+        return;
+      }
+
+      /* La hoja inferior y el buscador son parte fija de la pantalla móvil:
+       * el encuadre les deja el lugar para que ninguna parada quede tapada. */
+      map.fitBounds(L.latLngBounds(puntos), {
+        paddingTopLeft: [24, 96],
+        paddingBottomRight: [24, 240],
+        maxZoom: 15,
+        duration: 0.6,
+      });
+    };
+
     const refrescar = async () => {
+      const truck = trucksRef.current.find((t) => t.id === selectedId);
+      const origen: [number, number] | null =
+        truck && truck.lat !== null && truck.lng !== null
+          ? [truck.lat, truck.lng]
+          : null;
+
       const viajes = await listTrips(selectedId).catch(() => null);
-      if (cancelado || viajes === null) return;
+      if (cancelado || viajes === null) {
+        encuadrar(origen);
+        return;
+      }
       const activo = viajes.find(
         (viaje) => viaje.status === 'planned' || viaje.status === 'in_progress',
       );
@@ -475,6 +558,7 @@ export default function MapView() {
           pedida = false;
           ruta = null;
         }
+        encuadrar(origen);
         return;
       }
 
@@ -488,12 +572,6 @@ export default function MapView() {
         ruta = null;
         routeRef.current?.clearLayers();
       }
-
-      const truck = trucksRef.current.find((t) => t.id === selectedId);
-      const origen: [number, number] | null =
-        truck && truck.lat !== null && truck.lng !== null
-          ? [truck.lat, truck.lng]
-          : null;
 
       const desvio =
         ruta !== null && origen !== null
@@ -515,6 +593,7 @@ export default function MapView() {
       }
 
       dibujarRuta(origen);
+      encuadrar(origen);
     };
 
     void refrescar();
@@ -528,16 +607,32 @@ export default function MapView() {
     };
   }, [selectedId]);
 
-  /* Fly to the selected truck when the selection changes. */
+  /*
+   * Fly to the selected truck when the selection changes. El mapa puede estar
+   * oculto (el shell móvil lo monta también en las secciones sin mapa y lo
+   * muestra con `display:none`): con tamaño cero o zoom indefinido, `flyTo`
+   * proyecta NaN y tumba la app. En ese caso se deja la vista como está.
+   */
   useEffect(() => {
-    if (selectedId === null) return;
+    if (selectedId === null) {
+      fitPendingRef.current = false;
+      return;
+    }
+    if (fitSelection) {
+      /* El encuadre necesita las paradas del viaje abierto: lo hace `refrescar`. */
+      fitPendingRef.current = true;
+      return;
+    }
     const truck = trucksRef.current.find((t) => t.id === selectedId);
     const map = mapRef.current;
     if (!truck || truck.lat === null || truck.lng === null || !map) return;
-    map.flyTo([truck.lat, truck.lng], Math.max(map.getZoom(), OPEN_ZOOM), {
-      duration: 0.8,
-    });
-  }, [selectedId]);
+    if (!Number.isFinite(truck.lat) || !Number.isFinite(truck.lng)) return;
+    const size = map.getSize();
+    if (size.x === 0 || size.y === 0) return;
+    const currentZoom = map.getZoom();
+    const zoom = Math.max(Number.isFinite(currentZoom) ? currentZoom : OPEN_ZOOM, OPEN_ZOOM);
+    map.flyTo([truck.lat, truck.lng], zoom, { duration: 0.8 });
+  }, [selectedId, fitSelection]);
 
   return (
     <>
