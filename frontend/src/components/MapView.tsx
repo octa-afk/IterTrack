@@ -67,9 +67,19 @@ interface MapViewProps {
   onReady?: (map: L.Map) => void;
   /** Oculta el control de zoom de Leaflet (la UI móvil dibuja el suyo). */
   showZoomControl?: boolean;
+  /**
+   * Al elegir un camión, encuadra la vista sobre él **y** su viaje abierto
+   * (paradas que faltan y ruta hasta la próxima). El escritorio conserva el
+   * vuelo al camión: ahí el panel lateral deja ver el contexto.
+   */
+  fitSelection?: boolean;
 }
 
-export default function MapView({ onReady, showZoomControl = true }: MapViewProps = {}) {
+export default function MapView({
+  onReady,
+  showZoomControl = true,
+  fitSelection = false,
+}: MapViewProps = {}) {
   const { trucks, visibleTrucks, selectedId, recorridoId, select } = useDashboard();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -81,6 +91,8 @@ export default function MapView({ onReady, showZoomControl = true }: MapViewProp
   const tripRef = useRef<L.LayerGroup | null>(null);
   const routeRef = useRef<L.LayerGroup | null>(null);
   const fittedRef = useRef(false);
+  /* Pedido de encuadre pendiente: se resuelve cuando llegan las paradas. */
+  const fitPendingRef = useRef(false);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
 
@@ -379,14 +391,18 @@ export default function MapView({ onReady, showZoomControl = true }: MapViewProp
     let pedida = false;
     let proxima: TripStop | null = null;
     let ruta: { geometry: [number, number][] } | null = null;
+    /* Paradas dibujadas, para encuadrar la vista sobre el viaje abierto. */
+    let puntosParadas: [number, number][] = [];
 
     const pintarParadas = (stops: TripStop[]) => {
       if (!tripRef.current) tripRef.current = L.layerGroup().addTo(map);
       const capa = tripRef.current;
       capa.clearLayers();
       proxima = null;
+      puntosParadas = [];
       for (const stop of stops) {
         if (stop.lat === null || stop.lng === null) continue;
+        puntosParadas.push([stop.lat, stop.lng]);
         /*
          * El estado de la parada se ve en el pin: el número es el orden del
          * viaje, el check una parada ya entregada y el aro la que se está
@@ -474,9 +490,51 @@ export default function MapView({ onReady, showZoomControl = true }: MapViewProp
       }
     };
 
+    /*
+     * Encuadre de la selección en móvil: camión + paradas del viaje abierto.
+     * Se resuelve acá y no al tocar el pin porque las paradas llegan después
+     * de la consulta de viajes; con una sola coordenada —sin viaje abierto o
+     * sin proveedor de ruteo— se vuela al camión como en escritorio.
+     */
+    const encuadrar = (origen: [number, number] | null) => {
+      const map = mapRef.current;
+      if (!map || !fitPendingRef.current) return;
+      fitPendingRef.current = false;
+
+      const puntos: [number, number][] = origen ? [origen] : [];
+      for (const punto of puntosParadas) puntos.push(punto);
+      if (!puntos.length) return;
+
+      if (puntos.length === 1) {
+        const zoom = map.getZoom();
+        map.flyTo(puntos[0], Math.max(Number.isFinite(zoom) ? zoom : OPEN_ZOOM, 13), {
+          duration: 0.8,
+        });
+        return;
+      }
+
+      /* La hoja inferior y el buscador son parte fija de la pantalla móvil:
+       * el encuadre les deja el lugar para que ninguna parada quede tapada. */
+      map.fitBounds(L.latLngBounds(puntos), {
+        paddingTopLeft: [24, 96],
+        paddingBottomRight: [24, 240],
+        maxZoom: 15,
+        duration: 0.6,
+      });
+    };
+
     const refrescar = async () => {
+      const truck = trucksRef.current.find((t) => t.id === selectedId);
+      const origen: [number, number] | null =
+        truck && truck.lat !== null && truck.lng !== null
+          ? [truck.lat, truck.lng]
+          : null;
+
       const viajes = await listTrips(selectedId).catch(() => null);
-      if (cancelado || viajes === null) return;
+      if (cancelado || viajes === null) {
+        encuadrar(origen);
+        return;
+      }
       const activo = viajes.find(
         (viaje) => viaje.status === 'planned' || viaje.status === 'in_progress',
       );
@@ -489,6 +547,7 @@ export default function MapView({ onReady, showZoomControl = true }: MapViewProp
           pedida = false;
           ruta = null;
         }
+        encuadrar(origen);
         return;
       }
 
@@ -502,12 +561,6 @@ export default function MapView({ onReady, showZoomControl = true }: MapViewProp
         ruta = null;
         routeRef.current?.clearLayers();
       }
-
-      const truck = trucksRef.current.find((t) => t.id === selectedId);
-      const origen: [number, number] | null =
-        truck && truck.lat !== null && truck.lng !== null
-          ? [truck.lat, truck.lng]
-          : null;
 
       const desvio =
         ruta !== null && origen !== null
@@ -529,6 +582,7 @@ export default function MapView({ onReady, showZoomControl = true }: MapViewProp
       }
 
       dibujarRuta(origen);
+      encuadrar(origen);
     };
 
     void refrescar();
@@ -549,7 +603,15 @@ export default function MapView({ onReady, showZoomControl = true }: MapViewProp
    * proyecta NaN y tumba la app. En ese caso se deja la vista como está.
    */
   useEffect(() => {
-    if (selectedId === null) return;
+    if (selectedId === null) {
+      fitPendingRef.current = false;
+      return;
+    }
+    if (fitSelection) {
+      /* El encuadre necesita las paradas del viaje abierto: lo hace `refrescar`. */
+      fitPendingRef.current = true;
+      return;
+    }
     const truck = trucksRef.current.find((t) => t.id === selectedId);
     const map = mapRef.current;
     if (!truck || truck.lat === null || truck.lng === null || !map) return;
@@ -559,7 +621,7 @@ export default function MapView({ onReady, showZoomControl = true }: MapViewProp
     const currentZoom = map.getZoom();
     const zoom = Math.max(Number.isFinite(currentZoom) ? currentZoom : OPEN_ZOOM, OPEN_ZOOM);
     map.flyTo([truck.lat, truck.lng], zoom, { duration: 0.8 });
-  }, [selectedId]);
+  }, [selectedId, fitSelection]);
 
   return (
     <>
