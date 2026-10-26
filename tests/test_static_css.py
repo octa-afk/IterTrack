@@ -115,10 +115,12 @@ def test_mobile_selected_pin_and_fleet_preview():
     """El pin elegido y la vista previa de la flota en la hoja del mapa.
 
     El pin seleccionado va pintado entero (fondo celeste, texto blanco), no
-    blanco con marco. La hoja se despliega y se pliega con la misma transición
-    de altura (`grid-template-rows` 0fr ↔ 1fr), sin cambiar de layout: si el
+    blanco con marco. La hoja se despliega y se pliega con una transición de
+    altura (`grid-template-rows` 0fr ↔ 1fr) sin cambiar de layout: si el
     contenedor cambiara de `display`, la misma transición correría a distinta
-    velocidad en cada sentido.
+    velocidad en cada sentido. El cierre usa la curva espejo del despliegue
+    —`cubic-bezier(1, 0, .8, 1)` contra `cubic-bezier(.2, 0, 0, 1)`— para que
+    sea el mismo gesto al revés y no la misma curva aplicada hacia atrás.
     """
     text = built_css()
     label = re.search(r"\.m-app \.pin\.sel \.lbl\{([^}]*)\}", text)
@@ -129,11 +131,16 @@ def test_mobile_selected_pin_and_fleet_preview():
     hoja = re.search(r"\.m-sheet__flota\{([^}]*)\}", text)
     assert hoja, "the fleet preview wrapper is missing"
     assert "grid-template-rows:0fr" in hoja.group(1)
-    assert "transition:grid-template-rows" in hoja.group(1)
-    assert re.search(r"\.m-sheet__flota--open\{grid-template-rows:1fr\}", text)
+    # El cierre es la curva espejo del despliegue, a la misma duración.
+    assert "transition:grid-template-rows .33s cubic-bezier(1,0,.8,1)" in hoja.group(1)
+    abierta = re.search(r"\.m-sheet__flota--open\{([^}]*)\}", text)
+    assert abierta and "grid-template-rows:1fr" in abierta.group(1)
+    assert "transition:grid-template-rows .33s cubic-bezier(.2,0,0,1)" in abierta.group(1)
     lista = re.search(r"\.m-flota-lista\{([^}]*)\}", text)
     assert lista and "overflow-y:auto" in lista.group(1)
-    assert "transition:opacity .3s" in lista.group(1)
+    assert "transition:opacity .33s ease-in,transform .33s ease-in" in lista.group(1)
+    abierta_lista = re.search(r"\.m-sheet__flota--open \.m-flota-lista\{([^}]*)\}", text)
+    assert abierta_lista and "ease-out" in abierta_lista.group(1)
 
 
 @requires_build
