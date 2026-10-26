@@ -523,7 +523,9 @@
   font-size: 15px;
 }
 
-/* ===== Controles del mapa ===== */
+/* ===== Controles del mapa =====
+   Sin botones de zoom: en un teléfono el pinch y el doble toque son el gesto
+   natural. Queda sólo "mi ubicación", arriba de la hoja inferior. */
 .m-map-controls {
   position: absolute;
   z-index: 4;
@@ -532,21 +534,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.m-zoom {
-  width: 48px;
-  border-radius: var(--m-r-pill);
-  background: var(--m-surface);
-  box-shadow: var(--m-shadow-1);
-  overflow: hidden;
-}
-
-.m-zoom button {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
 }
 
 /* ===== Hoja inferior ===== */
