@@ -157,6 +157,13 @@
   background: var(--m-surface-muted);
 }
 
+/* Ubicación: usa el celeste del diseño (`--m-accent-soft`, el de la tarjeta
+   seleccionada) para diferenciarlo de los botones blancos de menú. */
+.m-btn-round--locate {
+  background: var(--m-accent-soft);
+  color: var(--m-accent-ink);
+}
+
 .m-btn-dark {
   height: 48px;
   padding: 0 20px;
@@ -523,14 +530,30 @@
   font-size: 15px;
 }
 
-/* ===== Controles del mapa =====
+/* ===== Controles del mapa y hoja inferior =====
+   Un stack anclado al borde inferior: el botón de ubicación se apoya sobre la
+   hoja y sube o baja con la altura real de ésta (texto que envuelve, safe-area,
+   pantallas chicas). Nada de `bottom` fijo que se superponga en otro tamaño.
    Sin botones de zoom: en un teléfono el pinch y el doble toque son el gesto
-   natural. Queda sólo "mi ubicación", arriba de la hoja inferior. */
-.m-map-controls {
+   natural. */
+.m-map-bottom {
   position: absolute;
   z-index: 4;
-  right: 16px;
-  bottom: 200px;
+  left: 12px;
+  right: 12px;
+  bottom: var(--m-bottom);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.m-map-bottom > * {
+  pointer-events: auto;
+}
+
+.m-map-controls {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -538,11 +561,7 @@
 
 /* ===== Hoja inferior ===== */
 .m-sheet {
-  position: absolute;
-  z-index: 4;
-  left: 12px;
-  right: 12px;
-  bottom: var(--m-bottom);
+  width: 100%;
   padding: 10px 14px 14px;
   background: var(--m-surface);
   border-radius: var(--m-r-sheet);
@@ -582,6 +601,22 @@
 .m-sheet__selected span {
   font-size: 12px;
   color: var(--m-muted);
+}
+
+/* Estado y último reporte envuelven como unidades: "hace 3 s" nunca se parte. */
+.m-sheet__selected .m-sheet__sub {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 6px;
+  row-gap: 0;
+}
+
+.m-sheet__sub span {
+  white-space: nowrap;
+}
+
+.m-sheet__selected .m-sheet__speed span {
+  font-size: 12px;
 }
 
 .m-sheet__speed {
