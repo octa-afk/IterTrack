@@ -21,6 +21,11 @@ alembic.ini
 # Configuración local de herramientas
 .claude/
 .codegraph/
+.codex/
+.atl/
+.agents/
+skills-lock.json
+.playwright-mcp/
 *.local.json
 # Archivos locales compartidos (iconos, logos, etc.)
 extras/
