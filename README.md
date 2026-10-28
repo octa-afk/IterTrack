@@ -48,18 +48,27 @@ Sistema integral de rastreo y telemetría satelital GPS para flotas de camiones 
 
 ```mermaid
 flowchart TD
-    subgraph Emisores["Emisores de Coordenadas"]
+    subgraph Emisores["Emisores de telemetría"]
         HW["Dispositivo ESP32 (Iter-Hard)"]
         SIM["Simulador Python (simulate_trucks.py)"]
     end
 
     subgraph Backend["FastAPI Backend (source)"]
         API["FastAPI App (main.py)"]
-        Router["Tracking Router (services/tracking.py)"]
-        Auth["Auth Router (services/auth.py)"]
+        Ingest["Devices Router (services/devices.py)"]
+        Track["Tracking Router (services/tracking.py)"]
+        Trips["Trips Router (services/destinations.py)"]
+        Alerts["Alerts Router (services/alerts.py)"]
+        Auth["Auth y Organizations (services/auth.py, organizations.py)"]
+        Progress["Progreso de viaje (services/trip_progress.py)"]
         Schemas["Pydantic Schemas (schemas/)"]
         ORM["SQLAlchemy Models (models/)"]
         DBCfg["Database Config & Engine (database/)"]
+    end
+
+    subgraph Externos["Proveedores opcionales"]
+        GEO["Geocoder (GEOCODER_PROVIDER)"]
+        RT["Router (ROUTING_PROVIDER)"]
     end
 
     subgraph Storage["Persistencia"]
@@ -72,19 +81,25 @@ flowchart TD
         DOCS["Swagger / ReDoc (/docs)"]
     end
 
-    HW -->|HTTP POST / PUT JSON + Bearer JWT| API
-    SIM -->|HTTP POST / PUT JSON + Bearer JWT| API
-    API --> Router
+    HW -->|"POST /devices/ingest + token de dispositivo"| API
+    SIM -->|"POST /devices/ingest + token de dispositivo"| API
+    API --> Ingest
+    API --> Track
+    API --> Trips
     API --> Auth
-    Auth --> Schemas
-    Auth --> ORM
-    Router --> Schemas
-    Router --> ORM
+    Ingest --> Progress
+    Ingest --> Alerts
+    Ingest --> Schemas
+    Trips --> Schemas
+    Progress --> ORM
+    Schemas --> ORM
     ORM --> DBCfg
     DBCfg --> PG
-    AL -.->|Control de Esquemas| PG
-    API -->|GET /map| MAP
-    MAP -->|Polling GET /trucks/... + Bearer JWT| Router
+    AL -.->|"Control de Esquemas"| PG
+    Trips -.->|"dirección a coordenada"| GEO
+    Trips -.->|"geometría del tramo"| RT
+    API -->|"GET /map"| MAP
+    MAP -->|"Polling GET /trucks, /trips + Bearer JWT"| Track
     API --> DOCS
 ```
 
@@ -104,12 +119,14 @@ IterTrack/
 ├── alembic.ini.example            # Plantilla de configuración para migraciones de Alembic
 ├── frontend/                      # SPA React 19 + TypeScript + Vite
 │   ├── src/
-│   │   ├── api/                   # Clientes tipados de /auth y /trucks
+│   │   ├── api/                   # Clientes tipados de /auth, /trucks y /trips
+│   │   ├── assets/                # truck.webp (marcador cenital del camión)
 │   │   ├── components/            # Mapa, lista de flota, gráficos y tarjetas
-│   │   ├── lib/                   # Helpers puros (truckIcon, movement, trucks)
-│   │   ├── pages/                 # LoginPage, RegisterPage, MapPage
+│   │   ├── lib/                   # Helpers puros (truckIcon, movement, trucks, route)
+│   │   ├── mobile/                # Drawer, pestañas y vistas de móvil
+│   │   ├── pages/                 # Login, Register, Map, Fleet y Trips
 │   │   ├── state/                 # DashboardProvider: sesión, polling y selección
-│   │   ├── styles/                # base.css, auth.css, dashboard.css
+│   │   ├── styles/                # base.css, auth.css, dashboard.css, mobile.css
 │   │   └── types/                 # Tipos del contrato de la API
 │   ├── vite.config.ts             # Dev server con proxy a :8000
 │   └── package.json
@@ -125,28 +142,39 @@ IterTrack/
 │   ├── script.py.mako             # Template para generación de revisiones
 │   └── versions/                  # Historial de migraciones de la base de datos
 └── source/
-    ├── main.py                    # FastAPI: routers, SPA en /, /register, /map y /fleet, y /assets
+    ├── main.py                    # FastAPI: routers, SPA en /, /register, /map, /fleet y /viajes, y /assets
     ├── static/
     │   └── isologo.png            # Ícono del sitio (/favicon.ico)
     ├── database/
-    │   ├── config.py              # Carga de variables de entorno (DB, JWT)
+    │   ├── config.py              # Carga de variables de entorno (DB, JWT, proveedores)
     │   └── database.py            # Motor de conexión, SessionLocal y Base declarativa
     ├── models/
     │   ├── __init__.py
+    │   ├── alert.py               # Alert y AlertOccurrence (rechazos agrupados)
+    │   ├── destination.py         # Charger, Depot, Trip, TripStop y AddressCache
     │   ├── device.py              # Dispositivos GPS y asignaciones a camiones
     │   ├── ingestion.py           # Puntos ingeridos y rechazados
-    │   ├── organization.py        # Organizaciones (multitenancy)
+    │   ├── organization.py        # Organizaciones e invitaciones (multitenancy)
     │   ├── truck.py               # Modelos ORM: Truck y TrackingPoint
     │   └── user.py                # Modelo ORM: User
     ├── schemas/
     │   ├── __init__.py
     │   ├── auth.py                # UserCreate, UserResponse, Token
+    │   ├── destination.py         # Viajes, paradas, dadores y depósitos
+    │   ├── device.py              # Aprovisionamiento y respuestas de dispositivo
     │   ├── ingestion.py           # DeviceIngestBatch / DeviceIngestPoint (contrato v1)
+    │   ├── organization.py        # Organizaciones e invitaciones
     │   └── truck.py               # Truck, Location, TrackingPoint
     └── services/
+        ├── alerts.py              # Alertas de ingesta (/alerts)
         ├── auth.py                # Utilidades JWT + endpoints (/auth)
+        ├── destinations.py        # Dadores, depósitos y viajes (/chargers, /depots, /trips)
         ├── devices.py             # Ingesta por lotes con token de dispositivo (/devices)
-        └── tracking.py            # Endpoints de la API (/trucks)
+        ├── geocoding.py           # Dirección → coordenada, detrás de una interfaz
+        ├── organizations.py       # Organizaciones e invitaciones (/organizations)
+        ├── routing.py             # Ruta por calles, detrás de una interfaz
+        ├── tracking.py            # Endpoints de la API (/trucks)
+        └── trip_progress.py       # Avance automático del viaje con cada punto
 ```
 
 > **Nota:** El código fuente del hardware embebido se gestiona en la rama `origin/IterTrack-Hardware` dentro del directorio `Iter-Hard/`.
@@ -239,7 +267,7 @@ alembic upgrade head
 
 ### 6. Compilar el Frontend
 
-FastAPI sirve el build de React desde `frontend/dist`. Sin ese build, `/`, `/register`, `/map` y `/fleet` responden `503`.
+FastAPI sirve el build de React desde `frontend/dist`. Sin ese build, `/`, `/register`, `/map`, `/fleet` y `/viajes` responden `503`.
 
 ```bash
 make frontend   # npm ci && npm run build en frontend/
@@ -459,6 +487,8 @@ git checkout IterTrack-Hardware
 | `GET` | `/trips` | Viajes de la organización (`?charger_id=`, `?truck_id=`) | — | 🔒 Bearer |
 | `POST` | `/trips` | Importa un viaje con sus destinos; geocodifica al entrar. Si el camión ya tiene un viaje abierto responde `409` salvo `replace_open_trip: true`, que cancela el anterior | `{"charger_id": 1, "departure_at": "2026-10-26T07:30:00-03:00", "external_ref": "ENVIO-001", "truck_id": 2, "replace_open_trip": true, "stops": [{"address": "Av. Colón 1234, Córdoba"}]}` | 🔒 org_admin |
 | `GET` | `/trips/{id}` | Un viaje con sus destinos | — | 🔒 Bearer |
+| `GET` | `/trips/{id}/route` | Geometría, distancia y duración del tramo hasta la **próxima** parada pendiente. `409` sin origen o sin paradas ubicadas, `503` sin proveedor, `502` si el proveedor falla | — | 🔒 Bearer |
+| `POST` | `/trips/{id}/reset` | Vuelve el viaje a `planned` y todas sus paradas a `pending`, sin fechas de llegada ni salida | — | 🔒 `org_admin` |
 | `PATCH` | `/trips/{id}/stops/{stop_id}` | Pin manual: resuelve el destino y escribe la caché | `{"lat": -31.4135, "lng": -64.1811}` | 🔒 org_admin |
 | `GET` | `/destinations/pending` | Cola de destinos sin coordenada (`needs_review`) | — | 🔒 Bearer |
 | `GET` | `/depots` | Depósitos de la organización | — | 🔒 Bearer |
@@ -466,13 +496,13 @@ git checkout IterTrack-Hardware
 | `GET` | `/trips/available-trucks` | Camiones activos sin viaje abierto | — | 🔒 Bearer |
 | `GET` | `/favicon.ico` | Ícono de la pestaña del navegador (`source/static/isologo.png`) | — | — |
 | `GET` | `/health` | Estado del servicio (`{"status": "ok"}`) | — | — |
+| `GET` | `/config` | Configuración pública del cliente. Solo incluye la cuenta demo (rol `member`, lectura) si `DEMO_MODE` está encendido | — | — |
 | `GET` | `/assets/{archivo}` | CSS y JS hasheados del build de React | — | — |
 | `POST` | `/auth/register` | Registra un usuario con un `invitation_code` activo | Ver JSON de registro abajo | — |
 | `POST` | `/auth/login` | Login OAuth2 (form-data) y devuelve JWT | `username` / `password` (form) | — |
 | `GET` | `/auth/me` | Datos del usuario autenticado | — | 🔒 Bearer |
-| `POST` | `/trucks` | Registra un nuevo camión y su punto inicial | Ver JSON abajo | 🔒 Bearer |
-| `PUT` | `/trucks/{truck_id}/location` | Agrega un punto de ubicación al historial del camión | `{"lat": -31.416, "long": -64.183, "speed": 0, "heading": 0}` | 🔒 Bearer |
-| `GET` | `/trucks/{truck_id}/location` | Obtiene el punto de tracking más reciente (por `recorded_at`) | — | 🔒 Bearer |
+| `POST` | `/trucks` | Da de alta un camión (solo ID y patente). **No** inserta puntos: nace sin posición hasta que su dispositivo reporte | `{"id": 1, "plate": "ABC123"}` | 🔒 `org_admin` |
+| `GET` | `/trucks/{truck_id}/location` | Obtiene el punto de tracking más reciente (por `recorded_at`). Responde `404` si el camión todavía no reportó | — | 🔒 Bearer |
 | `GET` | `/trucks/{truck_id}/iter` | Obtiene hasta 100 puntos, del más nuevo al más antiguo (por `recorded_at`) | — | 🔒 Bearer |
 | `DELETE` | `/trucks/{truck_id}/iter` | Elimina los puntos de tracking del camión, no el camión | — | 🔒 Bearer |
 | `GET` | `/trucks` | Lista los camiones de la organización del usuario autenticado | — | 🔒 Bearer |
@@ -539,18 +569,12 @@ Reglas que el backend hace cumplir en todos los endpoints:
 
 ```json
 {
-  "truck": {
-    "id": 1,
-    "plate": "ABC123"
-  },
-  "location": {
-    "lat": -31.4166867,
-    "long": -64.1834193,
-    "speed": 0,
-    "heading": 0
-  }
+  "id": 1,
+  "plate": "ABC123"
 }
 ```
+
+El camión nace **sin posición**. El primer punto llega recién cuando su dispositivo emite por `POST /devices/ingest`, y hasta entonces `GET /trucks/{id}/location` responde `404`. No hay camino humano para escribir telemetría: cualquier sesión con JWT de usuario puede leer, pero no puede inyectar posiciones.
 
 ---
 
