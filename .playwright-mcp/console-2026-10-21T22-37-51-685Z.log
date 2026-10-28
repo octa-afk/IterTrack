@@ -1,8 +1,0 @@
-[     276ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:8000/:0
-[   33685ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://tiles.openfreemap.org/styles/bright:0
-[   33687ms] [ERROR] Ee: AJAXError: Failed to fetch (0): https://tiles.openfreemap.org/styles/bright
-    at http://127.0.0.1:8000/assets/index-BYLDZVHm.js:9:61521
-    at Generator.throw (<anonymous>)
-    at s (http://127.0.0.1:8000/assets/index-BYLDZVHm.js:9:52061) @ http://127.0.0.1:8000/assets/index-BYLDZVHm.js:8
-[   33687ms] [WARNING] [.WebGL-0x147c00102e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://127.0.0.1:8000/map:0
-[   78983ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://tiles.openfreemap.org/styles/bright:0

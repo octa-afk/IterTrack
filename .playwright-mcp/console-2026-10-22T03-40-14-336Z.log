@@ -1,3 +1,0 @@
-[      60ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap:0
-[     347ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://tiles.openfreemap.org/styles/bright:0
-[     348ms] [WARNING] [.WebGL-0x21cc02e85e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://127.0.0.1:8000/map?fresh=1:0
