@@ -3,7 +3,6 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { clearToken } from '../api/client';
 import { DashboardProvider } from '../state/DashboardProvider';
 import { Sidebar } from './Sidebar';
-import { Topbar } from './Topbar';
 import MapView from './MapView';
 
 const NAV_KEY = 'itertrack-nav';
@@ -16,6 +15,10 @@ const NAV_KEY = 'itertrack-nav';
  * panel, cada visita recrearía Leaflet + MapLibre y volvería a pedir el estilo
  * de OpenFreeMap; al cambiar de sección sólo se oculta con `visibility`, que
  * conserva el tamaño (Leaflet no necesita invalidateSize) y el estado.
+ *
+ * No hay barra superior: la búsqueda y el perfil viven en el lateral, y los
+ * paneles flotantes arrancan en el borde de arriba. Eso devuelve al mapa los
+ * 64 px de alto que ocupaba la barra.
  */
 export function DashboardLayout() {
   const navigate = useNavigate();
@@ -43,9 +46,27 @@ export function DashboardLayout() {
   return (
     <DashboardProvider>
       <div className={`app${navOpen ? '' : ' nav-off'}${enPanel ? '' : ' app-section'}`}>
-        <Sidebar onLogout={handleLogout} />
+        <Sidebar navOpen={navOpen} onToggleNav={toggleNav} onLogout={handleLogout} />
+        {/*
+         * Con el lateral plegado no queda ningún botón visible para volver a
+         * abrirlo: éste flota sobre el mapa, en la esquina que deja libre el
+         * encabezado del panel.
+         */}
+        <button
+          className="navtoggle side-reopen"
+          type="button"
+          aria-controls="sidebar"
+          aria-expanded={false}
+          aria-label="Mostrar panel lateral"
+          title="Mostrar panel lateral"
+          onClick={toggleNav}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="3" />
+            <path d="M9 4v16" />
+          </svg>
+        </button>
         <div className="content">
-          <Topbar navOpen={navOpen} onToggleNav={toggleNav} />
           <div className={enPanel ? 'mapbox' : 'mapbox mapbox-off'} aria-hidden={!enPanel}>
             <MapView />
           </div>

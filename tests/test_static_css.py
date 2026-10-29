@@ -96,6 +96,32 @@ def test_auth_styles_stay_scoped_to_the_auth_page():
 
 
 @requires_build
+def test_lateral_concentra_busqueda_y_perfil_sin_barra_superior():
+    """La búsqueda y el perfil viven en el lateral, y los paneles arrancan arriba.
+
+    Sin barra superior el mapa recupera esa franja: el encabezado del panel y la
+    columna de flota empiezan a 16 px del borde, no a 97.
+    """
+    text = built_css()
+
+    # La búsqueda y el perfil son parte del lateral.
+    assert re.search(r"\.side-head\{", text), "falta la cabecera del lateral"
+    assert re.search(r"\.side \.side-search\{[^}]*margin:0 16px", text), (
+        "la búsqueda no está dentro del lateral"
+    )
+    assert re.search(r"\.side-foot\{[^}]*margin:auto 16px", text), (
+        "el pie con alertas y perfil no está dentro del lateral"
+    )
+    assert re.search(r"\.side-reopen\{", text), "falta el botón para reabrir el lateral"
+
+    # Los paneles flotantes arrancan en el borde superior, no debajo de una barra.
+    chip = re.search(r"\.mapcard \.card-h\{([^}]*)\}", text)
+    assert chip and "top:16px" in chip.group(1)
+    flota = re.search(r"\.grid>\.col:last-child\{([^}]*)\}", text)
+    assert flota and "top:16px" in flota.group(1)
+
+
+@requires_build
 def test_fleet_panel_and_truck_panel_surfaces():
     text = built_css()
     # Panel de flota: cada unidad es una tarjeta con dot, patente y velocidad.
@@ -106,7 +132,9 @@ def test_fleet_panel_and_truck_panel_surfaces():
     assert ".dc-tile{" in text
     assert ".dc-trip{" in text
     # Sobre el mapa el panel del camión flota abajo a la izquierda.
-    assert re.search(r"\.grid \.detailcard\{[^}]*position:absolute[^}]*bottom:39px", text)
+    detalle = re.search(r"\.grid \.detailcard\{([^}]*)\}", text)
+    assert detalle and "position:absolute" in detalle.group(1)
+    assert "bottom:var(--pb,39px)" in detalle.group(1)
 
 
 @requires_build

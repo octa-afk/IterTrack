@@ -320,13 +320,13 @@
   .pill{background:none;padding:0;height:auto;color:var(--ink)}
   .pill .al{background:var(--g-fill2);color:var(--ink)} .pill .bell{fill:var(--ink)}
   .avatar{background:var(--ac);color:#fff}
-  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:97px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px;transition:left .3s ease}
+  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:16px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px;transition:left .3s ease}
   .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
-  .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:97px;bottom:var(--pb,39px);width:var(--rp);gap:14px}
+  .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:16px;bottom:var(--pb,39px);width:var(--rp);gap:14px}
   .card{border-radius:28px}
   .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
   .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
-  .leaflet-top.leaflet-left{left:var(--lx);top:147px;transition:left .3s ease}.leaflet-left .leaflet-control{margin-left:0}
+  .leaflet-top.leaflet-left{left:var(--lx);top:66px;transition:left .3s ease}.leaflet-left .leaflet-control{margin-left:0}
   .leaflet-bar,.leaflet-touch .leaflet-bar{border:1px solid var(--g-bd)!important;border-radius:18px;overflow:hidden}
   .leaflet-bar a{background:transparent;color:var(--ink);border-bottom:1px solid var(--g-bd);width:39px;height:39px;line-height:39px}
   .leaflet-bar a:hover{background:var(--g-fill)}
@@ -335,6 +335,7 @@
   .leaflet-control-attribution a{color:var(--green-d)}
   .app.nav-off .side{width:0;opacity:0;pointer-events:none;border:0}
   .app.nav-off{--lx:16px}
+  .app.nav-off .mapcard .card-h{left:calc(var(--lx) + 56px)}
   .mobile-tabs{display:none}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
   @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
@@ -433,7 +434,7 @@
   /* Geometría de la sección: mismas coordenadas que los paneles flotantes
      (topbar 16+64, paneles desde 97px) en vez del `.grid` del mapa. */
   .section-page{
-    position:absolute;z-index:5;left:var(--lx);right:16px;top:97px;bottom:var(--pb,39px);
+    position:absolute;z-index:5;left:var(--lx);right:16px;top:16px;bottom:var(--pb,39px);
     display:grid;grid-template-columns:minmax(0,1fr) var(--rp);gap:14px;min-height:0;
     transition:left .3s ease;
   }
@@ -583,3 +584,43 @@
   @media (prefers-reduced-motion:reduce){
     .stop-pin.target::after{animation:none;transform:scale(1.6);opacity:.5}
   }
+
+  /* ===== Búsqueda y perfil en el lateral (sin barra superior) =====
+     La barra superior se retiró para devolverle al mapa la franja de 64 px.
+     Lo que tenía adentro vive acá: el filtro de búsqueda —que ya alimenta el
+     mapa, la lista de flota y la hoja móvil—, el contador de alertas y el
+     perfil. Colores del lateral claro de esta variante: tinta oscura sobre
+     vidrio blanco. */
+  .side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 0 32px;margin-bottom:22px}
+  .side-head .logo{margin:0;padding:0}
+  .side-head .navtoggle{color:#6b778c}
+  .side-head .navtoggle:hover{color:var(--ink);background:rgba(31,42,61,.07)}
+  .side .side-search{
+    margin:0 16px 22px;flex:none;height:42px;padding:0 14px;border-radius:14px;
+    background:rgba(31,42,61,.05);box-shadow:inset 0 0 0 1px rgba(31,42,61,.08);
+    color:var(--ink);
+  }
+  .side .side-search input{color:var(--ink);font-size:13.5px}
+  .side .side-search input::placeholder{color:#6b778c}
+  .side .side-search svg{width:16px;height:16px;stroke:#6b778c}
+  .side .side-search:focus-within{box-shadow:inset 0 0 0 1.5px rgba(31,42,61,.35)}
+  .side-foot{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    margin:auto 16px 12px;padding:7px 8px 7px 6px;border-radius:16px;
+    background:rgba(31,42,61,.05);border:1px solid rgba(31,42,61,.08);
+  }
+  .side-foot .al{
+    border:0;background:rgba(31,42,61,.07);color:var(--ink);border-radius:999px;
+    padding:6px 12px;font:500 12.5px Poppins;cursor:pointer;
+  }
+  .side-foot .al:hover{background:rgba(31,42,61,.13)}
+  .side-foot .avatar{width:32px;height:32px;font-size:12.5px;background:#4f6bed;color:#fff}
+  .side .logout{margin:0 16px 0}
+  .side-reopen{
+    position:absolute;z-index:6;left:16px;top:16px;
+    background:var(--g-bg);border:1px solid var(--g-bd);color:var(--ink);
+    -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    box-shadow:var(--g-hi),var(--g-sh);border-radius:14px;
+  }
+  .side-reopen:hover{color:var(--ink);background:var(--g-solid)}
+  .app:not(.nav-off) .side-reopen{display:none}
