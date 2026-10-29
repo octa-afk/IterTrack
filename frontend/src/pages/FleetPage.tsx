@@ -2,10 +2,11 @@ import { useNavigate } from 'react-router-dom';
 import { STATUS, ago, type SortKey, type TruckStatus } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
 import { TruckDetail } from '../components/TruckDetail';
+import { FleetSearch } from '../components/FleetSearch';
 
 /*
  * Camiones: la flota completa en tabla. Reusa el store y los filtros del
- * panel (búsqueda del topbar, estado, orden) en lugar de crear otro estado.
+ * panel (búsqueda, estado, orden) en lugar de crear otro estado.
  * Usa `.section-page` y no `.grid`: el layout del panel es `display:contents`
  * para el mapa full-screen y dejaría esta tarjeta en la columna del sidebar.
  */
@@ -51,6 +52,8 @@ export default function FleetPage() {
             {visibleTrucks.length} de {trucks.length}
           </span>
         </div>
+
+        <FleetSearch />
 
         <div className="chips">
           {CHIP_OPTIONS.map((opt) => (
