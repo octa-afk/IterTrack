@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useDashboard } from '../state/useDashboard';
 import { Mark } from './Mark';
 
 /*
@@ -51,14 +52,63 @@ const NAV_ITEMS: {
   },
 ];
 
-export function Sidebar({ onLogout }: { onLogout: () => void }) {
+interface SidebarProps {
+  navOpen: boolean;
+  onToggleNav: () => void;
+  onLogout: () => void;
+}
+
+/*
+ * El lateral concentra ahora la identidad y los controles de la flota: la
+ * búsqueda que filtra `filters.q` (mapa, lista y hoja móvil), el contador de
+ * alertas y el perfil. Antes vivían en una barra superior que se comía 64 px de
+ * alto de mapa; acá no ocupan superficie del mapa.
+ */
+export function Sidebar({ navOpen, onToggleNav, onLogout }: SidebarProps) {
+  const { trucks, filters, setFilter, userInitials } = useDashboard();
+  const alertCount = trucks.filter((t) => t.status === 'alert').length;
+  const toggleLabel = navOpen ? 'Ocultar panel lateral' : 'Mostrar panel lateral';
+
   return (
     <aside className="side" id="sidebar">
       <div className="side-in">
-        <div className="logo">
-          <Mark />
-          IterTrack
+        <div className="side-head">
+          <div className="logo">
+            <Mark />
+            IterTrack
+          </div>
+          <button
+            className="navtoggle"
+            id="navToggle"
+            type="button"
+            aria-controls="sidebar"
+            aria-expanded={navOpen}
+            aria-label={toggleLabel}
+            title={toggleLabel}
+            onClick={onToggleNav}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="3" />
+              <path d="M9 4v16" />
+            </svg>
+          </button>
         </div>
+
+        <label className="search side-search">
+          <input
+            id="q"
+            type="search"
+            placeholder="Buscar patente o chofer"
+            aria-label="Buscar camiones"
+            value={filters.q}
+            onChange={(e) => setFilter({ q: e.target.value })}
+          />
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.3-4.3" />
+          </svg>
+        </label>
+
         <nav aria-label="Principal">
           {NAV_ITEMS.map((item) =>
             item.to ? (
@@ -83,8 +133,24 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
             ),
           )}
         </nav>
+
+        <div className="side-foot">
+          <button
+            className="al"
+            id="alertBtn"
+            type="button"
+            onClick={() => setFilter({ view: 'alert' })}
+            title="Ver sólo los camiones en alerta"
+          >
+            {alertCount} alertas
+          </button>
+          <div className="avatar" title="Tu perfil" aria-label="Tu perfil">
+            {userInitials}
+          </div>
+        </div>
+
         <button className="logout" id="btn-logout" type="button" onClick={onLogout}>
-          <svg viewBox="0 0 24 24">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M9 21H5V3h4M16 17l5-5-5-5M21 12H9" />
           </svg>
           Salir
