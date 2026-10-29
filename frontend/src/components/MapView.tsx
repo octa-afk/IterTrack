@@ -9,7 +9,7 @@ import type { TripStop } from '../api/types';
 import { useDashboard } from '../state/useDashboard';
 import { createTruckIcon } from '../lib/truckIcon';
 import { createMovementController, type ActiveMove } from '../lib/movement';
-import { POLL_MS, haversineM, splitPath } from '../lib/trucks';
+import { POLL_MS, haversineM } from '../lib/trucks';
 import { recortarRuta } from '../lib/route';
 
 /*
@@ -25,11 +25,6 @@ const MOVE_EASE = (k: number) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2,
 const OPEN_ZOOM = 12;
 /* Córdoba Capital: encuadre inicial antes de ajustar a la flota. */
 const CITY_CENTER: [number, number] = [-31.4135, -64.1811];
-/*
- * Rojo para el recorrido hecho: el azul cósmico queda para la ruta que falta y
- * el trazo ya recorrido no se confunde con ella.
- */
-const TRAIL_COLOR = '#d64545';
 
 /*
  * Escala del marcador según el zoom. A zoom ciudad (12+) se dibuja a tamaño
@@ -39,20 +34,45 @@ const TRAIL_COLOR = '#d64545';
 const PIN_FULL_ZOOM = OPEN_ZOOM;
 const PIN_MIN_SCALE = 0.55;
 const PIN_SCALE_PER_ZOOM = 0.09;
+
+/* Ruta hasta la próxima parada, en azul para no confundirse con las calles. */
+const ROUTE_COLOR = '#3f6fe0';
+const ROUTE_WEIGHT = 6;
 /*
  * Cuánto se puede alejar el camión de la ruta pedida antes de volver a pedirla.
  * Mientras siga cerca, la línea se recorta en su posición y no se gasta una
- * consulta a OSRM por cada latido.
+ * consulta al proveedor de ruteo en cada latido.
  */
 const DESVIO_MAX_M = 120;
-
-/* Grosor de la ruta hasta la próxima parada. La recta de respaldo (sin
- * proveedor de ruteo) va dos píxeles más fina para no leerse como calle. */
-const ROUTE_WEIGHT = 6;
+/*
+ * Espera tras un fallo del proveedor de ruteo. Sin esto un proveedor caído se
+ * consulta en cada latido (cada 3 s y por pestaña abierta), lo que agrava el
+ * problema en vez de resolverlo: mientras tanto se conserva el último trazo
+ * bueno o la recta punteada.
+ */
+const REINTENTO_RUTA_MS = 15_000;
 
 function pinScale(zoom: number): number {
   const raw = 1 - (PIN_FULL_ZOOM - zoom) * PIN_SCALE_PER_ZOOM;
   return Math.min(1, Math.max(PIN_MIN_SCALE, raw));
+}
+
+/** Índice del punto de la geometría más cercano a una coordenada. */
+function indiceMasCercano(
+  puntos: [number, number][],
+  lat: number,
+  lng: number,
+): number {
+  let mejor = 0;
+  let mejorDistancia = Number.POSITIVE_INFINITY;
+  puntos.forEach(([pLat, pLng], i) => {
+    const distancia = haversineM(lat, lng, pLat, pLng);
+    if (distancia < mejorDistancia) {
+      mejorDistancia = distancia;
+      mejor = i;
+    }
+  });
+  return mejor;
 }
 
 type MaplibreLayer = L.Layer & { getMaplibreMap(): maplibregl.Map };
@@ -72,9 +92,9 @@ interface MapViewProps {
   /** Oculta el control de zoom de Leaflet (la UI móvil dibuja el suyo). */
   showZoomControl?: boolean;
   /**
-   * Al elegir un camión, encuadra la vista sobre él **y** su viaje abierto
-   * (paradas que faltan y ruta hasta la próxima). El escritorio conserva el
-   * vuelo al camión: ahí el panel lateral deja ver el contexto.
+   * Encuadre al elegir un camión. En móvil (`true`) deja lugar a la hoja
+   * inferior, que si no taparía el camión; en escritorio (`false`) vuela al
+   * camión con el zoom de ciudad.
    */
   fitSelection?: boolean;
 }
@@ -84,19 +104,14 @@ export default function MapView({
   showZoomControl = true,
   fitSelection = false,
 }: MapViewProps = {}) {
-  const { trucks, visibleTrucks, selectedId, recorridoId, select } = useDashboard();
+  const { trucks, visibleTrucks, selectedId, select } = useDashboard();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef(new Map<number, L.Marker>());
   const lastPosRef = useRef(new Map<number, { lat: number; lng: number; updated: number }>());
   const movesRef = useRef(new Map<number, ActiveMove>());
   const movementRef = useRef<ReturnType<typeof createMovementController> | null>(null);
-  const trailRef = useRef<L.LayerGroup | null>(null);
-  const tripRef = useRef<L.LayerGroup | null>(null);
-  const routeRef = useRef<L.LayerGroup | null>(null);
   const fittedRef = useRef(false);
-  /* Pedido de encuadre pendiente: se resuelve cuando llegan las paradas. */
-  const fitPendingRef = useRef(false);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
 
@@ -230,12 +245,6 @@ export default function MapView({
       document.removeEventListener('keydown', onKeyDown);
       movementRef.current?.stop();
       movementRef.current = null;
-      trailRef.current?.remove();
-      trailRef.current = null;
-      tripRef.current?.remove();
-      tripRef.current = null;
-      routeRef.current?.remove();
-      routeRef.current = null;
       markers.clear();
       lastPos.clear();
       moves.clear();
@@ -322,114 +331,67 @@ export default function MapView({
   }, [trucks, visibleTrucks, selectedId]);
 
   /*
-   * Recorrido hecho del camión seleccionado. No se dibuja por defecto: el mapa
-   * principal muestra sólo lo que falta (la ruta por hacer). Se enciende cuando
-   * el operador lo pide desde Rutas con `verRecorrido`.
+   * Dibujo del viaje abierto del camión seleccionado: las paradas numeradas y
+   * la ruta desde donde está hasta la próxima.
    *
-   * Se dibuja sólo el último tramo continuo (ver `splitPath`): el recorrido de
-   * una corrida anterior —simulador reiniciado, camión que cambió de ruta, GPS
-   * que saltó— no es el recorrido actual, y unirlo dibuja calles que el camión
-   * no hizo.
+   * Las dos capas nacen en este efecto y mueren en su limpieza, que corre al
+   * cambiar `selectedId`: nada de lo que dibuja una selección puede sobrevivir a
+   * la siguiente. La versión anterior guardaba las capas en refs compartidas y
+   * el viaje del camión previo quedaba en el mapa cuando el nuevo no tenía viaje
+   * abierto; acá eso es imposible por construcción.
+   *
+   * Un solo ciclo de polling por selección: cada latido recorta el trazo en la
+   * posición actual del camión sin volver a consultar al proveedor, salvo que
+   * cambie el estado de una parada o que el camión se haya alejado de la ruta.
    */
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || selectedId === null) return;
 
-    const truck = trucks.find((t) => t.id === selectedId);
-    const tramos = truck ? splitPath(truck.path) : [];
-    const actual = tramos[tramos.length - 1];
-
-    if (!truck || !actual || truck.id !== recorridoId) {
-      trailRef.current?.remove();
-      trailRef.current = null;
-      return;
-    }
-
-    if (!trailRef.current) trailRef.current = L.layerGroup().addTo(map);
-    const capa = trailRef.current;
-    capa.clearLayers();
-    L.polyline(
-      actual.map((point) => [point.lat, point.lng] as [number, number]),
-      {
-        color: TRAIL_COLOR,
-        weight: 4,
-        opacity: 0.9,
-        lineJoin: 'round',
-        lineCap: 'round',
-      },
-    ).addTo(capa);
-
-    /* Dónde empezó la corrida que se está mirando. */
-    const inicio = actual[0];
-    L.circleMarker([inicio.lat, inicio.lng], {
-      radius: 5,
-      color: '#fff',
-      weight: 2,
-      fillColor: TRAIL_COLOR,
-      fillOpacity: 1,
-    })
-      .bindTooltip('Inicio del recorrido')
-      .addTo(capa);
-  }, [trucks, selectedId, recorridoId]);
-
-  /*
-   * Destinos y progreso del viaje abierto del camión seleccionado. Se refresca
-   * con el mismo latido de la flota: cuando el camión entrega una parada, el pin
-   * pasa a hecho y la ruta apunta a la siguiente sin reseleccionar.
-   *
-   * La línea se recorta en la posición actual del camión en cada latido (no hace
-   * falta otra consulta) y sólo se vuelve a pedir la ruta a OSRM cuando cambia
-   * la parada destino o el camión se alejó de la ruta dibujada.
-   */
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    if (selectedId === null) {
-      tripRef.current?.clearLayers();
-      routeRef.current?.clearLayers();
-      return;
-    }
+    const id = selectedId;
+    const capaParadas = L.layerGroup().addTo(map);
+    const capaRuta = L.layerGroup().addTo(map);
 
     let cancelado = false;
-    let estadoRuta = '';
-    let pedida = false;
-    let proxima: TripStop | null = null;
-    let ruta: { geometry: [number, number][] } | null = null;
-    /* Paradas dibujadas, para encuadrar la vista sobre el viaje abierto. */
+    /** Firma del estado de las paradas: si cambia, la ruta apunta a otra. */
+    let firma = '';
+    /** Hay que pedir (o volver a pedir) la geometría del tramo. */
+    let hayQuePedir = true;
+    /** Siguiente intento permitido tras un fallo del proveedor de ruteo. */
+    let reintentarEn = 0;
+    /** Un solo pedido a la vez: el proveedor puede tardar más que el latido. */
+    let ocupado = false;
+    /** Geometría por calles hasta la próxima parada; vacía = sin proveedor. */
+    let tramo: [number, number][] = [];
+    let destino: [number, number] | null = null;
     let puntosParadas: [number, number][] = [];
+    let encuadrado = false;
 
+    const posicionDelCamion = (): [number, number] | null => {
+      const truck = trucksRef.current.find((t) => t.id === id);
+      if (!truck || truck.lat === null || truck.lng === null) return null;
+      return [truck.lat, truck.lng];
+    };
+
+    /*
+     * Paradas del viaje, numeradas con su `seq`. La entregada se marca con un
+     * check y baja de opacidad; la que se está visitando lleva el aro; la
+     * próxima —primera `pending`, porque el viaje es secuencial— el halo.
+     */
     const pintarParadas = (stops: TripStop[]) => {
-      if (!tripRef.current) tripRef.current = L.layerGroup().addTo(map);
-      const capa = tripRef.current;
-      capa.clearLayers();
-      proxima = null;
+      capaParadas.clearLayers();
       puntosParadas = [];
+      const proxima = stops.find((stop) => stop.status === 'pending') ?? null;
+
       for (const stop of stops) {
         if (stop.lat === null || stop.lng === null) continue;
         puntosParadas.push([stop.lat, stop.lng]);
-        /*
-         * El estado de la parada se ve en el pin: el número es el orden del
-         * viaje, el check una parada ya entregada y el aro la que se está
-         * visitando ahora. Sin esto el operador ve el número 1 al lado de una
-         * ruta que va a la 3 y cree que el viaje se salteó una parada.
-         */
         const entregada = stop.status === 'delivered';
-        const enCurso = stop.status === 'arrived';
-        if (!proxima && stop.status === 'pending') {
-          proxima = stop;
-        }
-        /*
-         * La parada destino —la primera `pending`— lleva el halo que late: es
-         * a la que apunta la ruta, y sin él el número azul se confundía con
-         * las demás. Una parada `arrived` ya se está visitando y no compite.
-         */
-        const esDestino = !proxima && stop.status === 'pending';
         const clases = [
           'stop-pin',
-          stop.needs_review ? 'pending' : '',
           entregada ? 'done' : '',
-          enCurso ? 'here' : '',
-          esDestino ? 'target' : '',
+          stop.status === 'arrived' ? 'here' : '',
+          stop === proxima ? 'target' : '',
         ]
           .filter(Boolean)
           .join(' ');
@@ -440,92 +402,52 @@ export default function MapView({
             iconAnchor: [11, 11],
             html: `<span class="${clases}">${entregada ? '✓' : stop.seq}</span>`,
           }),
-          title: `Parada ${stop.seq}${entregada ? ' · entregada' : enCurso ? ' · en curso' : ''} — ${stop.address}`,
-        }).addTo(capa);
+          title: `Parada ${stop.seq}${entregada ? ' · entregada' : ''} — ${stop.address}`,
+        }).addTo(capaParadas);
       }
+
+      destino =
+        proxima !== null && proxima.lat !== null && proxima.lng !== null
+          ? [proxima.lat, proxima.lng]
+          : null;
     };
 
     const dibujarRuta = (origen: [number, number] | null) => {
-      if (!routeRef.current) routeRef.current = L.layerGroup().addTo(map);
-      const linea = routeRef.current;
-      linea.clearLayers();
-      if (!ruta) {
-        // Sin proveedor configurado —o con el proveedor caído— queda la recta
-        // punteada hasta la parada que toca: nunca se queda sin ver el destino.
-        if (
-          origen !== null &&
-          proxima !== null &&
-          proxima.lat !== null &&
-          proxima.lng !== null
-        ) {
-          L.polyline(
-            [origen, [proxima.lat, proxima.lng]],
-            {
-              color: '#3f6fe0',
-              weight: ROUTE_WEIGHT - 2,
-              opacity: 0.85,
-              dashArray: '9 7',
-            },
-          ).addTo(linea);
-        }
-        return;
-      }
+      capaRuta.clearLayers();
+      if (origen === null || destino === null) return;
 
-      if (origen === null) {
-        L.polyline(ruta.geometry, {
-          color: '#3f6fe0',
-          weight: ROUTE_WEIGHT,
-          opacity: 0.9,
-          lineJoin: 'round',
+      if (tramo.length < 2) {
+        /* Sin proveedor de ruteo: recta punteada hasta la parada que toca. */
+        L.polyline([origen, destino], {
+          color: ROUTE_COLOR,
+          weight: ROUTE_WEIGHT - 2,
+          opacity: 0.85,
+          dashArray: '9 7',
           lineCap: 'round',
-        }).addTo(linea);
+        }).addTo(capaRuta);
         return;
       }
 
-      const { distancia, resto } = recortarRuta(
-        ruta.geometry,
-        origen[0],
-        origen[1],
-      );
-      // El tramo arranca en el camión: si está a metros de la ruta, se une con
-      // una recta corta en vez de dejar un hueco.
+      /* El trazo arranca en el camión: si está a metros de la ruta, se une con
+       * una recta corta en vez de dejar un hueco. */
+      const { distancia, resto } = recortarRuta(tramo, origen[0], origen[1]);
       const puntos: [number, number][] = distancia > 5 ? [origen, ...resto] : resto;
-      if (puntos.length > 1) {
-        L.polyline(puntos, {
-          color: '#3f6fe0',
-          weight: ROUTE_WEIGHT,
-          opacity: 0.9,
-          lineJoin: 'round',
-          lineCap: 'round',
-        }).addTo(linea);
-      }
+      if (puntos.length < 2) return;
+      L.polyline(puntos, {
+        color: ROUTE_COLOR,
+        weight: ROUTE_WEIGHT,
+        opacity: 0.9,
+        lineJoin: 'round',
+        lineCap: 'round',
+      }).addTo(capaRuta);
     };
 
-    /*
-     * Encuadre de la selección en móvil: camión + paradas del viaje abierto.
-     * Se resuelve acá y no al tocar el pin porque las paradas llegan después
-     * de la consulta de viajes; con una sola coordenada —sin viaje abierto o
-     * sin proveedor de ruteo— se vuela al camión como en escritorio.
-     */
+    /* Móvil: camión y paradas tienen que quedar por encima de la hoja. */
     const encuadrar = (origen: [number, number] | null) => {
-      const map = mapRef.current;
-      if (!map || !fitPendingRef.current) return;
-      fitPendingRef.current = false;
-
-      const puntos: [number, number][] = origen ? [origen] : [];
-      for (const punto of puntosParadas) puntos.push(punto);
+      if (!fitSelection || encuadrado) return;
+      encuadrado = true;
+      const puntos = origen ? [origen, ...puntosParadas] : puntosParadas;
       if (!puntos.length) return;
-
-      if (puntos.length === 1) {
-        const zoom = map.getZoom();
-        map.flyTo(puntos[0], Math.max(Number.isFinite(zoom) ? zoom : OPEN_ZOOM, 13), {
-          duration: 0.8,
-        });
-        return;
-      }
-
-      /* La hoja inferior y el buscador son parte fija de la pantalla móvil:
-       * el encuadre les deja el lugar para que ninguna parada quede tapada. */
       map.fitBounds(L.latLngBounds(puntos), {
         paddingTopLeft: [24, 96],
         paddingBottomRight: [24, 240],
@@ -534,95 +456,106 @@ export default function MapView({
       });
     };
 
-    const refrescar = async () => {
-      const truck = trucksRef.current.find((t) => t.id === selectedId);
-      const origen: [number, number] | null =
-        truck && truck.lat !== null && truck.lng !== null
-          ? [truck.lat, truck.lng]
-          : null;
+    async function latir() {
+      /* Sin solapamiento: el proveedor de ruteo puede tardar más que el
+       * intervalo y dos respuestas cruzadas dejarían el trazo de una parada que
+       * ya no es la que toca. */
+      if (ocupado) return;
+      ocupado = true;
+      try {
+        const viajes = await listTrips(id).catch(() => null);
+        if (cancelado || viajes === null) return;
 
-      const viajes = await listTrips(selectedId).catch(() => null);
-      if (cancelado || viajes === null) {
-        encuadrar(origen);
-        return;
-      }
-      const activo = viajes.find(
-        (viaje) => viaje.status === 'planned' || viaje.status === 'in_progress',
-      );
+        const activo = viajes.find(
+          (viaje) => viaje.status === 'planned' || viaje.status === 'in_progress',
+        );
 
-      if (!activo) {
-        if (estadoRuta !== '') {
-          tripRef.current?.clearLayers();
-          routeRef.current?.clearLayers();
-          estadoRuta = '';
-          pedida = false;
-          ruta = null;
-        }
-        encuadrar(origen);
-        return;
-      }
-
-      // El estado de las paradas es lo único que cambia a qué parada apunta la
-      // ruta, así que su firma decide si hay que repintar y volver a pedirla.
-      const estado = activo.stops.map((stop) => stop.status).join('');
-      if (estado !== estadoRuta) {
-        estadoRuta = estado;
-        pintarParadas(activo.stops);
-        pedida = false;
-        ruta = null;
-        routeRef.current?.clearLayers();
-      }
-
-      const desvio =
-        ruta !== null && origen !== null
-          ? recortarRuta(ruta.geometry, origen[0], origen[1]).distancia
-          : Number.POSITIVE_INFINITY;
-      const hayQuePedir = !pedida || (ruta !== null && desvio > DESVIO_MAX_M);
-
-      if (hayQuePedir) {
-        pedida = true;
         /*
-         * Ruta por calles hasta la parada que toca. Sin proveedor configurado —o
-         * con el proveedor caído— queda la recta punteada hasta esa misma
-         * parada: el operador nunca se queda sin ver a dónde tiene que ir.
+         * Sin viaje abierto no hay ruta que mostrar: el viaje se cerró porque
+         * todas las paradas quedaron entregadas. Se limpia lo dibujado para no
+         * dejar pines de un viaje que ya terminó.
          */
-        const nueva = await getTripRoute(activo.id).catch(() => null);
-        if (cancelado) return;
-        ruta =
-          nueva && nueva.geometry.length > 1 ? { geometry: nueva.geometry } : null;
+        if (!activo) {
+          if (firma !== '') {
+            firma = '';
+            tramo = [];
+            destino = null;
+            hayQuePedir = false;
+            capaParadas.clearLayers();
+            capaRuta.clearLayers();
+          }
+          encuadrar(posicionDelCamion());
+          return;
+        }
+
+        const estado = activo.stops.map((stop) => stop.status).join('');
+        if (estado !== firma) {
+          firma = estado;
+          pintarParadas(activo.stops);
+          tramo = [];
+          hayQuePedir = destino !== null;
+        }
+
+        const origen = posicionDelCamion();
+        const desvio =
+          tramo.length > 1 && origen !== null
+            ? recortarRuta(tramo, origen[0], origen[1]).distancia
+            : Number.POSITIVE_INFINITY;
+
+        if (desvio > DESVIO_MAX_M) hayQuePedir = true;
+
+        if (hayQuePedir && destino !== null && Date.now() >= reintentarEn) {
+          const nueva = await getTripRoute(activo.id).catch(() => null);
+          if (cancelado) return;
+          /*
+           * El backend devuelve la geometría desde el camión pasando por **todas**
+           * las paradas pendientes en orden. Se corta en la próxima usando la
+           * coordenada que ya conocemos del viaje: dibujar el resto haría ver un
+           * recorrido que saltea la parada que toca.
+           */
+          if (nueva && nueva.geometry.length > 1) {
+            const corte = indiceMasCercano(nueva.geometry, destino[0], destino[1]);
+            tramo = nueva.geometry.slice(0, corte + 1);
+            hayQuePedir = false;
+          } else {
+            /* Sin proveedor, o con el proveedor caído: se conserva el último
+             * trazo bueno (si lo hay) y se reintenta más tarde en vez de
+             * golpear la API en cada latido. */
+            reintentarEn = Date.now() + REINTENTO_RUTA_MS;
+          }
+        }
+
+        dibujarRuta(origen);
+        encuadrar(origen);
+      } finally {
+        ocupado = false;
       }
+    }
 
-      dibujarRuta(origen);
-      encuadrar(origen);
-    };
-
-    void refrescar();
+    void latir();
     const interval = window.setInterval(() => {
-      void refrescar();
+      void latir();
     }, POLL_MS);
 
     return () => {
       cancelado = true;
       window.clearInterval(interval);
+      capaParadas.remove();
+      capaRuta.remove();
     };
-  }, [selectedId]);
+  }, [selectedId, fitSelection]);
 
   /*
-   * Fly to the selected truck when the selection changes. El mapa puede estar
-   * oculto (el shell móvil lo monta también en las secciones sin mapa y lo
-   * muestra con `display:none`): con tamaño cero o zoom indefinido, `flyTo`
-   * proyecta NaN y tumba la app. En ese caso se deja la vista como está.
+   * Encuadre al elegir un camión (escritorio). El mapa puede estar oculto (el
+   * shell móvil lo monta también en las secciones sin mapa y lo muestra con
+   * `display:none`): con tamaño cero o zoom indefinido, `flyTo` proyecta NaN y
+   * tumba la app. En ese caso se deja la vista como está.
+   *
+   * En móvil el encuadre lo hace el efecto del dibujo, que conoce las paradas
+   * del viaje y les deja lugar a la hoja inferior.
    */
   useEffect(() => {
-    if (selectedId === null) {
-      fitPendingRef.current = false;
-      return;
-    }
-    if (fitSelection) {
-      /* El encuadre necesita las paradas del viaje abierto: lo hace `refrescar`. */
-      fitPendingRef.current = true;
-      return;
-    }
+    if (selectedId === null || fitSelection) return;
     const truck = trucksRef.current.find((t) => t.id === selectedId);
     const map = mapRef.current;
     if (!truck || truck.lat === null || truck.lng === null || !map) return;

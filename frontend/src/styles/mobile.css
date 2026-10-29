@@ -16,6 +16,7 @@
   --m-muted: #4a5168;
   --m-accent: #4f6bed;
   --m-accent-ink: #3f55c9;
+  --m-accent-deep: #2b46a8;
   --m-accent-soft: #e1e7fb;
   --m-chip-count: #dde2ef;
   --m-warn: #f0a93b;
@@ -144,8 +145,8 @@
 }
 
 .m-app .pin.sel .lbl {
-  background: var(--m-accent);
-  border-color: var(--m-accent);
+  background: var(--m-accent-deep);
+  border-color: var(--m-accent-deep);
   color: var(--m-surface);
   font-weight: 600;
 }

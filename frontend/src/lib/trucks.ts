@@ -6,14 +6,6 @@ import type { TrackingPoint, Truck } from '../api/types';
  * and the inline helpers in source/static/js/map.js.
  */
 
-/** A recorded position of the selected truck's recent trail. */
-export interface PathPoint {
-  lat: number;
-  lng: number;
-  /** Measurement time in ms (from `recorded_at`). */
-  at: number;
-}
-
 export type TruckStatus = 'move' | 'idle' | 'stop' | 'alert';
 export interface TruckState {
   id: number;
@@ -34,8 +26,6 @@ export interface TruckState {
   route: string;
   updated: number;
   history: number[];
-  /** Recent trail, oldest first. Empty until the truck is selected. */
-  path: PathPoint[];
 }
 
 export type SortKey = 'plate' | 'speed' | 'fuel' | 'updated' | 'driver';
@@ -68,7 +58,7 @@ export const STALE_MS = 10 * 60e3;
 export const FRESH_MS = 5 * 60e3;
 export const HISTORY_MAX = 18;
 export const POLL_MS = 3000;
-/** Points requested from GET /trucks/{id}/iter for the map trail. */
+/** Points requested from GET /trucks/{id}/iter for the detail sparkline. */
 export const TRIP_LIMIT = 500;
 
 const TRUCK_COLORS = [
@@ -130,7 +120,6 @@ export function crearEstadoCamion(t: Truck): TruckState {
     route: '',
     updated: 0,
     history: [],
-    path: [],
   };
 }
 
@@ -195,117 +184,6 @@ export function buildHistory(points: TrackingPoint[]): number[] {
     history.push(seconds > 0 ? Math.max(0, Math.min(200, Math.round((distance / seconds) * 3.6))) : 0);
   }
   return history.slice(-HISTORY_MAX);
-}
-
-/**
- * Chronological trail from GET /trucks/{id}/iter (newest first).
- *
- * Consecutive identical positions are dropped: a parked truck reports the same
- * coordinates repeatedly and they would add nothing to the drawn line.
- */
-/*
- * Cierre de vuelta. El camión sale a dar la vuelta a un circuito y, al pasar de
- * nuevo por el punto de partida, la vuelta terminó: lo dibujado hasta ahí era
- * una vuelta completa y lo que siga es otra. Sin esto el trazado se superpone
- * consigo mismo y el resumen suma kilómetros de dos vueltas.
- *
- * El radio tolera el error del GPS; el mínimo evita cerrar la vuelta en el
- * primer punto (donde la distancia al inicio es cero por definición).
- */
-export const LAP_RADIUS_M = 60;
-export const LAP_MIN_M = 1000;
-
-/** Recorta el recorrido para dejar sólo la vuelta en curso. */
-export function keepCurrentLap(path: PathPoint[]): PathPoint[] {
-  if (path.length < 2) return path;
-  let start = 0;
-  let meters = 0;
-  for (let i = 1; i < path.length; i++) {
-    meters += haversineM(path[i - 1].lat, path[i - 1].lng, path[i].lat, path[i].lng);
-    const volvioAlInicio =
-      meters >= LAP_MIN_M &&
-      haversineM(path[start].lat, path[start].lng, path[i].lat, path[i].lng) <=
-        LAP_RADIUS_M;
-    if (volvioAlInicio) {
-      start = i;
-      meters = 0;
-    }
-  }
-  return start === 0 ? path : path.slice(start);
-}
-
-export function buildPath(points: TrackingPoint[]): PathPoint[] {
-  const chronological = points.slice().reverse();
-  const path: PathPoint[] = [];
-  for (const point of chronological) {
-    const at = Date.parse(point.recorded_at) || Date.now();
-    const last = path[path.length - 1];
-    if (last && last.lat === point.lat && last.lng === point.long) {
-      path[path.length - 1] = { ...last, at };
-      continue;
-    }
-    path.push({ lat: point.lat, lng: point.long, at });
-  }
-  return keepCurrentLap(path.slice(-TRIP_LIMIT));
-}
-
-/** Append a freshly polled location to an already seeded trail. */
-export function appendPath(path: PathPoint[], point: TrackingPoint): PathPoint[] {
-  if (!path.length) return path;
-  const at = Date.parse(point.recorded_at) || Date.now();
-  const last = path[path.length - 1];
-  if (at <= last.at) return path;
-  if (last.lat === point.lat && last.lng === point.long) {
-    return [...path.slice(0, -1), { ...last, at }];
-  }
-  return [...path, { lat: point.lat, lng: point.long, at }].slice(-TRIP_LIMIT);
-}
-
-/**
- * Velocidad que ningún camión alcanza. Por encima de esto dos puntos seguidos
- * no son un recorrido: son un corte (el simulador reinició en otro punto del
- * circuito, el equipo se reasignó, el GPS saltó). Unirlos dibuja una recta que
- * cruza la ciudad y que el camión nunca hizo.
- */
-export const MAX_TRAIL_KMH = 200;
-
-/** Velocidad implícita entre dos puntos del recorrido, en km/h. */
-function impliedKmh(first: PathPoint, second: PathPoint): number {
-  const seconds = (second.at - first.at) / 1000;
-  const meters = haversineM(first.lat, first.lng, second.lat, second.lng);
-  if (seconds <= 0) return meters > 0 ? Number.POSITIVE_INFINITY : 0;
-  return (meters / seconds) * 3.6;
-}
-
-/** True cuando el tramo entre dos puntos es un corte, no un recorrido. */
-export function isTrailJump(
-  first: PathPoint,
-  second: PathPoint,
-  maxKmh = MAX_TRAIL_KMH,
-): boolean {
-  return impliedKmh(first, second) > maxKmh;
-}
-
-/**
- * Parte el recorrido donde hay un corte.
- *
- * El mapa dibuja un segmento por tramo continuo: sin esto, un solo corte
- * atraviesa el recorrido con una recta larga. Un tramo de un solo punto no se
- * dibuja (no hay línea que trazar).
- */
-export function splitPath(path: PathPoint[], maxKmh = MAX_TRAIL_KMH): PathPoint[][] {
-  const segments: PathPoint[][] = [];
-  let current: PathPoint[] = [];
-  for (const point of path) {
-    const last = current[current.length - 1];
-    if (last && isTrailJump(last, point, maxKmh)) {
-      if (current.length > 1) segments.push(current);
-      current = [];
-    }
-    current.push(point);
-  }
-  if (current.length > 1) segments.push(current);
-  return segments;
 }
 
 /*

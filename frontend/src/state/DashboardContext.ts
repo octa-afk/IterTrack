@@ -10,9 +10,8 @@ export interface DashboardState {
   role: string;
   ready: boolean;
   visibleTrucks: TruckState[];
+  /** Camión seleccionado; `null` = ninguno y el mapa no dibuja traza. */
   selectedTruck: TruckState | null;
-  /** Camión cuyo recorrido hecho se pidió ver desde Rutas; `null` = ninguno. */
-  recorridoId: number | null;
   select: (id: number) => void;
   /** Selecciona el camión y habilita el trazo de su recorrido hecho en el mapa. */
   verRecorrido: (id: number) => void;

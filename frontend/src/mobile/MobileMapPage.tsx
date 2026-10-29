@@ -34,8 +34,8 @@ export default function MobileMapPage() {
 
   /*
    * Elegir un camión desde la vista previa lo selecciona y pliega la hoja. El
-   * encuadre no se pide acá: `MapView` encuadra el camión junto con las paradas
-   * de su viaje abierto cuando las tiene, y si no hay viaje vuela al camión.
+   * encuadre no se pide acá: `MapView` lo hace al cambiar la selección y, con
+   * `fitSelection`, deja libre el lugar de la hoja inferior.
    */
   const elegirCamion = (id: number) => {
     select(id);

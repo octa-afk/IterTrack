@@ -7,10 +7,8 @@ import {
   DEFAULT_FILTERS,
   POLL_MS,
   TRIP_LIMIT,
-  appendPath,
   aplicarPunto,
   buildHistory,
-  buildPath,
   crearEstadoCamion,
   filterAndSortTrucks,
   type Filters,
@@ -25,7 +23,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [userInitials, setUserInitials] = useState('FL');
   const [role, setRole] = useState('member');
-  const [recorridoId, setRecorridoId] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -48,11 +45,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
               : crearEstadoCamion(truck);
             const point = locations.find((p) => p && p.truck_id === truck.id);
             if (!point) return base;
-            const clone = {
-              ...base,
-              history: [...base.history],
-              path: appendPath(base.path, point),
-            };
+            const clone = { ...base, history: [...base.history] };
             aplicarPunto(clone, point);
             return clone;
           });
@@ -109,15 +102,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       try {
         const points = await getHistory(id, TRIP_LIMIT);
         const history = buildHistory(points);
-        const path = buildPath(points);
         setTrucks((prev) =>
           prev.map((truck) =>
             truck.id === id
-              ? {
-                  ...truck,
-                  history: history.length ? history : truck.history,
-                  path,
-                }
+              ? { ...truck, history: history.length ? history : truck.history }
               : truck,
           ),
         );
@@ -139,17 +127,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     ready,
     visibleTrucks,
     selectedTruck,
-    recorridoId,
     select,
     /*
-     * El recorrido hecho ya no se dibuja por defecto: el mapa principal muestra
-     * sólo lo que falta. Este es el único camino que lo enciende, y existe
-     * porque el operador lo pide desde Rutas, no porque el mapa lo adivine.
+     * "Ver recorrido" desde Rutas: selecciona el camión y su traza aparece en
+     * el mapa. No hay un segundo estado que encender —la traza siempre es la
+     * del camión seleccionado—, así que no puede quedar la del anterior.
      */
-    verRecorrido: (id) => {
-      setRecorridoId(id);
-      select(id);
-    },
+    verRecorrido: (id) => select(id),
     setFilter: (patch) => setFilters((f) => ({ ...f, ...patch })),
   };
 
