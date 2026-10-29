@@ -384,6 +384,62 @@ def reiniciar_viaje(truck_id: int, headers=None):
         print(f"⚠️ Error al reiniciar el viaje del camión #{truck_id}: {e}")
 
 
+def renovar_viaje(truck_id: int, headers=None) -> bool:
+    """Reabre el último viaje terminado del camión para que siga habiendo ruta.
+
+    Los viajes se cierran solos: `trip_progress` marca la última parada como
+    entregada y el viaje queda `done`. Desde ahí `GET /trips/{id}/route` responde
+    409 y el mapa no tiene nada que dibujar, aunque el camión siga reportando.
+    Reabrir ese mismo viaje (sin crear filas) devuelve la ruta al mapa y al
+    simulador, que así no se queda recorriendo el circuito fijo.
+
+    No toca nada si el camión ya tiene un viaje abierto: reabrir un `done` viejo
+    dejaría dos viajes abiertos para el mismo camión.
+    """
+    auth = HEADERS if headers is None else headers
+    try:
+        listado = requests.get(
+            f"{_api_root(BASE_URL)}/trips",
+            params={"truck_id": truck_id},
+            headers=auth,
+            timeout=5,
+        )
+        if listado.status_code != 200:
+            return False
+        viajes = listado.json()
+    except (requests.RequestException, ValueError):
+        return False
+
+    if any(viaje.get("status") in ("planned", "in_progress") for viaje in viajes):
+        return False
+
+    terminados = [viaje for viaje in viajes if viaje.get("status") == "done"]
+    if not terminados:
+        return False
+    viaje = max(terminados, key=lambda v: v.get("id", 0))
+
+    try:
+        response = requests.post(
+            f"{_api_root(BASE_URL)}/trips/{viaje['id']}/reset",
+            headers=auth,
+            timeout=5,
+        )
+    except requests.RequestException as e:
+        print(f"⚠️ Error al renovar el viaje #{viaje['id']} del camión #{truck_id}: {e}")
+        return False
+    if response.status_code != 200:
+        print(
+            f"⚠️ No se pudo renovar el viaje #{viaje['id']} del camión "
+            f"#{truck_id}: {response.status_code}"
+        )
+        return False
+    print(
+        f"♻️ Viaje #{viaje['id']} del camión #{truck_id} reabierto: vuelve a "
+        "tener ruta hasta la primera parada."
+    )
+    return True
+
+
 def tramo_del_viaje(truck_id: int, headers=None) -> list[list[float]] | None:
     """Ruta por calles hasta la próxima parada del viaje abierto del camión.
 
@@ -771,6 +827,12 @@ def simular_ruta(
                 f"próxima parada ({len(tramo)} puntos) ---"
             )
             recorrer(tramo, bucle=False)
+            continue
+        # Sin viaje abierto no hay ruta que dibujar: el viaje se cerró solo al
+        # entregar la última parada. Se reabre y se vuelve a pedir el tramo en la
+        # próxima vuelta, en vez de mandarlo al circuito fijo (que el mapa no
+        # conoce). Si ya había uno abierto, `renovar_viaje` no hace nada.
+        if admin_headers and renovar_viaje(truck_id, admin_headers):
             continue
         print(f"\n--- 🔄 Iniciando Vuelta #{vuelta} del circuito ---")
         recorrer(ruta, bucle=True)
