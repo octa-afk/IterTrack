@@ -334,6 +334,17 @@
   .mobile-tabs{display:none}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
   @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
+  /*
+   * Panel de flota (derecha) y panel del camión (abajo): un 5% más chicos que su
+   * caja, sin mover el borde que apoya contra el marco de la app. `scale` achica
+   * el contenido —textos, métricas, gráfico— igual que un zoom del 95% y deja la
+   * caja del layout intacta, así el mapa no se reacomoda. Va sólo en el layout
+   * de escritorio: por debajo de 1266 px las tarjetas van en flujo normal.
+   */
+  @media (min-width:1266px){
+    .grid>.col:last-child{transform:scale(.95);transform-origin:right top}
+    .grid .detailcard{transform:scale(.95);transform-origin:left bottom}
+  }
   @media (max-width:1265px){
     body{display:block;overflow:auto}.app{height:auto;min-height:100vh;display:block;padding:14px}
     .content,.grid,.grid>.col:first-child,.mapcard{display:block}
