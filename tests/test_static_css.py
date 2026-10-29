@@ -120,15 +120,19 @@ def test_lateral_concentra_busqueda_y_perfil_sin_barra_superior():
     """
     text = built_css()
 
-    # La búsqueda y el perfil son parte del lateral.
+    # El perfil y el contador de alertas son parte del lateral.
     assert re.search(r"\.side-head\{", text), "falta la cabecera del lateral"
-    assert re.search(r"\.side \.side-search\{[^}]*margin:0 16px", text), (
-        "la búsqueda no está dentro del lateral"
-    )
     assert re.search(r"\.side-foot\{[^}]*margin:auto 16px", text), (
         "el pie con alertas y perfil no está dentro del lateral"
     )
     assert re.search(r"\.side-reopen\{", text), "falta el botón para reabrir el lateral"
+
+    # La búsqueda no: vive en el panel de flota y en la tabla de Camiones, que
+    # es donde se ve la flota que filtra.
+    assert not re.search(r"\.side-search", text), "el buscador quedó en el lateral"
+    assert re.search(r"\.fleet-search\{[^}]*display:flex", text)
+    assert re.search(r"\.listcard \.fleet-search\{[^}]*margin-bottom:14px", text)
+    assert re.search(r"\.fleetcard \.fleet-search\{", text)
 
     # Los paneles flotantes arrancan en el borde superior, no debajo de una barra.
     chip = re.search(r"\.mapcard \.card-h\{([^}]*)\}", text)

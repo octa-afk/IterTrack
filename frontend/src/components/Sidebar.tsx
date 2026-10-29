@@ -65,7 +65,7 @@ interface SidebarProps {
  * alto de mapa; acá no ocupan superficie del mapa.
  */
 export function Sidebar({ navOpen, onToggleNav, onLogout }: SidebarProps) {
-  const { trucks, filters, setFilter, userInitials } = useDashboard();
+  const { trucks, setFilter, userInitials } = useDashboard();
   const alertCount = trucks.filter((t) => t.status === 'alert').length;
   const toggleLabel = navOpen ? 'Ocultar panel lateral' : 'Mostrar panel lateral';
 
@@ -93,21 +93,6 @@ export function Sidebar({ navOpen, onToggleNav, onLogout }: SidebarProps) {
             </svg>
           </button>
         </div>
-
-        <label className="search side-search">
-          <input
-            id="q"
-            type="search"
-            placeholder="Buscar patente o chofer"
-            aria-label="Buscar camiones"
-            value={filters.q}
-            onChange={(e) => setFilter({ q: e.target.value })}
-          />
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
-          </svg>
-        </label>
 
         <nav aria-label="Principal">
           {NAV_ITEMS.map((item) =>

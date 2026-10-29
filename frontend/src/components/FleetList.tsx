@@ -1,5 +1,6 @@
 import { STATUS, ago, type SortKey, type TruckStatus } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
+import { FleetSearch } from './FleetSearch';
 
 const SEG_OPTIONS = [
   { value: 'all', label: 'Toda la flota' },
@@ -26,6 +27,8 @@ export function FleetList() {
 
   return (
     <div className="card listcard">
+      <FleetSearch />
+
       <div className="seg" id="seg">
         {SEG_OPTIONS.map((opt) => (
           <button
