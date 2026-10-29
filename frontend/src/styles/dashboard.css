@@ -596,11 +596,11 @@
   .side-head .navtoggle{color:#6b778c}
   .side-head .navtoggle:hover{color:var(--ink);background:rgba(31,42,61,.07)}
   .side .side-search{
-    margin:0 16px 22px;flex:none;height:42px;padding:0 14px;border-radius:14px;
+    margin:0 16px 22px;flex:none;height:42px;padding:0 12px;border-radius:14px;
     background:rgba(31,42,61,.05);box-shadow:inset 0 0 0 1px rgba(31,42,61,.08);
     color:var(--ink);
   }
-  .side .side-search input{color:var(--ink);font-size:13.5px}
+  .side .side-search input{color:var(--ink);font-size:12.5px}
   .side .side-search input::placeholder{color:#6b778c}
   .side .side-search svg{width:16px;height:16px;stroke:#6b778c}
   .side .side-search:focus-within{box-shadow:inset 0 0 0 1.5px rgba(31,42,61,.35)}
@@ -624,3 +624,12 @@
   }
   .side-reopen:hover{color:var(--ink);background:var(--g-solid)}
   .app:not(.nav-off) .side-reopen{display:none}
+
+  /* ===== Encabezado del mapa =====
+     Sin el cartel de "Actualizando" el encabezado queda en "Mapa en vivo", y el
+     logo aparece sólo cuando el lateral está oculto: en ese momento es la única
+     marca de IterTrack en pantalla. */
+  .mapcard .card-h .map-mark{display:none}
+  .app.nav-off .mapcard .card-h .map-mark{display:inline-flex;align-items:center}
+  .app.nav-off .mapcard .card-h .map-mark{--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2}
+  .app.nav-off .mapcard .card-h .map-mark svg{width:23px;height:23px;stroke:none;flex:none}

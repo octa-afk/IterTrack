@@ -96,6 +96,22 @@ def test_auth_styles_stay_scoped_to_the_auth_page():
 
 
 @requires_build
+def test_logo_del_encabezado_solo_con_el_lateral_oculto():
+    """El logo del encabezado del mapa aparece sólo con el lateral plegado.
+
+    Con el lateral abierto la marca ya está visible arriba a la izquierda; el
+    encabezado se queda con "Mapa en vivo" y nada más.
+    """
+    text = built_css()
+    oculto = re.search(r"\.mapcard \.card-h \.map-mark\{([^}]*)\}", text)
+    assert oculto and "display:none" in oculto.group(1)
+    visible = re.search(r"\.app\.nav-off \.mapcard \.card-h \.map-mark\{([^}]*)\}", text)
+    assert visible and "display:inline-flex" in visible.group(1)
+    # El mark pinta con sus tres tonos igual que en el lateral.
+    assert re.search(r"\.app\.nav-off \.mapcard \.card-h \.map-mark\{[^}]*--m1:#6a8cee", text)
+
+
+@requires_build
 def test_lateral_concentra_busqueda_y_perfil_sin_barra_superior():
     """La búsqueda y el perfil viven en el lateral, y los paneles arrancan arriba.
 
