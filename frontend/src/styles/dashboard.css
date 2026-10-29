@@ -107,7 +107,7 @@
   .dc-trip .spark{margin-top:auto;height:56px}
   .noSel{color:var(--muted);font-size:14px;text-align:center;padding:21px 9.2px}
   /* En el panel flota sobre el mapa, abajo a la izquierda, junto al panel de flota. */
-  .grid .detailcard{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:39px;padding:15px 18px;border-radius:28px;transition:left .3s ease}
+  .grid .detailcard{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:var(--pb,39px);padding:15px 18px;border-radius:28px;transition:left .3s ease}
   /* En la sección Camiones el detalle vive en una columna angosta. */
   .section-page .dc-body{grid-template-columns:minmax(0,1fr)}
   .section-page .dc-trip-h,.section-page .dc-trip-none,.section-page .dc-trip-st{text-align:left;justify-content:flex-start}
@@ -294,7 +294,11 @@
     --g-sh:0 12px 39px rgba(25,45,95,.22);--g-fill:rgba(255,255,255,.13);
     --g-fill2:rgba(255,255,255,.2);--g-on:rgba(255,255,255,.18);
     --ink:#f8fbff;--muted:#d4e1f5;--line:rgba(255,255,255,.23);
-    --ac:#5a7ee6;--blur:blur(28px) saturate(180%);--rp:414px;--lx:271px;
+    --ac:#5a7ee6;--blur:blur(28px) saturate(180%);--rp:352px;--lx:271px;
+    /* Aire entre los paneles flotantes y el borde de la app. Deja ver el
+     * cartel de atribución del mapa (Leaflet a la izquierda, OpenFreeMap y
+     * OpenStreetMap a la derecha), que vive pegado al borde inferior. */
+    --pb:26px;
   }
   .app{position:relative;background:var(--mint)}
   .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
@@ -318,7 +322,7 @@
   .avatar{background:var(--ac);color:#fff}
   .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:97px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px;transition:left .3s ease}
   .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
-  .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:97px;bottom:39px;width:var(--rp);gap:14px}
+  .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:97px;bottom:var(--pb,39px);width:var(--rp);gap:14px}
   .card{border-radius:28px}
   .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
   .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
@@ -429,7 +433,7 @@
   /* Geometría de la sección: mismas coordenadas que los paneles flotantes
      (topbar 16+64, paneles desde 97px) en vez del `.grid` del mapa. */
   .section-page{
-    position:absolute;z-index:5;left:var(--lx);right:16px;top:97px;bottom:39px;
+    position:absolute;z-index:5;left:var(--lx);right:16px;top:97px;bottom:var(--pb,39px);
     display:grid;grid-template-columns:minmax(0,1fr) var(--rp);gap:14px;min-height:0;
     transition:left .3s ease;
   }
