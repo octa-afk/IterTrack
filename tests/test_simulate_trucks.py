@@ -13,6 +13,7 @@ from scripts.simulate_trucks import (
     ejecutar_simulaciones,
     espera_y_velocidad,
     reiniciar_viaje,
+    renovar_viaje,
     rotate_route,
     route_offset,
     simular_ruta,
@@ -27,6 +28,7 @@ def _no_toca_la_api_real(monkeypatch):
     monkeypatch.setattr("scripts.simulate_trucks.limpiar_recorrido", lambda *a, **k: None)
     monkeypatch.setattr("scripts.simulate_trucks.reiniciar_viaje", lambda *a, **k: None)
     monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
+    monkeypatch.setattr("scripts.simulate_trucks.renovar_viaje", lambda *a, **k: False)
 
 
 def test_simular_ruta_captures_measurement_time_for_each_ping(monkeypatch):
@@ -395,6 +397,7 @@ def test_simular_ruta_usa_el_circuito_si_no_hay_viaje_abierto(monkeypatch):
 
     monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: circuito)
     monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
+    monkeypatch.setattr("scripts.simulate_trucks.renovar_viaje", lambda *a, **k: False)
 
     simular_ruta(
         truck_id=1,
@@ -442,6 +445,103 @@ def test_reiniciar_viaje_resetea_el_viaje_abierto_del_camion(monkeypatch):
     assert llamadas[1][0] == "POST"
     assert llamadas[1][1].endswith("/trips/5/reset")
 
+
+
+class _RespuestaTrip:
+    def __init__(self, status_code, payload=None):
+        self.status_code = status_code
+        self._payload = payload if payload is not None else {}
+
+    def json(self):
+        return self._payload
+
+
+def test_renovar_viaje_reabre_el_ultimo_terminado(monkeypatch):
+    """Sin viaje abierto no hay ruta que dibujar: se reabre el último terminado."""
+    llamadas = []
+
+    def get(url, **kwargs):
+        llamadas.append(("GET", kwargs.get("params")))
+        return _RespuestaTrip(
+            200,
+            [
+                {"id": 4, "status": "done"},
+                {"id": 9, "status": "cancelled"},
+                {"id": 5, "status": "done"},
+            ],
+        )
+
+    def post(url, **kwargs):
+        llamadas.append(("POST", url))
+        return _RespuestaTrip(200)
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.get", get)
+    monkeypatch.setattr("scripts.simulate_trucks.requests.post", post)
+
+    assert renovar_viaje(2, {"Authorization": "Bearer admin"}) is True
+    # El más nuevo de los terminados, no el primero de la lista ni un cancelado.
+    destino = llamadas[-1][1]
+    assert isinstance(destino, str) and destino.endswith("/trips/5/reset")
+
+
+def test_renovar_viaje_no_hace_nada_si_ya_hay_uno_abierto(monkeypatch):
+    """Reabrir un `done` con otro viaje en curso dejaría dos abiertos."""
+    llamadas = []
+
+    def get(url, **kwargs):
+        return _RespuestaTrip(
+            200,
+            [
+                {"id": 4, "status": "done"},
+                {"id": 6, "status": "in_progress"},
+            ],
+        )
+
+    def post(url, **kwargs):  # pragma: no cover - no debería llamarse
+        llamadas.append(("POST", url))
+        return _RespuestaTrip(200)
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.get", get)
+    monkeypatch.setattr("scripts.simulate_trucks.requests.post", post)
+
+    assert renovar_viaje(2, {"Authorization": "Bearer admin"}) is False
+    assert llamadas == []
+
+
+def test_renovar_viaje_sin_viajes_terminados_no_hace_nada(monkeypatch):
+    def get(url, **kwargs):
+        return _RespuestaTrip(200, [])
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.get", get)
+
+    assert renovar_viaje(2, {"Authorization": "Bearer admin"}) is False
+
+
+def test_simular_ruta_renueva_el_viaje_antes_de_ir_al_circuito(monkeypatch):
+    """Si no hay viaje abierto, primero intenta reabrirlo; recién después usa el circuito."""
+    circuito = [[-31.40, -64.20], [-31.41, -64.19], [-31.42, -64.18]]
+    enviados: list[tuple[float, float]] = []
+    renovados: list[int] = []
+
+    monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: circuito)
+    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
+    def renovar(truck_id: int, headers=None) -> bool:
+        renovados.append(truck_id)
+        return False
+
+    monkeypatch.setattr("scripts.simulate_trucks.renovar_viaje", renovar)
+
+    simular_ruta(
+        truck_id=1,
+        plate="ABC123",
+        intervalo=0,
+        stop_event=_stop_after(2),
+        admin_headers={"Authorization": "Bearer admin"},
+        sender=_sender_que_anota(enviados),
+    )
+
+    assert renovados == [1]
+    assert enviados == [tuple(punto) for punto in circuito[:2]]
 
 
 def test_ejecutar_simulaciones_keeps_history_when_asked(monkeypatch):
