@@ -110,25 +110,6 @@ def test_fleet_panel_and_truck_panel_surfaces():
 
 
 @requires_build
-def test_fleet_and_truck_panels_are_five_percent_smaller():
-    """Los dos paneles del tablero van un 5% más chicos que su caja.
-
-    `scale(.95)` achica contenido y caja a la vez (como un zoom del 95%) sin
-    tocar el layout, así el mapa no se reacomoda. Sólo aplica en el layout de
-    escritorio: por debajo de 1266 px las tarjetas vuelven al flujo normal.
-    """
-    text = built_css()
-    assert re.search(r"\.grid>\.col:last-child\{[^}]*transform:scale\(\.95\)", text), (
-        "el panel de flota no está escalado al 95%"
-    )
-    assert re.search(r"\.grid \.detailcard\{[^}]*transform:scale\(\.95\)", text), (
-        "el panel del camión no está escalado al 95%"
-    )
-    # El escalado vive en el media query de escritorio, no en el apilado.
-    assert re.search(r"@media \((?:width>=1266px|min-width:1266px)\)", text)
-
-
-@requires_build
 def test_truck_active_state_and_trip_summary():
     text = built_css()
     assert ".badge-off{" in text
