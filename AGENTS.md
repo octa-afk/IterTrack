@@ -255,6 +255,9 @@ Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en
   make demo    # un solo comando; Ctrl+C corta la simulación
   ```
   Reutiliza la API si ya responde en `:8000` y toma `ADMIN_API_USER`/`ADMIN_API_PASSWORD` del `.env` raíz.
+  Además corre `scripts.seed_demo --renew` cada `DEMO_RENEW_SECONDS` (120 s por defecto): los viajes
+  se completan solos con la telemetría (~11 min) y, si nadie los renueva, el mapa se queda sin viaje
+  abierto y por lo tanto **sin nada que dibujar** —parece que el trazado se rompió—.
 * **Ejecutar simulación de camiones:**
   ```bash
   make simulation                             # contra una API ya levantada
