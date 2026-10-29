@@ -38,6 +38,23 @@ def test_pin_geometry_and_heading_rotation():
 
 
 @requires_build
+def test_selected_pin_label_is_deep_blue_with_white_text():
+    """La patente del camión elegido se pinta en azul profundo con texto blanco.
+
+    Es la única etiqueta visible en escritorio (`.pin .lbl` está oculta y sólo
+    se muestra en `.pin.sel`), así que tiene que leerse como "este es el camión
+    que estás mirando" y no confundirse con el azul de la ruta.
+    """
+    text = built_css()
+    etiqueta = re.search(r"\.pin\.sel \.lbl\{([^}]*)\}", text)
+    assert etiqueta, "the selected pin label rule is missing"
+    regla = etiqueta.group(1)
+    assert "background:var(--blue-deep)" in regla
+    assert "color:#fff" in regla
+    assert re.search(r"--blue-deep:#2b46a8", text)
+
+
+@requires_build
 def test_stop_pins_are_neutral_and_only_the_target_pulses():
     """Las paradas del viaje son negras; el destino se distingue por el halo.
 
@@ -148,7 +165,9 @@ def test_mobile_selected_pin_and_fleet_preview():
     text = built_css()
     label = re.search(r"\.m-app \.pin\.sel \.lbl\{([^}]*)\}", text)
     assert label, "the selected pin label rule is missing"
-    assert "background:var(--m-accent)" in label.group(1)
+    # Azul profundo (no el acento claro) con texto blanco: es la etiqueta que
+    # identifica al camión elegido sobre el mapa.
+    assert "background:var(--m-accent-deep)" in label.group(1)
     assert "color:var(--m-surface)" in label.group(1)
     # La hoja se despliega y se pliega con la misma transición de altura.
     hoja = re.search(r"\.m-sheet__flota\{([^}]*)\}", text)
