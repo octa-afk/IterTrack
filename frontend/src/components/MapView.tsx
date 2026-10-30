@@ -11,6 +11,7 @@ import { createTruckIcon } from '../lib/truckIcon';
 import { createMovementController, type ActiveMove } from '../lib/movement';
 import { POLL_MS, haversineM } from '../lib/trucks';
 import { recortarRuta } from '../lib/route';
+import { registrarMapa } from '../lib/mapHandle';
 
 /*
  * Ported from source/static/js/map.js (map boot + marker rendering) plus
@@ -130,6 +131,7 @@ export default function MapView({
       OPEN_ZOOM,
     );
     mapRef.current = map;
+    registrarMapa(map);
     onReady?.(map);
     const markers = markersRef.current;
     const lastPos = lastPosRef.current;
@@ -248,6 +250,7 @@ export default function MapView({
       markers.clear();
       lastPos.clear();
       moves.clear();
+      registrarMapa(null);
       map.remove();
       mapRef.current = null;
     };

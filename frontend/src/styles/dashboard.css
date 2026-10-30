@@ -107,7 +107,6 @@
   .dc-trip .spark{margin-top:auto;height:56px}
   .noSel{color:var(--muted);font-size:14px;text-align:center;padding:21px 9.2px}
   /* En el panel flota sobre el mapa, abajo a la izquierda, junto al panel de flota. */
-  .grid .detailcard{position:absolute;z-index:5;left:var(--lx);right:calc(var(--rp) + 37px);bottom:var(--pb,39px);padding:15px 18px;border-radius:28px;transition:left .3s ease}
   /* En la sección Camiones el detalle vive en una columna angosta. */
   .section-page .dc-body{grid-template-columns:minmax(0,1fr)}
   .section-page .dc-trip-h,.section-page .dc-trip-none,.section-page .dc-trip-st{text-align:left;justify-content:flex-start}
@@ -670,4 +669,21 @@
   .listcard.is-collapsed .fleet-collapse svg{transform:rotate(180deg)}
   @media (prefers-reduced-motion:reduce){
     .fleet-collapse svg{transition:none}
+  }
+
+  /* ===== Tarjeta del camión flotante =====
+     Aparece sólo con un camión seleccionado, al lado del vehículo, y se arrastra
+     con el puntero. La posición la fija el componente (estilo en línea); acá va
+     lo que necesita para flotar sobre el mapa. */
+  @media (min-width:1266px){
+    .truck-float{
+      position:absolute;z-index:6;width:min(560px,calc(100% - 32px));
+      cursor:grab;touch-action:none;
+      border-radius:24px;
+      box-shadow:0 12px 34px rgba(25,45,95,.22);
+    }
+    .truck-float.is-dragging{cursor:grabbing;box-shadow:0 18px 44px rgba(25,45,95,.30)}
+    .truck-float .detailcard{width:100%;padding:15px 18px;border-radius:24px}
+    /* La tarjeta no se selecciona al arrastrar. */
+    .truck-float{user-select:none}
   }
