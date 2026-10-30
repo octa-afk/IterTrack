@@ -50,7 +50,7 @@ export interface TrackingPoint {
   id: number;
   truck_id: number;
   lat: number;
-  long: number;
+  lng: number;
   speed: number;
   heading: number;
   timestamp: string;
