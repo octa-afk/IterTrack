@@ -1,6 +1,6 @@
 import { FleetList } from '../components/FleetList';
 import { Mark } from '../components/Mark';
-import { TruckDetail } from '../components/TruckDetail';
+import { TruckDetailFloating } from '../components/TruckDetailFloating';
 
 /*
  * Panel de escritorio: las tarjetas flotantes sobre el mapa en vivo. El mapa y
@@ -23,7 +23,7 @@ export default function MapPage() {
             <h3>Mapa en vivo</h3>
           </div>
         </div>
-        <TruckDetail />
+        <TruckDetailFloating />
       </div>
       <div className="col">
         <FleetList />

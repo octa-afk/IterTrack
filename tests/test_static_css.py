@@ -171,10 +171,13 @@ def test_fleet_panel_and_truck_panel_surfaces():
     assert ".dc-tiles{" in text
     assert ".dc-tile{" in text
     assert ".dc-trip{" in text
-    # Sobre el mapa el panel del camión flota abajo a la izquierda.
-    detalle = re.search(r"\.grid \.detailcard\{([^}]*)\}", text)
-    assert detalle and "position:absolute" in detalle.group(1)
-    assert "bottom:var(--pb,39px)" in detalle.group(1)
+    # Sobre el mapa la tarjeta del camión flota y se arrastra con el puntero.
+    flotante = re.search(r"\.truck-float\{([^}]*)\}", text)
+    assert flotante and "position:absolute" in flotante.group(1)
+    assert "cursor:grab" in flotante.group(1)
+    # `touch-action:none` deja que el arrastre no se lo coma el scroll táctil.
+    assert "touch-action:none" in flotante.group(1)
+    assert re.search(r"\.truck-float\.is-dragging\{[^}]*cursor:grabbing", text)
 
 
 @requires_build
