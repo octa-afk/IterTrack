@@ -1,6 +1,13 @@
+import { useEffect, useState } from 'react';
 import { STATUS, ago, type SortKey, type TruckStatus } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
 import { FleetSearch } from './FleetSearch';
+
+/*
+ * El panel se recuerda comprimido entre visitas: quien mira el mapa con el
+ * buscador a mano no quiere desplegar la flota en cada carga.
+ */
+const COLLAPSED_KEY = 'itertrack-fleet-collapsed';
 
 const SEG_OPTIONS = [
   { value: 'all', label: 'Toda la flota' },
@@ -24,11 +31,43 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 export function FleetList() {
   const { trucks, visibleTrucks, selectedId, filters, select, setFilter } = useDashboard();
+  const [comprimido, setComprimido] = useState(
+    () => localStorage.getItem(COLLAPSED_KEY) === '1',
+  );
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_KEY, comprimido ? '1' : '0');
+    } catch {
+      /* localStorage no disponible: queda sólo el estado en memoria */
+    }
+  }, [comprimido]);
 
   return (
-    <div className="card listcard">
-      <FleetSearch />
+    <div className={`card listcard${comprimido ? ' is-collapsed' : ''}`}>
+      {/*
+       * Cabecera fija del panel: buscador y botón de comprimir. Comprimido deja
+       * sólo esta fila; al desplegar, el cuerpo crece hacia abajo desde acá
+       * porque el panel está anclado arriba.
+       */}
+      <div className="fleet-head">
+        <FleetSearch />
+        <button
+          className="fleet-collapse"
+          type="button"
+          aria-expanded={!comprimido}
+          aria-controls="fleet-body"
+          aria-label={comprimido ? 'Desplegar la flota' : 'Comprimir la flota'}
+          title={comprimido ? 'Desplegar la flota' : 'Comprimir la flota'}
+          onClick={() => setComprimido((valor) => !valor)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 15l6-6 6 6" />
+          </svg>
+        </button>
+      </div>
 
+      <div className="listcard-body" id="fleet-body" hidden={comprimido}>
       <div className="seg" id="seg">
         {SEG_OPTIONS.map((opt) => (
           <button
@@ -116,6 +155,7 @@ export function FleetList() {
           </li>
         ))}
       </ul>
+      </div>
     </div>
   );
 }

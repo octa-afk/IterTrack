@@ -645,3 +645,29 @@
   .fleet-search:focus-within{box-shadow:inset 0 0 0 1.5px rgba(31,42,61,.28)}
   .listcard .fleet-search{margin-bottom:14px}
   .fleetcard .fleet-search{max-width:340px;margin-bottom:14px}
+
+  /* ===== Panel de flota comprimible =====
+     Comprimido queda sólo la fila del buscador y el botón; al desplegar, el
+     cuerpo crece hacia abajo porque el panel está anclado arriba (`top`). */
+  .fleet-head{display:flex;align-items:center;gap:8px;flex:none}
+  .fleet-head .fleet-search{flex:1;min-width:0;margin-bottom:0}
+  .fleet-collapse{
+    width:40px;height:40px;flex:none;border:0;border-radius:12px;cursor:pointer;
+    display:grid;place-items:center;background:var(--g-fill);color:var(--muted);
+  }
+  .fleet-collapse:hover{background:var(--g-fill2);color:var(--ink)}
+  .fleet-collapse:focus-visible{outline:2.3px solid var(--green);outline-offset:2px}
+  .fleet-collapse svg{
+    width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;transition:transform .2s ease;
+  }
+  .listcard .listcard-body{display:flex;flex-direction:column;flex:1;min-height:0;padding-top:14px}
+  /* `display:flex` le gana al `[hidden]` del navegador: hay que apagarlo a mano. */
+  .listcard .listcard-body[hidden]{display:none}
+  /* Comprimido: la columna del panel deja de estirarse hasta abajo. */
+  .grid>.col:last-child:has(.listcard.is-collapsed){bottom:auto;height:auto}
+  .listcard.is-collapsed{flex:0 0 auto;padding-bottom:16px}
+  .listcard.is-collapsed .fleet-collapse svg{transform:rotate(180deg)}
+  @media (prefers-reduced-motion:reduce){
+    .fleet-collapse svg{transition:none}
+  }
