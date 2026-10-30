@@ -253,9 +253,14 @@ def espera_y_velocidad(
     """
     if dist_metros <= 0:
         return intervalo_minimo, 0.0
-    metros_por_segundo = max(objetivo_kmh, 0.1) / 3.6
+    metros_por_segundo = objetivo_kmh / 3.6
     espera = max(intervalo_minimo, dist_metros / metros_por_segundo)
-    return espera, dist_metros / espera * 3.6
+    velocidad_kmh = dist_metros / espera * 3.6
+    # Cap a 200 km/h (límite del frontend) para mantener coherencia
+    if velocidad_kmh > 200:
+        espera = dist_metros / (200 / 3.6)
+        velocidad_kmh = 200.0
+    return espera, velocidad_kmh
 
 
 def espera_hacia_el_siguiente(
