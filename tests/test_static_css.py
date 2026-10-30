@@ -112,6 +112,26 @@ def test_logo_del_encabezado_solo_con_el_lateral_oculto():
 
 
 @requires_build
+def test_panel_de_flota_se_comprime_hacia_arriba():
+    """Comprimido deja sólo la fila del buscador; el cuerpo crece hacia abajo.
+
+    El panel está anclado arriba (`top:16px`), así que para comprimirlo hay que
+    soltarle el `bottom` a la columna: si no, la tarjeta se queda con el alto
+    completo y el buscador flota en un panel vacío.
+    """
+    text = built_css()
+    cabecera = re.search(r"\.fleet-head\{([^}]*)\}", text)
+    assert cabecera and "display:flex" in cabecera.group(1)
+    assert re.search(r"\.fleet-collapse\{[^}]*cursor:pointer", text)
+    # El cuerpo se apaga: `display:flex` le gana al `[hidden]` del navegador.
+    assert re.search(r"\.listcard \.listcard-body\[hidden\]\{display:none\}", text)
+    # Comprimido, la columna deja de estirarse hasta abajo.
+    assert re.search(r":has\(\.listcard\.is-collapsed\)\{[^}]*bottom:auto", text)
+    # El minificador escribe `flex:none`, que es exactamente `0 0 auto`.
+    assert re.search(r"\.listcard\.is-collapsed\{[^}]*flex:(none|0 0 auto)", text)
+
+
+@requires_build
 def test_lateral_concentra_busqueda_y_perfil_sin_barra_superior():
     """La búsqueda y el perfil viven en el lateral, y los paneles arrancan arriba.
 
