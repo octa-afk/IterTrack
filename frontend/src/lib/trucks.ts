@@ -147,7 +147,7 @@ export function bearing(aLat: number, aLng: number, bLat: number, bLng: number):
 /** Mutates `t` in place (same as the vanilla aplicarPunto). */
 export function aplicarPunto(t: TruckState, p: TrackingPoint): void {
   const lat = p.lat;
-  const lng = p.long;
+  const lng = p.lng;
   const ts = Date.parse(p.timestamp) || Date.now();
   /*
    * El polling repite la última posición mientras el equipo no reporta nada
@@ -180,7 +180,7 @@ export function buildHistory(points: TrackingPoint[]): number[] {
     const current = chronological[i];
     const previous = chronological[i - 1];
     const seconds = (Date.parse(current.recorded_at) - Date.parse(previous.recorded_at)) / 1000;
-    const distance = haversineM(previous.lat, previous.long, current.lat, current.long);
+    const distance = haversineM(previous.lat, previous.lng, current.lat, current.lng);
     history.push(seconds > 0 ? Math.max(0, Math.min(200, Math.round((distance / seconds) * 3.6))) : 0);
   }
   return history.slice(-HISTORY_MAX);

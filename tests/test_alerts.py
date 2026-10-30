@@ -27,7 +27,7 @@ def _no_assignment_point(sequence):
     return {
         "sequence": sequence,
         "lat": -31.4,
-        "long": -64.2,
+        "lng": -64.2,
         "speed": 20,
         "heading": 90,
         "recorded_at": before.isoformat(),

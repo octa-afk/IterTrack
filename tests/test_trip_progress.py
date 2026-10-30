@@ -51,13 +51,13 @@ def _depot(db_session, test_org, lat, lng, radius_m=150):
     return depot
 
 
-def _advance(db_session, test_truck, point, measured_at=None):
+def _advance(db_session, test_truck, point, recorded_at=None):
     return advance_trip_progress(
         db_session,
         truck_id=test_truck.id,
         lat=point[0],
         lng=point[1],
-        measured_at=measured_at or datetime.now(UTC),
+        recorded_at=recorded_at or datetime.now(UTC),
     )
 
 
@@ -177,7 +177,7 @@ def test_ingest_advances_the_trip_of_the_device(
                 {
                     "sequence": 1,
                     "lat": STOP[0],
-                    "long": STOP[1],
+                    "lng": STOP[1],
                     "speed": 20,
                     "heading": 90,
                     "recorded_at": datetime.now(UTC).isoformat(),

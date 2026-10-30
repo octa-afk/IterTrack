@@ -12,7 +12,7 @@ def payload(batch_id=None, points=None):
     return {
         "batch_id": str(batch_id or uuid4()),
         "points": points or [{
-            "sequence": 1, "lat": -31.4, "long": -64.2, "speed": 20,
+            "sequence": 1, "lat": -31.4, "lng": -64.2, "speed": 20,
             "heading": 90, "recorded_at": datetime.now(UTC).isoformat(),
         }],
     }
@@ -36,7 +36,7 @@ def test_ingest_contract_version_defaults_and_rejects_unknown_version():
 
 def test_ingest_point_normalizes_utc_and_heading():
     point = DeviceIngestPoint.model_validate({
-        "sequence": 1, "lat": -31.4, "long": -64.2, "speed": 20,
+        "sequence": 1, "lat": -31.4, "lng": -64.2, "speed": 20,
         "heading": 360, "recorded_at": "2026-10-13T12:00:00-03:00",
     })
     assert point.recorded_at.isoformat() == "2026-10-13T15:00:00+00:00"
@@ -48,7 +48,7 @@ def test_ingest_point_rejects_timestamp_without_timezone():
     from pydantic import ValidationError
     with pytest.raises(ValidationError):
         DeviceIngestPoint.model_validate({
-            "sequence": 1, "lat": -31.4, "long": -64.2, "speed": 20,
+            "sequence": 1, "lat": -31.4, "lng": -64.2, "speed": 20,
             "heading": 90, "recorded_at": "2026-10-13T12:00:00",
         })
 

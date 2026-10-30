@@ -186,7 +186,7 @@ def test_admin_can_delete_truck_iter(api_client, admin_token, test_truck, db_ses
         TrackingPoint(
             truck_id=test_truck.id,
             lat=-31.42,
-            long=-64.18,
+            lng=-64.18,
             speed=0,
             heading=0,
         )
@@ -242,7 +242,7 @@ def test_history_retained_after_deactivate(api_client, admin_token, test_truck, 
         TrackingPoint(
             truck_id=test_truck.id,
             lat=-31.42,
-            long=-64.18,
+            lng=-64.18,
             speed=0,
             heading=0,
         )

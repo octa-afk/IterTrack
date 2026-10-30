@@ -67,7 +67,7 @@ def test_enviar_ingesta_uses_the_device_bearer_and_batch_payload(monkeypatch):
         {
             "sequence": 7,
             "lat": -31.42,
-            "long": -64.18,
+            "lng": -64.18,
             "speed": 35.0,
             "heading": 90.0,
             "recorded_at": "2026-10-23T12:00:00+00:00",

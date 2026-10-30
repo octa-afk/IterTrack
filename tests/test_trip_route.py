@@ -83,7 +83,7 @@ def _point(db_session, truck, lat, lng, minutes_ago=0):
         TrackingPoint(
             truck_id=truck.id,
             lat=lat,
-            long=lng,
+            lng=lng,
             speed=50,
             heading=90,
             recorded_at=now - timedelta(minutes=minutes_ago),

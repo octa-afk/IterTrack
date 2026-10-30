@@ -9,7 +9,7 @@ class DeviceIngestPoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
     sequence: int = Field(ge=0)
     lat: float = Field(ge=-90, le=90)
-    long: float = Field(ge=-180, le=180)
+    lng: float = Field(ge=-180, le=180)
     speed: float = Field(ge=0)
     heading: float = Field(ge=0, le=360)
     recorded_at: datetime

@@ -100,7 +100,7 @@ def test_users_cannot_push_locations(tracking_client, test_truck):
     """La telemetría humana ya no existe: solo POST /devices/ingest escribe puntos."""
     response = tracking_client.put(
         f"/trucks/{test_truck.id}/location",
-        json={"lat": -31.42, "long": -64.18, "speed": 0, "heading": 0},
+        json={"lat": -31.42, "lng": -64.18, "speed": 0, "heading": 0},
     )
 
     assert response.status_code == 405
@@ -136,8 +136,8 @@ def test_get_truck_ids_only_returns_own_org(tracking_client, test_truck, other_t
 
 def test_location_responses_include_telemetry(tracking_client, db_session, test_truck):
     db_session.add_all([
-        TrackingPoint(truck_id=test_truck.id, lat=-31.42, long=-64.18, speed=10, heading=90),
-        TrackingPoint(truck_id=test_truck.id, lat=-31.43, long=-64.19, speed=20, heading=270),
+        TrackingPoint(truck_id=test_truck.id, lat=-31.42, lng=-64.18, speed=10, heading=90),
+        TrackingPoint(truck_id=test_truck.id, lat=-31.43, lng=-64.19, speed=20, heading=270),
     ])
     db_session.commit()
 
@@ -161,7 +161,7 @@ def _store_point(db_session, truck_id, *, speed, measured_at, server_timestamp):
     db_session.add(TrackingPoint(
         truck_id=truck_id,
         lat=-31.42,
-        long=-64.18,
+        lng=-64.18,
         speed=speed,
         heading=0,
         recorded_at=measured_at,
@@ -207,7 +207,7 @@ def test_get_iter_orders_newest_first_by_measurement_time(tracking_client, db_se
 def test_get_iter_limit_is_validated_and_applied(tracking_client, db_session, test_truck):
     for index in range(6):
         db_session.add(TrackingPoint(
-            truck_id=test_truck.id, lat=-31.42, long=-64.18, speed=index, heading=0,
+            truck_id=test_truck.id, lat=-31.42, lng=-64.18, speed=index, heading=0,
             recorded_at=datetime.now(UTC) - timedelta(minutes=index),
         ))
     db_session.commit()
@@ -237,7 +237,7 @@ def test_tracking_point_distinguishes_recorded_and_received_time(db_session, tes
     point = TrackingPoint(
         truck_id=test_truck.id,
         lat=-31.42,
-        long=-64.18,
+        lng=-64.18,
         speed=10,
         heading=90,
         recorded_at=measured_at,
@@ -253,7 +253,7 @@ def test_tracking_point_distinguishes_recorded_and_received_time(db_session, tes
 
 def test_tracking_point_received_at_defaults_to_now(db_session, test_truck):
     before = datetime.now(UTC).replace(tzinfo=None)
-    point = TrackingPoint(truck_id=test_truck.id, lat=-31.42, long=-64.18, speed=0, heading=0)
+    point = TrackingPoint(truck_id=test_truck.id, lat=-31.42, lng=-64.18, speed=0, heading=0)
     db_session.add(point)
     db_session.commit()
     db_session.refresh(point)

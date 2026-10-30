@@ -636,7 +636,7 @@ def preparar_dispositivo(truck_id: int, admin_headers=None, force: bool = False)
 def enviar_ingesta(
     token: str,
     lat: float,
-    long: float,
+    lng: float,
     speed: float,
     heading: float,
     recorded_at: datetime,
@@ -658,7 +658,7 @@ def enviar_ingesta(
             {
                 "sequence": sequence,
                 "lat": lat,
-                "long": long,
+                "lng": lng,
                 "speed": speed,
                 "heading": heading,
                 "recorded_at": recorded_at.isoformat(),

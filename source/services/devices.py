@@ -325,11 +325,11 @@ def ingest_device_batch(
                     db.add(IngestedPoint(
                         device_id=device.id, assignment_id=assignment.id, truck_id=truck.id,
                         batch_id=str(batch.batch_id), sequence=point.sequence, lat=point.lat,
-                        long=point.long, speed=point.speed, heading=point.heading,
+                        lng=point.lng, speed=point.speed, heading=point.heading,
                         recorded_at=point.recorded_at,
                     ))
                     db.add(TrackingPoint(
-                        truck_id=truck.id, lat=point.lat, long=point.long, speed=point.speed,
+                        truck_id=truck.id, lat=point.lat, lng=point.lng, speed=point.speed,
                         heading=point.heading, recorded_at=point.recorded_at,
                     ))
                     db.flush()
@@ -339,8 +339,8 @@ def ingest_device_batch(
                         db,
                         truck_id=truck.id,
                         lat=point.lat,
-                        lng=point.long,
-                        measured_at=point.recorded_at,
+                        lng=point.lng,
+                        recorded_at=point.recorded_at,
                     )
                 results.append({"sequence": point.sequence, "status": "accepted", "replayed": False})
                 continue

@@ -20,7 +20,7 @@ class IngestedPoint(Base):
     batch_id: Mapped[str] = mapped_column(String(36))
     sequence: Mapped[int] = mapped_column(Integer)
     lat: Mapped[float]
-    long: Mapped[float]
+    lng: Mapped[float]
     speed: Mapped[float]
     heading: Mapped[float]
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

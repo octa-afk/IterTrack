@@ -32,7 +32,7 @@ class TrackingPoint(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     truck_id: Mapped[int] = mapped_column(ForeignKey("trucks.id"))
     lat: Mapped[float]
-    long: Mapped[float]
+    lng: Mapped[float]
     speed: Mapped[float]
     heading: Mapped[float]
     timestamp: Mapped[datetime] = mapped_column(default=datetime.now)

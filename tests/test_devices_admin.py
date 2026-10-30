@@ -18,7 +18,7 @@ def ingest_payload():
             {
                 "sequence": 1,
                 "lat": -31.4,
-                "long": -64.2,
+                "lng": -64.2,
                 "speed": 20,
                 "heading": 90,
                 "recorded_at": datetime.now(UTC).isoformat(),

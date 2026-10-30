@@ -67,7 +67,7 @@ def _next_pending_stop(trip: Trip) -> TripStop | None:
     return None
 
 
-def _advance_stops(trip: Trip, lat: float, lng: float, measured_at: datetime) -> None:
+def _advance_stops(trip: Trip, lat: float, lng: float, recorded_at: datetime) -> None:
     """Marca llegada al entrar al radio y entrega al salir.
 
     Sólo se evalúa la próxima parada del orden. Un destino sin coordenada no se
@@ -80,14 +80,14 @@ def _advance_stops(trip: Trip, lat: float, lng: float, measured_at: datetime) ->
     distance = distance_m(lat, lng, stop.lat, stop.lng)
     if stop.status == "pending" and distance <= STOP_RADIUS_M:
         stop.status = "arrived"
-        stop.arrived_at = measured_at
+        stop.arrived_at = recorded_at
         # Si no hay depósito —o el camión no pasó por él— llegar a la primera
         # parada también significa que el viaje arrancó.
         if trip.status == "planned":
             trip.status = "in_progress"
     elif stop.status == "arrived" and distance > STOP_RADIUS_M:
         stop.status = "delivered"
-        stop.departed_at = measured_at
+        stop.departed_at = recorded_at
 
 
 def _finish_if_complete(trip: Trip) -> None:
@@ -103,7 +103,7 @@ def advance_trip_progress(
     truck_id: int,
     lat: float,
     lng: float,
-    measured_at: datetime,
+    recorded_at: datetime,
 ) -> Trip | None:
     """Avanza el viaje abierto del camión con un punto de telemetría.
 
@@ -114,6 +114,6 @@ def advance_trip_progress(
     if trip is None:
         return None
     _start_at_depot(db, trip, lat, lng)
-    _advance_stops(trip, lat, lng, measured_at)
+    _advance_stops(trip, lat, lng, recorded_at)
     _finish_if_complete(trip)
     return trip

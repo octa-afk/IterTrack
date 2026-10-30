@@ -136,7 +136,7 @@ def _trip_origin(
             .first()
         )
         if point is not None:
-            return (point.lat, point.long)
+            return (point.lat, point.lng)
     if trip.depot_id is not None:
         depot = db.get(models.Depot, trip.depot_id)
         if depot is not None:
