@@ -1,19 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { mapaActual } from '../lib/mapHandle';
-import type { TruckState } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
 import { TruckDetail } from './TruckDetail';
 
 /*
- * Tarjeta del camión flotando sobre el mapa. Aparece sólo con un camión
- * seleccionado, arranca al lado del vehículo y se puede arrastrar.
+ * Tarjeta del camión flotando sobre el mapa. Aparece una sola vez, al lado del
+ * vehículo, y desde ahí **no se mueve sola**: ni sigue al camión cuando avanza,
+ * ni salta al elegir otro camión, ni se corre al panear o hacer zoom. La única
+ * mano que la mueve es la del operador, arrastrándola.
  *
- * La posición es de pantalla, no del mapa: si la tarjeta se dibujara sobre la
- * capa del mapa se iría con cada paneo y no se podría leer. Mientras el
- * operador no la mueva, se recoloca al lado del camión cuando el mapa termina de
- * moverse (el vuelo al camión al seleccionarlo es lo que la dejaba lejos);
- * después de arrastrarla, manda el operador.
+ * Por eso la colocación inicial se calcula una sola vez y se olvida: cualquier
+ * recolocación automática después de aparecer vuelve a convertirla en algo que
+ * se escapa de abajo del puntero.
  */
 const MARGEN = 16;
 /** Separación entre el camión y la tarjeta al colocarla. */
@@ -73,25 +72,32 @@ function limitar({ x, y }: Posicion, ancho: number, alto: number): Posicion {
   };
 }
 
+/** Superficie del mapa que no tapa ningún panel flotante. */
+function superficieLibre(): Rectangulo {
+  const lateral = document.querySelector('.side')?.getBoundingClientRect();
+  const flota = document.querySelector('.grid > .col:last-child')?.getBoundingClientRect();
+  return {
+    left: lateral && lateral.width > 1 ? lateral.right + MARGEN : MARGEN,
+    top: MARGEN,
+    right: flota && flota.width > 1 ? flota.left - MARGEN : window.innerWidth - MARGEN,
+    bottom: window.innerHeight - MARGEN,
+  };
+}
+
 export function TruckDetailFloating() {
   const { selectedTruck } = useDashboard();
   const caja = useRef<HTMLDivElement>(null);
   const agarre = useRef<{ dx: number; dy: number } | null>(null);
-  /** Una vez que el operador la movió, deja de seguir al camión. */
-  const movida = useRef(false);
-  const truckRef = useRef(selectedTruck);
+  /** La tarjeta ya se colocó una vez: no vuelve a moverse sola. */
+  const colocada = useRef(false);
   const [posicion, setPosicion] = useState<Posicion | null>(null);
   const [arrastrando, setArrastrando] = useState(false);
 
   const id = selectedTruck?.id ?? null;
 
-  useEffect(() => {
-    truckRef.current = selectedTruck;
-  });
-
-  const colocar = (truck: TruckState) => {
+  const colocar = () => {
     const el = caja.current;
-    if (!el || truck.lat === null || truck.lng === null) return;
+    if (!el) return false;
 
     const ancho = el.offsetWidth;
     const alto = el.offsetHeight;
@@ -100,20 +106,17 @@ export function TruckDetailFloating() {
     let posicion: Posicion;
 
     if (map && cajaMapa && cajaMapa.width > 0 && cajaMapa.height > 0) {
-      const punto = map.latLngToContainerPoint([truck.lat, truck.lng]);
-      /* Superficie del mapa que no tapa ningún panel flotante. */
-      const lateral = document.querySelector('.side')?.getBoundingClientRect();
-      const flota = document.querySelector('.grid > .col:last-child')?.getBoundingClientRect();
-      const libre: Rectangulo = {
-        left: lateral && lateral.width > 1 ? lateral.right + MARGEN : MARGEN,
-        top: MARGEN,
-        right: flota && flota.width > 1 ? flota.left - MARGEN : window.innerWidth - MARGEN,
-        bottom: window.innerHeight - MARGEN,
-      };
+      /*
+       * El mapa vuela al camión al seleccionarlo, así que después del vuelo el
+       * vehículo queda en el centro del mapa: ésa es la referencia para dejar la
+       * tarjeta al lado sin esperar a que termine la animación (si se esperara,
+       * la tarjeta se movería después de aparecer).
+       */
+      const tamano = map.getSize();
       posicion = cercaDelCamion(
-        { x: cajaMapa.left + punto.x, y: cajaMapa.top + punto.y },
+        { x: cajaMapa.left + tamano.x / 2, y: cajaMapa.top + tamano.y / 2 },
         { ancho, alto },
-        libre,
+        superficieLibre(),
       );
     } else {
       /* Sin mapa montado o sin tamaño: rincón inferior izquierdo del mapa. */
@@ -121,33 +124,14 @@ export function TruckDetailFloating() {
     }
 
     setPosicion(limitar(posicion, ancho, alto));
+    return true;
   };
 
-  /*
-   * Colocación al elegir un camión y, mientras no se la haya arrastrado, cada
-   * vez que el mapa termina de moverse: el vuelo al camión dura ~0.8 s y sin
-   * esto la tarjeta quedaba donde estaba el camión antes del vuelo.
-   */
+  /* Colocación única: la primera vez que hay un camión y una caja que medir. */
   useLayoutEffect(() => {
-    /* El camión del render, no el ref: el ref se actualiza en un efecto y en la
-     * primera pasada todavía tendría el valor anterior. */
-    const truck = selectedTruck;
-    if (id === null || truck === null) return;
-    movida.current = false;
-    colocar(truck);
-
-    const map = mapaActual();
-    if (!map) return;
-    const alTerminarDeMover = () => {
-      const actual = truckRef.current ?? truck;
-      if (movida.current) return;
-      colocar(actual);
-    };
-    map.on('moveend', alTerminarDeMover);
-    return () => {
-      map.off('moveend', alTerminarDeMover);
-    };
-    // Sólo importa qué camión está elegido: `selectedTruck` cambia cada latido.
+    if (id === null || colocada.current) return;
+    colocada.current = colocar();
+    // `colocar` sólo depende del DOM; no se recalcula con el camión ni el mapa.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -156,8 +140,8 @@ export function TruckDetailFloating() {
     const alRedimensionar = () => {
       const el = caja.current;
       if (!el) return;
-      const caja_ = el.getBoundingClientRect();
-      setPosicion(limitar({ x: caja_.left, y: caja_.top }, caja_.width, caja_.height));
+      const marco = el.getBoundingClientRect();
+      setPosicion(limitar({ x: marco.left, y: marco.top }, marco.width, marco.height));
     };
     window.addEventListener('resize', alRedimensionar);
     return () => window.removeEventListener('resize', alRedimensionar);
@@ -173,7 +157,6 @@ export function TruckDetailFloating() {
     const marco = el.getBoundingClientRect();
     agarre.current = { dx: evento.clientX - marco.left, dy: evento.clientY - marco.top };
     el.setPointerCapture(evento.pointerId);
-    movida.current = true;
     setArrastrando(true);
   };
 
