@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -10,11 +10,23 @@ from source import models, schemas
 from source.database.config import settings
 from source.database.database import get_db
 from source.models.user import ROLE_ORG_ADMIN, ROLE_PLATFORM_ADMIN
+from source.services.rate_limit import client_ip, limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+LOGIN_WINDOW_SECONDS = 60
+REGISTER_WINDOW_SECONDS = 3600
+
+
+def _too_many_attempts(retry_after: int) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail="Demasiados intentos. Probá de nuevo en unos minutos.",
+        headers={"Retry-After": str(retry_after)},
+    )
 
 
 def hash_password(password: str) -> str:
@@ -91,7 +103,15 @@ def require_org_admin_or_platform(current_user: models.User = Depends(get_curren
 
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def register(user: schemas.UserCreate, request: Request, db: Session = Depends(get_db)):
+    ip_key = f"register:{client_ip(request)}"
+    retry_after = limiter.retry_after(
+        ip_key, settings.register_max_per_hour, REGISTER_WINDOW_SECONDS
+    )
+    if retry_after:
+        raise _too_many_attempts(retry_after)
+    limiter.record(ip_key)
+
     if db.query(models.User).filter(models.User.username == user.username).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario ya existe")
     if db.query(models.User).filter(models.User.email == user.email).first():
@@ -127,14 +147,35 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    # Se chequea antes de bcrypt, así un intento bloqueado no gasta CPU. Sólo
+    # cuentan los fallos: la cuenta demo es compartida y no debe trabarse con
+    # visitantes normales. No hay límite por usuario solo porque un tercero
+    # podría dejar afuera a la víctima.
+    ip = client_ip(request)
+    ip_key = f"login:ip:{ip}"
+    user_key = f"login:user:{ip}:{form_data.username[:150]}"
+    retry_after = max(
+        limiter.retry_after(ip_key, settings.login_max_failures_per_ip, LOGIN_WINDOW_SECONDS),
+        limiter.retry_after(user_key, settings.login_max_failures_per_user, LOGIN_WINDOW_SECONDS),
+    )
+    if retry_after:
+        raise _too_many_attempts(retry_after)
+
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        limiter.record(ip_key)
+        limiter.record(user_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    limiter.clear(user_key)
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
