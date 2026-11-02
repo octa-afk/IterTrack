@@ -264,6 +264,10 @@ ssh -L 5433:localhost:5432 -i ~/.ssh/id_ed25519 octa@57.156.58.24
 
 > Nunca corras migraciones desde tu máquina contra la base de la VM. Migra solo el contenedor `web`.
 
+### Límite de intentos
+
+Login y registro se limitan por IP (`LOGIN_MAX_FAILURES_PER_USER`, `LOGIN_MAX_FAILURES_PER_IP`, `REGISTER_MAX_PER_HOUR`). Los contadores viven en memoria y se pierden al reiniciar. Con más de un worker o réplica cada proceso contaría por separado, así que escalar exige moverlos a un almacén compartido. El servicio `web` no debe publicar puertos: uvicorn confía en `X-Forwarded-For`, y sólo Caddy puede alcanzarlo.
+
 ## 8. Rollback
 
 ```bash

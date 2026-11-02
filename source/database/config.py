@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
+    # Límite de intentos: fallos de login por minuto y registros por hora.
+    login_max_failures_per_user: int = 5
+    login_max_failures_per_ip: int = 20
+    register_max_per_hour: int = 10
+
     # Un visitante de la demo entra con un click sin leer el README. El flag
     # vive acá y no en el frontend para que la misma imagen sirva a un cliente
     # real con la demo apagada.

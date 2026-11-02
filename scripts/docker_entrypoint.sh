@@ -30,4 +30,8 @@ if [ "$#" -gt 0 ]; then
   exec "$@"
 fi
 
-exec uvicorn source.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+# Caddy es lo único que alcanza este puerto, así que se confía en su
+# X-Forwarded-For: sin esto todos los clientes comparten la IP del proxy y el
+# límite de intentos bloquearía a todo el mundo junto.
+exec uvicorn source.main:app --host 0.0.0.0 --port "${PORT:-8000}" \
+  --proxy-headers --forwarded-allow-ips='*'

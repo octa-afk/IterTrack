@@ -77,6 +77,7 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Para proteger un endpoint de otro servicio, importar la dependencia: `from source.services.auth import get_current_user`.
    * Las contraseñas nunca se almacenan en texto plano — se hashean con bcrypt antes de persistir en la tabla `users`.
    * El `response_model=UserResponse` en endpoints garantiza que `hashed_password` nunca se expone en respuestas JSON.
+   * **Límite de intentos (`source/services/rate_limit.py`):** `POST /auth/login` responde `429` con `Retry-After` tras 5 fallos por minuto por IP + usuario o 20 por IP, antes de gastar bcrypt; sólo cuentan los fallos, para no trabar la cuenta demo compartida. `POST /auth/register` admite 10 intentos por hora por IP. Los contadores viven en memoria: exige un solo proceso de uvicorn, y `--proxy-headers` en el entrypoint para ver la IP real detrás de Caddy.
    * `POST /auth/register` exige un `invitation_code` de una organización con invitación activa (no revocada ni vencida); ya **no** crea organizaciones. El campo `org_name` fue retirado de `UserCreate`.
 
 6. **Organizaciones e invitaciones (`source/services/organizations.py`):**

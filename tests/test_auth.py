@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from source.database.database import get_db
 from source.main import app
 from source.models.organization import Organization
+from source.services.rate_limit import RateLimiter
 
 REGISTER_PAYLOAD = {
     "username": "chofer1",
@@ -200,3 +201,58 @@ def test_register_org_isolation(auth_client, db_session, test_org, test_org2):
     assert user is not None
     assert user.organization_id == test_org2.id
     assert user.organization_id != test_org.id
+
+
+def _fail_login(client, times, username="chofer1"):
+    return [login(client, username=username, password="incorrecta").status_code for _ in range(times)]
+
+
+def test_login_blocks_after_repeated_failures_even_with_right_password(auth_client):
+    register(auth_client)
+    assert _fail_login(auth_client, 5) == [401] * 5
+
+    response = login(auth_client)
+
+    assert response.status_code == 429
+    assert int(response.headers["Retry-After"]) > 0
+
+
+def test_login_block_is_per_ip(auth_client, monkeypatch):
+    register(auth_client)
+    _fail_login(auth_client, 5)
+
+    monkeypatch.setattr("source.services.auth.client_ip", lambda _request: "203.0.113.9")
+
+    assert login(auth_client).status_code == 200
+
+
+def test_login_block_per_ip_covers_many_usernames(auth_client):
+    for index in range(20):
+        assert _fail_login(auth_client, 1, username=f"usuario{index}") == [401]
+
+    assert _fail_login(auth_client, 1, username="otro") == [429]
+
+
+def test_successful_logins_do_not_consume_quota(auth_client):
+    register(auth_client)
+
+    assert all(login(auth_client).status_code == 200 for _ in range(7))
+
+
+def test_register_is_limited_per_hour(auth_client):
+    invalid = {**REGISTER_PAYLOAD, "invitation_code": "NO-EXISTE"}
+    for _ in range(10):
+        assert register(auth_client, invalid).status_code == 400
+
+    assert register(auth_client, invalid).status_code == 429
+
+
+def test_rate_limiter_window_expires():
+    now = [0.0]
+    limiter = RateLimiter(clock=lambda: now[0])
+    limiter.record("clave")
+
+    assert limiter.retry_after("clave", 1, 60) == 60
+
+    now[0] = 60.0
+    assert limiter.retry_after("clave", 1, 60) == 0
