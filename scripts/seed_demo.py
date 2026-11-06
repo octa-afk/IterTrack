@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from scripts.simulate_trucks import build_truck_configs, cargar_ruta, truck_plates
 from source.database.database import SessionLocal
+from source.models.alert import Alert, AlertOccurrence
 from source.models.destination import (
     AddressCache,
     Charger,
@@ -165,6 +166,19 @@ def _reset_tenant(db: Session, organization_id: int) -> None:
     ]
 
     if device_ids:
+        # Las alertas apuntan al dispositivo y, por sus ocurrencias, a los
+        # rechazos: van primero, o Postgres frena el borrado por clave foránea.
+        alert_ids = [
+            alert.id
+            for alert in db.query(Alert).filter(Alert.device_id.in_(device_ids))
+        ]
+        if alert_ids:
+            db.query(AlertOccurrence).filter(
+                AlertOccurrence.alert_id.in_(alert_ids)
+            ).delete(synchronize_session=False)
+            db.query(Alert).filter(Alert.id.in_(alert_ids)).delete(
+                synchronize_session=False
+            )
         db.query(RejectedIngestPoint).filter(
             RejectedIngestPoint.device_id.in_(device_ids)
         ).delete(synchronize_session=False)
