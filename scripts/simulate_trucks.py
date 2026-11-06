@@ -58,7 +58,7 @@ ROUTES_DIR = Path(__file__).resolve().parent
 # marcadores en fila india por las mismas calles. Los tres existen en el repo,
 # así que el simulador nunca sale a la red.
 ROUTE_FILES = (
-    "cordoba_route.json",       # centro / Nueva Córdoba
+    "cordoba_route_norte_sur.json",  # Argüello / Plaza San Martín / Jardín
     "cordoba_route_norte.json",  # Cerro de las Rosas / Argüello
     "cordoba_route_sur.json",    # Jardín / Av. Cruz Roja
 )
