@@ -12,8 +12,8 @@ Este documento define el contexto, las reglas arquitectónicas, los estándares 
   1. **Backend:** API REST construida con **FastAPI** (`source/`).
   2. **Persistencia:** Base de datos relacional **PostgreSQL** administrada mediante **SQLAlchemy 2.0** y **Alembic** (`source/models/`, `alembic/`).
   3. **Autenticación:** Sistema **OAuth2 + JWT** con hashing bcrypt (`source/services/auth.py`, `source/models/user.py`, `source/schemas/auth.py`). Dependencias: `python-jose[cryptography]`, `passlib[bcrypt]`.
-  4. **Visualización / Frontend:** SPA en **React 19 + TypeScript + Vite** (`frontend/`), compilada a `frontend/dist` y servida por FastAPI. Mapa en tiempo real con **Leaflet + MapLibre** (OpenFreeMap), marcador cenital del camión (WebP recortado, importado como asset), rotación según rumbo y tamaño escalado con el zoom. Del **camión seleccionado** el mapa dibuja su viaje abierto: las paradas como pines numerados con su `seq` (✓ en las entregadas, aro en la que se está visitando, halo en la próxima) y la ruta por calles desde la posición actual del camión hasta **la próxima parada**. La geometría de `GET /trips/{id}/route` se corta en `next_stop_lat/lng` porque el backend la calcula pasando por todas las pendientes en orden; sin proveedor de ruteo queda una recta punteada al mismo destino. El dibujo vive dentro del efecto de `selectedId`: sus capas (paradas y ruta) se destruyen al cambiar de selección, así que nunca hay dos camiones dibujados a la vez ni sobrevive el del anterior. La traza del recorrido hecho ya no se dibuja y `TruckState` no guarda `path`. Sin un viaje abierto con alguna parada `pending` no hay nada que dibujar: `GET /trips/{id}/route` responde `409` y el detalle muestra «Sin viaje abierto». La patente del camión elegido va en una etiqueta **azul profundo** (`--blue-deep`, `--m-accent-deep` en móvil) con el texto en blanco y en negrita: es la única etiqueta visible en escritorio. La tarjeta del camión (`TruckDetailFloating`) flota sobre el mapa: aparece sólo con un camión seleccionado, se coloca al lado del vehículo (derecha, izquierda, abajo o arriba, el primer lado que entra en la superficie libre entre el lateral y el panel de flota) y se arrastra con el puntero. Se coloca una sola vez: una vez en pantalla no se mueve sola —ni con el avance del camión, ni al elegir otro camión, ni al panear o hacer zoom—; sólo la mueve el operador. En móvil, elegir un camión encuadra la vista sobre él dejando lugar a la hoja inferior (`fitSelection` de `MapView`). Al cargar, el mapa se encuadra sobre la flota una sola vez. Rutas `/`, `/register`, `/map`, `/fleet` y `/viajes`.
-  5. **Simulador:** Script Python con **un circuito urbano real por camión** por Córdoba Capital (`scripts/simulate_trucks.py`, `scripts/cordoba_route_norte_sur.json`, `cordoba_route_norte.json`, `cordoba_route_sur.json`). `ROUTE_FILES` asigna circuito por índice de camión; si hay más camiones que circuitos, los que comparten ruta se reparten la vuelta en fases. Los trazados se piden a OSRM (OpenStreetMap) con `scripts/generate_demo_routes.py`, una herramienta de mantenimiento que no corre en el arranque. Aprovisiona un dispositivo simulado por camión y emite **solo** por `POST /devices/ingest`, el mismo camino que un ESP32; no hay camino con credenciales humanas. Saltea los camiones ocupados por un dispositivo que no creó (`SIMULATED_DEVICE_PREFIX`), de modo que el hardware real siempre gana; `--force` revoca al ocupante y obliga a re-aprovisionar ese equipo. Cada corrida arranca con el recorrido vacío: el simulador borra el historial de sus propios camiones (`DELETE /trucks/{id}/iter`) antes del primer punto, y `--keep-history` lo conserva. Antes de cada tramo pide `GET /trips/{id}/route` y **conduce esa misma geometría**, así el trayecto real coincide con el que dibuja el mapa y pasa por las paradas en orden; si no hay viaje abierto el simulador **reabre el último viaje terminado** del camión (`POST /trips/{id}/reset`, sólo si no tiene otro abierto) y sigue por su ruta: los viajes se cierran solos al entregar la última parada (~11 min) y, sin reabrirlos, el mapa se queda sin ruta que dibujar aunque el camión siga reportando. El circuito fijo queda como respaldo para cuando no hay viaje que reabrir, no hay proveedor de ruteo o la API falla. Los camiones con hardware real se saltean antes de ese paso, así que su historial nunca se toca.
+  4. **Visualización / Frontend:** SPA en **React 19 + TypeScript + Vite** (`frontend/`), compilada a `frontend/dist` y servida por FastAPI; mapa en tiempo real con **Leaflet + MapLibre** (OpenFreeMap). Del **camión seleccionado** el mapa dibuja las paradas de su viaje abierto (pines numerados) y la ruta por calles hasta **la próxima parada**: la geometría de `GET /trips/{id}/route` pasa por todas las pendientes en orden y se corta en `next_stop_lat/lng`; sin proveedor de ruteo queda una recta punteada, y sin viaje abierto (`409`) no hay nada que dibujar. Ese dibujo vive en el efecto de `selectedId` y sus capas se destruyen al cambiar de selección, para que nunca haya dos camiones dibujados a la vez. La tarjeta del camión (`TruckDetailFloating`) se coloca una sola vez junto al vehículo y después sólo la mueve el operador. Rutas `/`, `/register`, `/map`, `/fleet` y `/viajes`.
+  5. **Simulador:** `scripts/simulate_trucks.py` recorre **un circuito urbano real por camión** (`scripts/cordoba_route*.json`, asignados por índice en `ROUTE_FILES`; los trazados se piden a OSRM con `scripts/generate_demo_routes.py`, una herramienta de mantenimiento que no corre en el arranque). Aprovisiona un dispositivo simulado por camión y emite **solo** por `POST /devices/ingest`, igual que un ESP32. Saltea los camiones ocupados por un dispositivo que no creó (`SIMULATED_DEVICE_PREFIX`): el hardware real siempre gana y `--force` lo revoca. Cada corrida borra el historial de sus propios camiones (`--keep-history` lo conserva). Conduce la geometría de `GET /trips/{id}/route` y, si no hay viaje abierto, **reabre el último terminado** (`POST /trips/{id}/reset`): los viajes se cierran solos al entregar la última parada y, sin reabrirlos, el mapa se queda sin ruta aunque el camión siga reportando. El circuito fijo es sólo el respaldo.
   6. **Hardware Embebido:** Firmware C++ para microcontroladores **ESP32** con **PlatformIO** (ubicado en la rama `origin/IterTrack-Hardware`).
   7. **Dispositivos GPS e ingesta:** el hardware no usa credenciales humanas. Cada equipo se aprovisiona por camión, recibe un token que se muestra una sola vez (se guarda solo su hash SHA-256) y emite por `POST /devices/ingest`. Los puntos rechazados no se descartan en silencio: se agrupan en **alertas** por `(dispositivo, tipo de problema)` con su evidencia, y una alerta cerrada que reincide abre otra enlazada. Detalle en la sección 4.8.
   8. **Destinos y viajes tercerizados:** `chargers` (dador de carga), `trips` (envío con fecha y chofer), `trip_stops` (paradas con coordenada) y `depots`. La coordenada es la fuente de verdad y la dirección es texto para mostrar, resuelta una vez por caché; lo que el geocoder no encuentra queda `needs_review` para pin manual, nunca con un centroide inventado. El progreso del viaje avanza solo con la telemetría, en orden estricto. Detalle en la sección 4.10.
@@ -160,62 +160,12 @@ Cuando modifiques o crees modelos en `source/models/`:
 
 ---
 
-## 7. Deuda Técnica Conocida y Tareas Prioritarias
+## 7. Notas que no se ven en el código
 
-Si estás realizando refactorizaciones o corrigiendo bugs en el proyecto, ten en cuenta los siguientes puntos pendientes:
-
-* **Migración BD en `tracking.py` (Completada):**
-  * Todos los endpoints de `source/services/tracking.py` (`POST /trucks`, `GET /{truck_id}/location`, `GET /{truck_id}/iter`, `GET /trucks`, `GET /trucks/ids`) consultan y persisten exclusivamente en PostgreSQL mediante la sesión inyectada `db: Session = Depends(get_db)`. La escritura de telemetría vive solo en `POST /devices/ingest`.
-* **Autenticación OAuth2 + JWT (Completada):**
-  * Modelo ORM `User` en `source/models/user.py` (tabla `users` creada vía migración `391c6b7b75c0`).
-  * `source/schemas/auth.py` y `source/services/auth.py` implementados: registro, login (OAuth2PasswordRequestForm), `/auth/me`, hashing bcrypt y tokens JWT HS256.
-  * Configuración JWT centralizada en `source/database/config.py`: `SECRET_KEY`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES` (60).
-  * `auth_router` incluido en `source/main.py`.
-  * Todos los endpoints de `tracking.py` (`POST`, `PUT`, `GET` y `DELETE` bajo `/trucks`) requieren `Depends(get_current_user)` y Bearer JWT. La SPA se sirve sin autenticación HTTP; el frontend de `/map` valida el token y envía el Bearer en las llamadas a la API.
-  * Cada usuario pertenece a una organización y los camiones nuevos se asignan a ella; los listados se filtran por organización y las operaciones sobre camiones existentes verifican esa pertenencia. `platform_admin` es el único rol que puede leer datos de todas las organizaciones; `org_admin` administra solo la suya y `member` solo lee. Los dispositivos también guardan `organization_id` (tomado del camión al aprovisionarlos) para poder filtrarlos sin recorrer las asignaciones.
-  * `bcrypt` fijado en `4.0.1` en `requirements.txt` por incompatibilidad de passlib 1.7.4 con bcrypt 5.x.
-* **Invitaciones por organización (Completada):**
-  * Migración `5426d9d8a15a` agrega `organizations.invitation_expires_at` e `invitation_revoked_at`; `Organization.invitation_active` calcula la vigencia.
-  * `source/services/organizations.py` expone `GET/POST /organizations`, `GET /organizations/{id}/invitation`, `POST /organizations/{id}/invitation/rotate` y `DELETE /organizations/{id}/invitation`, todos con `get_current_admin_user`.
-  * `POST /auth/register` ya no crea organizaciones: exige un código activo. Un código revocado o vencido responde `400` `"Código de invitación inválido"`.
-  * Tests en `tests/test_organizations.py` y `tests/test_auth.py`; el detalle de diseño está en `odd/tasks/invitation-codes.md`.
-* **Ciclo de vida de dispositivos GPS (Completada):**
-  * Endpoints admin en `source/services/devices.py`: `GET /devices`, `POST /devices`, `POST /devices/{id}/reassign`, `POST /devices/{id}/token/rotate` y `POST /devices/{id}/revoke`.
-  * El token en claro solo se devuelve al crearlo o rotarlo; la base guarda únicamente su hash SHA-256. Rotar invalida el token anterior y revocar cierra la asignación abierta.
-  * Tests en `tests/test_devices_admin.py`; el detalle de diseño está en `odd/tasks/device-lifecycle.md`.
-* **Manejo de Errores Semántico (Completado):**
-  * `add_truck` ahora lanza `HTTPException(status_code=400, ...)` en duplicados.
-* **Validación de Coordenadas (Completada):**
-  * `source/schemas/truck.py` valida `lat` entre `-90` y `90` y `long` entre `-180` y `180` con `Field(ge=..., le=...)`.
-* **CI/CD con GitHub Actions (Completada):**
-  * Workflow en `.github/workflows/ci.yml`. Se ejecuta en `push` y `pull_request` sobre `main` y `develop`, y también manualmente (`workflow_dispatch`).
-  * Steps: creación del virtualenv `env/`, `pip install -r requirements.txt`, setup de Node 22, `make frontend`, `make check` y `make test`.
-  * **Los targets del `Makefile` invocan `env/bin/python`**, por eso el workflow crea el venv antes de ejecutarlos; sin ese paso falla en el primer step.
-  * No requiere servicio de PostgreSQL: `tests/conftest.py` usa SQLite en memoria con `dependency_overrides`.
-  * La rama `IterTrack-Hardware` queda fuera de los triggers a propósito: no contiene tests Python.
-* **Dependencias duplicadas en `requirements.txt` (Resuelto):**
-  * Se eliminó `psycopg` (v3); el proyecto usa un único driver: `psycopg2-binary` (`postgresql+psycopg2://`).
-* **Paquetes sin uso en `requirements.txt` (Resuelto):**
-  * Eliminados `fastar`, `rignore`, `detect-installer` y `fastapi-cloud-cli` (sin referencias en `source/`, `scripts/` ni `tests/`).
-* **Sentry removido (Resuelto):**
-  * Se eliminó `sentry-sdk` de `requirements.txt` y del venv: estaba instalado pero nunca se integraba. Si en el futuro se necesita monitoreo, se agrega la integración completa, no solo el paquete.
-* **Lint y typechecking en Python (Completado):**
-  * `make check` corre `ruff` e `mypy` sobre `source`, `scripts` y `tests`; la configuración vive en `pyproject.toml` (`check_untyped_defs`, `warn_unused_ignores` y el plugin `pydantic.mypy`).
-  * Ignorados a propósito: `E501` (no se reflowea código legado) y `B008` (`Depends(...)` en defaults es el idiom de FastAPI). `alembic/versions/` está excluido por ser código generado y `scripts/selfcheck.py` ignora `E402` porque inserta `ROOT` en `sys.path` antes de importar la app.
-  * El frontend sí tiene typechecking y lint: `npm --prefix frontend run build` corre `tsc` y `npm --prefix frontend run lint` corre `oxlint`.
-* **Cobertura de tests de autenticación (Resuelto):**
-  * `tests/test_auth.py` cubre registro, login, `/auth/me` y protección de endpoints, incluidos casos de validación y credenciales no autorizadas.
-* **Telemetría de velocidad y rumbo (Implementada):**
-  * `Location` admite `speed` y `heading`; ambos valores se guardan en cada punto de tracking. La integración del hardware puede enviar estos campos cuando estén disponibles.
-* **Registro en el navegador (Completada):**
-  * `/register` sirve la SPA; `RegisterPage` hace el registro + auto-login y navega a `/map`. El flujo completo está descrito en la sección 4.6.
-* **Migración a React (Completada):**
-  * Se retiró la UI vanilla (`source/static/js/`, `source/static/css/` y las páginas `login.html`, `register.html`, `map.html`, `map-mobile.html`). La SPA vive en `frontend/` y FastAPI sirve `frontend/dist` (sección 4.6). El historial completo está en `odd/tasks/react-frontend-migration.md`.
-* **Trazado de rutas reimplementado (rama `feat/recorrido-mapa-v2`):**
-  * Se borró primero todo el dibujo (traza roja del recorrido hecho, ruta azul/gris hasta la próxima parada y pines) y se volvió a implementar sólo lo que hace falta: pines numerados y ruta desde el camión hasta la próxima parada, para el camión seleccionado.
-  * Se eliminó de raíz el estado duplicado que causaba el bug (`recorridoId`): ahora `selectedId` es la única fuente. `verRecorrido` = `select`, y `TruckState` dejó de guardar `path` junto con sus helpers (`buildPath`, `appendPath`, `keepCurrentLap`, `splitPath`, `isTrailJump`, `MAX_TRAIL_KMH`).
-  * El dibujo ya no usa refs compartidas: cada selección crea sus `L.layerGroup` y los elimina en la limpieza del efecto. `useNextStop` y la tarjeta del detalle (próxima parada con distancia y tiempo) no cambiaron.
-  * El tramo gris punteado hacia las paradas siguientes ya no se dibuja.
+* **`bcrypt` fijado en `4.0.1`** en `requirements.txt` por incompatibilidad de passlib 1.7.4 con bcrypt 5.x.
+* **CI (`.github/workflows/ci.yml`):** corre en `push` y `pull_request` sobre `main` y `develop`, y a mano (`workflow_dispatch`). Los targets del `Makefile` invocan `env/bin/python`, por eso el workflow crea el venv antes de ejecutarlos. No necesita PostgreSQL: `tests/conftest.py` usa SQLite en memoria. La rama `IterTrack-Hardware` queda fuera de los triggers a propósito: no tiene tests Python.
+* **Lint:** la configuración de `ruff` y `mypy` vive en `pyproject.toml`. `E501` y `B008` (`Depends(...)` en defaults) se ignoran a propósito, y `alembic/versions/` está excluido por ser código generado. El frontend se valida con `tsc` (parte del build) y `oxlint`.
+* **Decisiones de diseño por feature:** están en `odd/tasks/<feature>.md` (por ejemplo `invitation-codes`, `device-lifecycle`, `destinations`, `react-frontend-migration`). El estado actual de cada área está descrito en la sección 4.
 
 ---
 
