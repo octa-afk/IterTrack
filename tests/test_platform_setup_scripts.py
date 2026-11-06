@@ -11,8 +11,10 @@ from scripts.bootstrap_platform import (
 )
 from scripts.seed_demo import DemoSeedConfig, SeedError, renew_demo_trips, seed_demo
 from scripts.simulate_trucks import calcular_distancia_metros
+from source.models.alert import Alert, AlertOccurrence
 from source.models.destination import Trip
 from source.models.device import Device, DeviceAssignment
+from source.models.ingestion import RejectedIngestPoint
 from source.models.organization import Organization
 from source.models.truck import Truck
 from source.models.user import ROLE_MEMBER, ROLE_ORG_ADMIN, ROLE_PLATFORM_ADMIN, User
@@ -233,6 +235,70 @@ def test_reset_rebuilds_the_demo_tenant_and_keeps_its_identity(db_session):
     assert second.devices == 3
     assert db_session.query(Organization).filter_by(name="Demo Corp").count() == 1
     assert db_session.query(User).filter(User.organization_id == first.organization_id).count() == 2
+
+
+def _add_alert_with_evidence(db_session, organization_id, device_id):
+    """Un rechazo, su alerta y la ocurrencia que los une (la evidencia)."""
+    point = RejectedIngestPoint(
+        device_id=device_id,
+        batch_id="batch-1",
+        sequence=1,
+        reason="no_assignment",
+        raw_payload="{}",
+    )
+    db_session.add(point)
+    db_session.flush()
+    alert = Alert(
+        organization_id=organization_id,
+        device_id=device_id,
+        problem_type="no_assignment",
+    )
+    db_session.add(alert)
+    db_session.flush()
+    db_session.add(AlertOccurrence(alert_id=alert.id, rejected_point_id=point.id))
+    db_session.commit()
+    return alert
+
+
+def test_reset_clears_the_alerts_of_the_demo_devices(db_session):
+    """Las alertas referencian al dispositivo y a sus rechazos: si el reset no
+    las borra primero, Postgres rechaza el DELETE por clave foránea."""
+    result = seed_demo(db_session, demo_config())
+    # Sólo el id: un Device cargado quedaría en el identity map y chocaría con el
+    # que el seed vuelve a crear con el mismo id tras el reset.
+    demo_device_id = (
+        db_session.query(Device.id)
+        .filter(Device.organization_id == result.organization_id)
+        .order_by(Device.id)
+        .limit(1)
+        .scalar()
+    )
+    _add_alert_with_evidence(db_session, result.organization_id, demo_device_id)
+
+    seed_demo(db_session, demo_config(), reset=True)
+
+    assert db_session.query(AlertOccurrence).count() == 0
+    assert db_session.query(Alert).count() == 0
+    assert db_session.query(RejectedIngestPoint).count() == 0
+
+
+def test_reset_keeps_the_alerts_of_another_organization(db_session, test_org):
+    foreign_device = Device(
+        identifier="FOREIGN-DEV",
+        token_hash="f" * 64,
+        organization_id=test_org.id,
+    )
+    db_session.add(foreign_device)
+    db_session.commit()
+    foreign_alert = _add_alert_with_evidence(db_session, test_org.id, foreign_device.id)
+    foreign_alert_id = foreign_alert.id
+
+    seed_demo(db_session, demo_config())
+    seed_demo(db_session, demo_config(), reset=True)
+
+    assert db_session.get(Alert, foreign_alert_id) is not None
+    assert db_session.query(AlertOccurrence).count() == 1
+    assert db_session.query(RejectedIngestPoint).count() == 1
 
 
 def test_reset_never_touches_another_organization(db_session, test_org, test_user):
