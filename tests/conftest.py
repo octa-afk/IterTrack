@@ -10,7 +10,7 @@ os.environ.setdefault("GEOCODER_PROVIDER", "none")
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -26,6 +26,17 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+
+# SQLite ignora las claves foráneas salvo que se le pida. Sin esto, un borrado en
+# el orden equivocado pasa los tests y recién falla en Postgres.
+@event.listens_for(engine, "connect")
+def _enable_foreign_keys(dbapi_connection, _connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+
 TestingSessionLocal = sessionmaker(bind=engine)
 
 
