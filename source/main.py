@@ -1,0 +1,107 @@
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from source.database.config import settings
+from source.services.alerts import router as alerts_router
+from source.services.auth import router as auth_router
+from source.services.destinations import depots_router, destinations_router, trips_router
+from source.services.destinations import router as chargers_router
+from source.services.devices import router as devices_router
+from source.services.organizations import router as organizations_router
+from source.services.tracking import org_router
+from source.services.tracking import router as tracking_router
+
+# Built React app (Vite). Build it with: npm --prefix frontend run build
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+FAVICON = Path(__file__).resolve().parent / "static" / "isologo.png"
+
+app = FastAPI()
+app.include_router(tracking_router)
+app.include_router(org_router)
+app.include_router(auth_router)
+app.include_router(devices_router)
+app.include_router(alerts_router)
+app.include_router(organizations_router)
+app.include_router(chargers_router)
+app.include_router(depots_router)
+app.include_router(trips_router)
+app.include_router(destinations_router)
+
+# Only the hashed build assets are exposed as files; every route is answered
+# with index.html so React Router owns the client-side routing.
+app.mount(
+    "/assets",
+    StaticFiles(directory=FRONTEND_DIST / "assets", check_dir=False),
+    name="assets",
+)
+
+
+def _index() -> FileResponse:
+    target = FRONTEND_DIST / "index.html"
+    if not target.is_file():
+        raise HTTPException(
+            status_code=503,
+            detail="Frontend build not found. Run: npm --prefix frontend run build",
+        )
+    return FileResponse(target)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/config")
+def client_config():
+    """Public client configuration, read before anyone authenticates.
+
+    When `DEMO_MODE` is on this exposes the demo account, which is public by
+    design: it is the whole point of a demo. The published account is the
+    read-only `member` (`DEMO_USERNAME`/`DEMO_PASSWORD`); the demo admin
+    credentials never leave the server. When the flag is off, not even the
+    username leaves the server.
+    """
+    if not settings.demo_enabled:
+        return {"demo": {"enabled": False}}
+    return {
+        "demo": {
+            "enabled": True,
+            "username": settings.demo_username,
+            "password": settings.demo_password,
+        }
+    }
+
+
+@app.get("/")
+def root():
+    return _index()
+
+
+@app.get("/map")
+def view_map():
+    return _index()
+
+
+@app.get("/fleet")
+def view_fleet():
+    """Sección Camiones. No puede vivir en /trucks: ese path es la API JSON."""
+    return _index()
+
+
+@app.get("/viajes")
+def view_trips():
+    """Sección Rutas. `/trips` es la API de viajes, por eso la página usa /viajes."""
+    return _index()
+
+
+@app.get("/register")
+def view_register():
+    return _index()
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return FileResponse(FAVICON)

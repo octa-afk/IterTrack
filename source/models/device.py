@@ -1,0 +1,52 @@
+from datetime import UTC, datetime
+
+from sqlalchemy import DateTime, ForeignKey, Index, String, text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from source.database.database import Base
+
+
+class Device(Base):
+    __tablename__ = "devices"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    identifier: Mapped[str] = mapped_column(String(64), unique=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    active: Mapped[bool] = mapped_column(default=True)
+    # A device belongs to the organization that owns the truck it was provisioned
+    # for. Nullable only for rows created before this column existed; provisioning
+    # always sets it from the assigned truck.
+    organization_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organizations.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class DeviceAssignment(Base):
+    __tablename__ = "device_assignments"
+    __table_args__ = (
+        Index(
+            "uq_device_assignments_open_device",
+            "device_id",
+            unique=True,
+            postgresql_where=text("valid_to IS NULL"),
+            sqlite_where=text("valid_to IS NULL"),
+        ),
+        Index(
+            "uq_device_assignments_open_truck",
+            "truck_id",
+            unique=True,
+            postgresql_where=text("valid_to IS NULL"),
+            sqlite_where=text("valid_to IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"))
+    truck_id: Mapped[int] = mapped_column(ForeignKey("trucks.id"))
+    valid_from: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

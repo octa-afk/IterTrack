@@ -1,0 +1,7 @@
+# Caddy obtains and renews the certificate automatically as long as DOMAIN is a
+# real hostname pointing at this server. With `localhost` it falls back to an
+# internal certificate, which browsers warn about.
+{$DOMAIN:localhost} {
+	encode zstd gzip
+	reverse_proxy web:8000
+}
