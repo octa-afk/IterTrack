@@ -27,22 +27,31 @@ USER_AGENT = "IterTrack-demo-routes/1.0 (+https://github.com/octa-afk/IterTrack)
 SPACING_M = 25.0
 METERS_PER_DEGREE = 111_320.0
 
-# Waypoints (lon, lat) aproximados sobre avenidas reales; OSRM los ajusta a la
+# Waypoints (lat, lng) aproximados sobre avenidas reales; OSRM los ajusta a la
 # calle más cercana. El primero se repite al final para cerrar el lazo.
 CIRCUITS: dict[str, list[tuple[float, float]]] = {
     "cordoba_route_norte.json": [
-        (-64.2300, -31.3836),  # Cerro de las Rosas
-        (-64.2400, -31.3720),  # Villa Belgrano
-        (-64.2620, -31.3640),  # Argüello
-        (-64.2100, -31.3900),  # Villa Cabrera
-        (-64.2300, -31.3836),  # cierre
+        (-31.3836, -64.2300),  # Cerro de las Rosas
+        (-31.3720, -64.2400),  # Villa Belgrano
+        (-31.3640, -64.2620),  # Argüello
+        (-31.3900, -64.2100),  # Villa Cabrera
+        (-31.3836, -64.2300),  # cierre
     ],
     "cordoba_route_sur.json": [
-        (-64.1830, -31.4420),  # Vélez Sarsfield y Fuerza Aérea
-        (-64.1672, -31.4470),  # Barrio Jardín
-        (-64.1520, -31.4303),  # Av. Cruz Roja
-        (-64.1646, -31.4180),  # Garzón Agulla
-        (-64.1830, -31.4420),  # cierre
+        (-31.4420, -64.1830),  # Vélez Sarsfield y Fuerza Aérea
+        (-31.4470, -64.1672),  # Barrio Jardín
+        (-31.4303, -64.1520),  # Av. Cruz Roja
+        (-31.4180, -64.1646),  # Garzón Agulla
+        (-31.4420, -64.1830),  # cierre
+    ],
+    "cordoba_route_norte_sur.json": [
+        (-31.3640, -64.2620),  # Argüello
+        (-31.3836, -64.2300),  # Cerro de las Rosas
+        (-31.4201, -64.1888),  # Plaza San Martín
+        (-31.4470, -64.1672),  # Barrio Jardín
+        (-31.4303, -64.1520),  # Av. Cruz Roja
+        (-31.3900, -64.2100),  # Villa Cabrera
+        (-31.3640, -64.2620),  # cierre
     ],
 }
 
@@ -56,7 +65,7 @@ def distance_m(first: tuple[float, float], second: tuple[float, float]) -> float
 
 def fetch_loop(waypoints: list[tuple[float, float]]) -> list[tuple[float, float]]:
     """Pide el lazo a OSRM y devuelve los puntos como (lat, lng)."""
-    coords = ";".join(f"{lon},{lat}" for lon, lat in waypoints)
+    coords = ";".join(f"{lng},{lat}" for lat, lng in waypoints)
     url = f"{OSRM_URL}/{coords}?overview=full&geometries=geojson&continue_straight=false"
     response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=30)
     response.raise_for_status()
