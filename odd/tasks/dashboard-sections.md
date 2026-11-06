@@ -1,0 +1,170 @@
+# Secciones del dashboard
+
+Objetivo: convertir el sidebar en navegación real y darle páginas propias a las
+secciones de la flota, empezando por Camiones.
+Rama: `feat/dashboard-original` · Entrega: commits por unidad de trabajo · Tests: `make test` + `npm --prefix frontend run lint build`
+
+## Specs
+
+S1. Las cinco entradas del sidebar (`Panel`, `Camiones`, `Rutas`, `Reportes`,
+`Ajustes`) deben navegar a una ruta propia. Hoy son `<a>` sin `href` que no
+hacen nada.
+
+S2. `Camiones` tiene página propia en `/trucks` con la flota completa en tabla:
+patente, estado, velocidad, último reporte y rumbo. Reutiliza el estado y los
+filtros que ya existen (búsqueda, estado, orden) en lugar de crear otro store.
+
+S3. El estado de la flota (polling cada 3 s, selección, filtros) vive en un
+layout compartido, de modo que cambiar de sección no reinicia el polling ni
+pierde el camión seleccionado.
+
+S4. FastAPI sirve `index.html` en las rutas nuevas: un *deep link* directo a
+`/trucks` no puede devolver `404`.
+
+S5. `Rutas`, `Reportes` y `Ajustes` **no** entran en esta entrega y eso se
+declara: se muestran deshabilitadas con `title="Próximamente"`, sin páginas
+falsas ni contenido inventado.
+
+S7. El mapa no se recrea al cambiar de sección: se monta una vez y se oculta
+mientras no estás en el panel.
+
+S8. La sección Camiones acompaña el compactado del sidebar con la misma
+lógica que la barra de búsqueda: `left` anima con `.3s ease` al cambiar
+`--lx`, en ambos sentidos. Sin animación de entrada de contenido.
+
+S9. Las secciones sin mapa (Camiones y las que vengan) tienen **fondo celeste
+plano** (`#dfe8f6`, el token `--mint`), sin gradientes, y sus tarjetas bajan la
+opacidad del vidrio a `.70`.
+
+S6. `extras/nuevo html(prueba)` **no** se usa como referencia de diseño: es
+material local de otra rama, ignorado por git. Borrarlo queda a decisión del
+usuario porque no está respaldado en ninguna rama.
+
+## Tasks
+
+| ID | Specs | Ruta | Estado |
+|----|-------|------|--------|
+| T1 | S1, S3, S4 | inline | hecho |
+| T2 | S2 | inline | hecho |
+| T3 | S5 | inline | hecho |
+| T4 | docs | inline | hecho |
+
+## Log
+
+L1 (2026-10-24, textual): "quiero que sigamos implementando el resto del
+frontend, quiero agregar mas secciones"
+
+L2 (2026-10-24, textual): "no veamoes el archivo html de prueba, es de otra
+branch, si queres inclusive borralo de esta branch para no geenrera confusiones"
+
+L3: `extras/` está en `.gitignore:26` y no existe en `develop`, `main` ni
+`feat/dashboard-redesign-nuevo`. No se borra: no afecta al repo y su pérdida
+sería local y definitiva. Se deja constancia en S6.
+
+L4: hallazgo de exploración — `source/main.py` registra `/`, `/register` y
+`/map` una por una, y `tests/test_static.py` las parametriza. Toda ruta nueva
+del cliente exige registrar el handler y sumarla al test, o el deep link da 404.
+
+L5: T1 y T2 implementados. Hallazgos de implementación:
+- `.grid` no sirve para páginas normales: el layer "full-screen map" le aplica
+  `display:contents` a `.grid`, `.content` y `.grid>.col:first-child`, así que
+  una tarjeta metida ahí cae en la columna del sidebar (253 px) y queda tapada.
+  La sección usa `.fleet-page`, con la misma geometría que los paneles
+  flotantes (`top:97px`, `bottom:39px`, `left:var(--lx)`) y fallback a flujo
+  normal por debajo de 1265 px.
+- `/trucks` colisiona con `GET /trucks` de la API (401 JSON). De ahí `/fleet`.
+- El ancho útil a 1280 px es 527 px: la etiqueta "Ver en el mapa" se cortaba.
+  Quedó "Ver mapa" + `aria-label` con la patente, y celdas a 10 px.
+Verificación: `/fleet` 200 HTML y `/trucks` 401 JSON, tabla con 3 filas,
+selección de fila poblando el detalle, "Ver mapa" navegando a `/map` con los
+3 marcadores, `make check` y `make test` (199) en verde.
+
+L6 (pedido del usuario, textual): "veo que al pasar a la seccion de camiones y
+volver al panel principal tarda en cargar el mapa, y no es un problema de
+rendimiento de mi pc. como podemos solucionarlo?"
+
+L7: causa medida, no supuesta. Con el mapa en `MapPage`, al navegar a `/fleet`
+`#map` desaparecía del DOM: `MapView` se desmontaba y en cada vuelta se creaban
+otra vez `L.map()` y la capa de MapLibre, se pedía y parseaba el estilo de
+OpenFreeMap y se rearmaban los tres marcadores. El overlay `.map-style-loading`
+volvía a tapar el panel mientras tanto.
+Solución (S7): el mapa pasa a `DashboardLayout` y se monta una sola vez; fuera
+del panel se oculta con `.mapbox-off` — `visibility:hidden` en escritorio para
+no cambiar el tamaño (Leaflet no necesita `invalidateSize`) y `display:none`
+por debajo de 1265 px, donde el mapa está en flujo normal y no debe dejar un
+hueco de 64vh.
+Verificación: tras /map → /fleet → /map el nodo `#map` y el `<canvas>` son los
+mismos objetos (`===`), `.mapbox` está `hidden` en flota y sin `map-style-loading`
+al volver; 3 marcadores presentes. A 1024 px el mapa oculto no ocupa alto.
+Bug menor encontrado en la tabla: el rumbo salía crudo (225.44311469526514°)
+porque `bearing()` devuelve float y sólo `TruckDetail` redondeaba.
+
+L8 (pedido del usuario, textual): "ahora agreguemos alguna animacion minima, que
+no arruine el rendimiento pero que mejore visualmente la experiencia de cambiar
+de panel"
+
+L9: animación resuelta 100% en CSS, sin JS: `@keyframes section-in` sobre
+`.grid .card`, `.mapcard .card-h` y `.fleet-page`, más `fade-in` sobre el ítem
+activo del sidebar y una transición de color en los links. Sólo opacidad y
+transform, que los compone la GPU. El mapa persistente (`.mapbox`) queda
+explícitamente fuera: si se animara, el panel parpadearía en cada vuelta.
+Verificación: al entrar a `/fleet` corre `section-in` (180 ms) y tras un poll de
+3 s la animación figura `finished` y **no se repite** — los re-render por datos
+no la reactivan. Al volver al panel animan las tarjetas y `.mapbox` no tiene
+ninguna animación. Con `prefers-reduced-motion: reduce` hay 0 animaciones.
+
+L10 (usuario, textual): "si casi que no se aprecia"
+Se subió la animación: `translateY` 6px→18px, `scale(.985)`→1, duración
+180ms→340ms, easing `cubic-bezier(.22,.61,.36,1)`. Medición durante la entrada
+a `/fleet`: `y` 119.4 → 106.3 → 103.1 → 97 (reposo), ancho 978 → 993 y opacidad
+0 → 0.59 → 0.73 → 1. Nota: `getComputedStyle().transform` devuelve la matriz
+identidad mientras la animación corre en el compositor; hay que medir con
+`getBoundingClientRect()`.
+
+L11 (usuario, textual): "no se ve asi que quita la animacion. te voy a pedir que
+el panel de camiones con la lista de camiones tenga animacion al igual que la
+barra de busqueda, la barra de busqueda tiene una animacion que se ejecuta al
+compactar el panel lateral izquierdo, quiero que el panel de camiones de la
+seccion camiones siga la misma logica"
+
+L12: se elimina la animación de entrada (`section-in`, `fade-in` y la
+transición de color del sidebar). La sección Camiones usa ahora
+`transition:left .3s ease` sobre `--lx`, igual que `.top`.
+Hallazgo: con el código original la transición sólo estaba declarada dentro de
+`.app.nav-off`, así que al **expandir** los bloques saltaban (la regla que
+declara `transition` desaparecía junto con la clase). Se movió la transición a
+la regla base de `.top`, `.mapcard .card-h`, `.bottom`, `.fleet-page` y los
+controles de Leaflet: ahora ambos sentidos animan y en sincronía.
+Medición (x en px, mismo instante): compactando 271 → 151.6 → 53.6 → 17.8 para
+la sección y para la barra; expandiendo 16 → 135.4 → 233.3 → 263.2, idénticos.
+`prefers-reduced-motion: reduce` deja los seis sin transición.
+
+L13 (usuario, textual): "hagamos que el fondode las secciones que no son la
+principal, es decir camiones, luego rutas ajustes ye tc cuando la
+implementemos. tengan alguna especie de gradiente sutil para que se vean los
+paneles glas"
+
+L14: `DashboardLayout` agrega la clase `app-section` cuando la ruta no es
+`/map`. `.app.app-section` trae cuatro capas (tres radiales suaves + un
+`linear-gradient`) y, sólo arriba de 641 px, baja el vidrio a
+`--g-bg:rgba(255,255,255,.70)`. Hallazgo: el `.app` terminaba con
+`background:var(--mint)` sólido de la capa v10, pisando los gradientes previos
+—por eso el fondo se veía plano aunque el CSS parecía tenerlos—. La regla nueva
+va al final y gana por orden.
+Bug de tabla encontrado al verificar: con rumbos de tres dígitos (`243°`) la
+columna de acción desbordaba el ancho útil (541 > 527) y "Ver mapa" se cortaba.
+Pasó a un botón de icono de 30 px; la tabla ahora mide exactamente lo mismo que
+su contenedor (527 = 527).
+
+L15 (usuario, textual): "pero que el fondo sea blanco y no celeste"
+Se cambió el fondo de sección: `linear-gradient(180deg,#fff 0%,#fbfcfd 46%,
+#f4f6fa 100%)` con dos radiales de gris (`rgba(31,42,61,.035)`) en lugar de las
+manchas azul/celeste/lavanda. Verificado por `getComputedStyle`. Consecuencia
+aceptada: sobre blanco el vidrio casi no tiene qué difuminar; la separación de
+los paneles queda en la sombra y el borde, no en la transparencia.
+
+L16 (usuario, textual): "proba ahcerlo celeste pero sin gradientes"
+`.app.app-section{background:#dfe8f6}` a secas, en escritorio y en móvil.
+`getComputedStyle` devuelve `backgroundImage: none` y `backgroundColor:
+rgb(223,232,246)`. Las tarjetas al 70% sobre ese plano quedan en ~#f2f6fc, un
+tono más claro que el fondo: el panel se distingue por tono y sombra.

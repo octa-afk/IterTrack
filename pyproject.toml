@@ -1,0 +1,40 @@
+# Single source of truth for the Python lint and type-check tooling.
+# Run both through `make check` (ruff + mypy); CI runs the same target.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["env", "frontend", "alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes (undefined names, unused imports)
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear (likely bugs)
+    "PIE",  # misc lints
+    "RUF",  # ruff-specific rules
+]
+ignore = [
+    "E501",  # legacy code is not reflowed here; line-length still guides wrapping
+    "B008",  # Depends(...) in parameter defaults is the FastAPI idiom
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Migration scripts are generated once by Alembic and never edited by hand.
+"alembic/versions/*" = ["E", "W", "F", "I", "UP", "B", "PIE", "RUF"]
+# selfcheck.py must put ROOT on sys.path and set warning filters before importing
+# the app, so its imports are deliberately not at the top of the module.
+"scripts/selfcheck.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.14"
+mypy_path = "."
+explicit_package_bases = true
+check_untyped_defs = true
+warn_unused_ignores = true
+no_implicit_optional = true
+plugins = ["pydantic.mypy"]
+exclude = ["env/", "frontend/", "alembic/versions/"]

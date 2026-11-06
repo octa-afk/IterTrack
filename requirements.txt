@@ -1,0 +1,27 @@
+# Direct dependencies only (runtime + dev tooling).
+# Transitive deps are resolved automatically by pip — do NOT pin them here.
+# Install with: env/bin/pip install -r requirements.txt
+
+# --- Runtime ---
+alembic==1.19.0                    # DB migrations CLI (Makefile, alembic/env.py)
+bcrypt==4.0.1                      # passlib bcrypt backend; pinned: passlib 1.7.4 breaks with bcrypt 5.x
+email-validator==2.3.0             # Pydantic EmailStr in source/schemas/auth.py
+fastapi==0.138.0                   # web framework
+passlib[bcrypt]==1.7.4             # password hashing (source/services/auth.py)
+psycopg2-binary==2.9.12            # PostgreSQL driver for sqlalchemy+psycopg2:// URLs
+pydantic==2.13.4                   # request/response schemas
+pydantic-settings==2.14.2          # BaseSettings config (source/database/config.py)
+python-jose[cryptography]==3.5.0   # JWT creation/verification (source/services/auth.py)
+python-multipart==0.0.32           # OAuth2 form parsing (OAuth2PasswordRequestForm)
+SQLAlchemy==2.0.51                 # ORM
+uvicorn[standard]==0.49.0          # ASGI server; [standard] keeps fast --reload for dev
+
+# --- Development / tooling ---
+httpx==0.28.1                      # Starlette TestClient backend (tests/)
+mypy==2.4.0                        # static type checker (`make check`, config in pyproject.toml)
+pytest==9.1.1                      # test runner (Makefile, CI)
+requests==2.34.2                   # simulator HTTP calls (scripts/simulate_trucks.py)
+ruff==0.17.1                       # linter (`make check`, config in pyproject.toml)
+types-passlib==1.7.7.20260211      # type stubs for passlib (source/services/auth.py)
+types-python-jose==3.5.0.20260408  # type stubs for python-jose (source/services/auth.py)
+python-dotenv==1.2.2               # .env loading for the simulator credentials

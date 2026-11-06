@@ -1,0 +1,185 @@
+from datetime import UTC, datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session
+
+from source import models, schemas
+from source.database.config import settings
+from source.database.database import get_db
+from source.models.user import ROLE_ORG_ADMIN, ROLE_PLATFORM_ADMIN
+from source.services.rate_limit import client_ip, limiter
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+LOGIN_WINDOW_SECONDS = 60
+REGISTER_WINDOW_SECONDS = 3600
+
+
+def _too_many_attempts(retry_after: int) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail="Demasiados intentos. Probá de nuevo en unos minutos.",
+        headers={"Retry-After": str(retry_after)},
+    )
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def authenticate_user(db: Session, username: str, password: str):
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.jwt_algorithm)
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudieron validar las credenciales",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        username: str | None = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception from None
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if user is None:
+        raise credentials_exception
+    if user.disabled:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario deshabilitado")
+    return user
+
+
+def require_org_admin(current_user: models.User = Depends(get_current_user)):
+    """Require an administrator of a single organization."""
+    if current_user.role != ROLE_ORG_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requiere rol de administrador de organización",
+        )
+    return current_user
+
+
+def require_platform_admin(current_user: models.User = Depends(get_current_user)):
+    """Require IterTrack staff with platform-wide scope."""
+    if current_user.role != ROLE_PLATFORM_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requiere rol de administrador de plataforma",
+        )
+    return current_user
+
+
+def require_org_admin_or_platform(current_user: models.User = Depends(get_current_user)):
+    """Allow either administrator scope when the endpoint narrows by organization."""
+    if current_user.role not in (ROLE_ORG_ADMIN, ROLE_PLATFORM_ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requiere rol de administrador",
+        )
+    return current_user
+
+
+@router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+def register(user: schemas.UserCreate, request: Request, db: Session = Depends(get_db)):
+    ip_key = f"register:{client_ip(request)}"
+    retry_after = limiter.retry_after(
+        ip_key, settings.register_max_per_hour, REGISTER_WINDOW_SECONDS
+    )
+    if retry_after:
+        raise _too_many_attempts(retry_after)
+    limiter.record(ip_key)
+
+    if db.query(models.User).filter(models.User.username == user.username).first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario ya existe")
+    if db.query(models.User).filter(models.User.email == user.email).first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya está registrado")
+
+    if not user.invitation_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debe proporcionar un código de invitación",
+        )
+
+    organization = (
+        db.query(models.Organization)
+        .filter(models.Organization.invitation_code == user.invitation_code)
+        .first()
+    )
+    if organization is None or not organization.invitation_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Código de invitación inválido"
+        )
+
+    db_user = models.User(
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        hashed_password=hash_password(user.password),
+        organization_id=organization.id,
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+@router.post("/login", response_model=schemas.Token)
+def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    # Se chequea antes de bcrypt, así un intento bloqueado no gasta CPU. Sólo
+    # cuentan los fallos: la cuenta demo es compartida y no debe trabarse con
+    # visitantes normales. No hay límite por usuario solo porque un tercero
+    # podría dejar afuera a la víctima.
+    ip = client_ip(request)
+    ip_key = f"login:ip:{ip}"
+    user_key = f"login:user:{ip}:{form_data.username[:150]}"
+    retry_after = max(
+        limiter.retry_after(ip_key, settings.login_max_failures_per_ip, LOGIN_WINDOW_SECONDS),
+        limiter.retry_after(user_key, settings.login_max_failures_per_user, LOGIN_WINDOW_SECONDS),
+    )
+    if retry_after:
+        raise _too_many_attempts(retry_after)
+
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        limiter.record(ip_key)
+        limiter.record(user_key)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    limiter.clear(user_key)
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=schemas.UserResponse)
+def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
