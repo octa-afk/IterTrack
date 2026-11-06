@@ -134,10 +134,10 @@ def test_build_truck_configs_spreads_the_trucks_that_share_a_circuit():
     )
 
     assert [config.route_file for config in configs] == [
-        "cordoba_route.json",
+        "cordoba_route_norte_sur.json",
         "cordoba_route_norte.json",
         "cordoba_route_sur.json",
-        "cordoba_route.json",
+        "cordoba_route_norte_sur.json",
         "cordoba_route_norte.json",
         "cordoba_route_sur.json",
     ]
@@ -757,7 +757,7 @@ def test_ejecutar_simulaciones_gives_each_truck_its_own_circuit(monkeypatch):
     ejecutar_simulaciones(base_id=1, base_plate="ABC123", intervalo=1, count=3)
 
     assert circuits == [
-        "cordoba_route.json",
+        "cordoba_route_norte_sur.json",
         "cordoba_route_norte.json",
         "cordoba_route_sur.json",
     ]

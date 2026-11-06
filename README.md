@@ -133,7 +133,7 @@ IterTrack/
 ├── scripts/
 │   ├── simulate_trucks.py         # Script para simular recorrido y envío de datos GPS
 │   ├── generate_demo_routes.py    # Herramienta de mantenimiento: pide los circuitos a OSRM
-│   ├── cordoba_route.json         # Circuito del camión 1 (centro / Nueva Córdoba)
+│   ├── cordoba_route_norte_sur.json # Circuito del camión 1 (Argüello / Plaza San Martín / Jardín)
 │   ├── cordoba_route_norte.json   # Circuito del camión 2 (Cerro de las Rosas / Argüello)
 │   └── cordoba_route_sur.json     # Circuito del camión 3 (Jardín / Av. Cruz Roja)
 ├── tests/                         # Suite pytest (SQLite en memoria)
@@ -386,7 +386,7 @@ make simulation SIMULATION_COUNT=1   # un camión, para probar el marcador
 `make simulation` carga el `.env` raíz, así que toma `ADMIN_API_USER` y `ADMIN_API_PASSWORD` de ahí sin exports manuales.
 
 ### Características de la simulación:
-1. **Rutas Urbanas Reales:** Cada camión recorre su propio circuito cerrado por Córdoba Capital: centro / Nueva Córdoba ([`cordoba_route.json`](./scripts/cordoba_route.json), 14 km), Cerro de las Rosas / Argüello ([`cordoba_route_norte.json`](./scripts/cordoba_route_norte.json), 18 km) y Jardín / Av. Cruz Roja ([`cordoba_route_sur.json`](./scripts/cordoba_route_sur.json), 14 km). Los tres están georreferenciados punto por punto y se generan con [`scripts/generate_demo_routes.py`](./scripts/generate_demo_routes.py) usando OSRM; los datos derivan de OpenStreetMap (ODbL).
+1. **Rutas Urbanas Reales:** Cada camión recorre su propio circuito cerrado por Córdoba Capital: norte a sur por el centro, de Argüello a Barrio Jardín pasando por Plaza San Martín ([`cordoba_route_norte_sur.json`](./scripts/cordoba_route_norte_sur.json), 39 km), Cerro de las Rosas / Argüello ([`cordoba_route_norte.json`](./scripts/cordoba_route_norte.json), 18 km) y Jardín / Av. Cruz Roja ([`cordoba_route_sur.json`](./scripts/cordoba_route_sur.json), 14 km). Los tres están georreferenciados punto por punto y se generan con [`scripts/generate_demo_routes.py`](./scripts/generate_demo_routes.py) usando OSRM; los datos derivan de OpenStreetMap (ODbL).
 2. **Telemetría Completa:** Muestra en tiempo real el rumbo en grados (°), punto cardinal (N, SE, etc.), velocidad calculada en km/h y estado HTTP (`200 OK`).
 3. **Bucle Continuo:** Al completar su circuito, cada camión reinicia la vuelta siguiente sin interrupciones.
 4. **Corrida Limpia:** Al arrancar, el simulador borra el recorrido previo de sus propios camiones (los que tienen un ESP32 real se saltean antes, así que su historial nunca se toca). Sin eso, los puntos de la corrida anterior quedan a kilómetros de la nueva y el mapa dibuja un recorrido que el camión no hizo. `--keep-history` conserva la telemetría acumulada.
