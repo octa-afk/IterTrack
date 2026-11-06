@@ -64,7 +64,7 @@ Lo único atado a Azure es la VM que alquila. Cuando vencen los 12 meses, se lev
 
 1. Cuenta de **Azure for Students** activa (con email institucional).
 2. Un **dominio** apuntando a la VM (registro `A`). El `.me` gratuito de Namecheap del Student Pack alcanza.
-3. La imagen publicada en GHCR por el workflow `publish-image.yml`. Publica un tag por rama al pushear a `main` o `develop`: mientras la demo corra desde `develop`, el tag es `:develop`. **Verificar que el run esté en verde antes de desplegar**: `docker manifest inspect` devuelve `unauthorized` tanto si el paquete es privado como si el tag no existe.
+3. La imagen publicada en GHCR por el workflow `publish-image.yml`. Publica un tag por rama al pushear a `main` o `develop`: el despliegue sale de `main`, así que el tag es `:main` (`IMAGE=ghcr.io/octa-afk/itertrack:main` en el `.env` de la VM; el compose cae a `:latest`, que sólo se publica al pushear un tag `v*`). **Verificar que el run esté en verde antes de desplegar**: `docker manifest inspect` devuelve `unauthorized` tanto si el paquete es privado como si el tag no existe.
 4. Acceso SSH a la VM.
 5. Un **Personal Access Token** de GitHub con scope `read:packages`, si el paquete de GHCR es privado.
 
