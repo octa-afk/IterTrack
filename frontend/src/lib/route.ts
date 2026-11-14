@@ -50,3 +50,21 @@ export function recortarRuta(
   const resto = geometry.slice(indice);
   return { distancia, resto, largo: distancia + largoGeometria(resto) };
 }
+
+/** Índice del punto de la geometría más cercano a una coordenada. */
+export function indiceMasCercano(
+  puntos: [number, number][],
+  lat: number,
+  lng: number,
+): number {
+  let mejor = 0;
+  let mejorDistancia = Number.POSITIVE_INFINITY;
+  puntos.forEach(([pLat, pLng], i) => {
+    const distancia = haversineM(lat, lng, pLat, pLng);
+    if (distancia < mejorDistancia) {
+      mejorDistancia = distancia;
+      mejor = i;
+    }
+  });
+  return mejor;
+}

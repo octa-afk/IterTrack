@@ -4,14 +4,14 @@ import 'leaflet/dist/leaflet.css';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@maplibre/maplibre-gl-leaflet';
-import { getTripRoute, listTrips } from '../api/destinations';
-import type { TripStop } from '../api/types';
+import type { Trip, TripStop } from '../api/types';
 import { useDashboard } from '../state/useDashboard';
 import { createTruckPin, updateTruckPin, type TruckPin } from '../lib/truckIcon';
 import { createMovementController, type ActiveMove } from '../lib/movement';
 import { POLL_MS, haversineM } from '../lib/trucks';
 import { recortarRuta } from '../lib/route';
 import { registrarMapa } from '../lib/mapHandle';
+import { seguimientoDe } from '../state/seguimientoViaje';
 
 /*
  * Ported from source/static/js/map.js (map boot + marker rendering) plus
@@ -45,35 +45,9 @@ const ROUTE_WEIGHT = 6;
  * consulta al proveedor de ruteo en cada latido.
  */
 const DESVIO_MAX_M = 120;
-/*
- * Espera tras un fallo del proveedor de ruteo. Sin esto un proveedor caído se
- * consulta en cada latido (cada 3 s y por pestaña abierta), lo que agrava el
- * problema en vez de resolverlo: mientras tanto se conserva el último trazo
- * bueno o la recta punteada.
- */
-const REINTENTO_RUTA_MS = 15_000;
-
 function pinScale(zoom: number): number {
   const raw = 1 - (PIN_FULL_ZOOM - zoom) * PIN_SCALE_PER_ZOOM;
   return Math.min(1, Math.max(PIN_MIN_SCALE, raw));
-}
-
-/** Índice del punto de la geometría más cercano a una coordenada. */
-function indiceMasCercano(
-  puntos: [number, number][],
-  lat: number,
-  lng: number,
-): number {
-  let mejor = 0;
-  let mejorDistancia = Number.POSITIVE_INFINITY;
-  puntos.forEach(([pLat, pLng], i) => {
-    const distancia = haversineM(lat, lng, pLat, pLng);
-    if (distancia < mejorDistancia) {
-      mejorDistancia = distancia;
-      mejor = i;
-    }
-  });
-  return mejor;
 }
 
 type MaplibreLayer = L.Layer & { getMaplibreMap(): maplibregl.Map };
@@ -117,6 +91,8 @@ export default function MapView({
   const fittedRef = useRef(false);
   const trucksRef = useRef(trucks);
   const selectRef = useRef(select);
+  /** Redibujo del viaje seleccionado, para llamarlo cuando se mueve el camión. */
+  const redibujarViajeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     trucksRef.current = trucks;
@@ -348,33 +324,25 @@ export default function MapView({
    *
    * Las dos capas nacen en este efecto y mueren en su limpieza, que corre al
    * cambiar `selectedId`: nada de lo que dibuja una selección puede sobrevivir a
-   * la siguiente. La versión anterior guardaba las capas en refs compartidas y
-   * el viaje del camión previo quedaba en el mapa cuando el nuevo no tenía viaje
-   * abierto; acá eso es imposible por construcción.
+   * la siguiente.
    *
-   * Un solo ciclo de polling por selección: cada latido recorta el trazo en la
-   * posición actual del camión sin volver a consultar al proveedor, salvo que
-   * cambie el estado de una parada o que el camión se haya alejado de la ruta.
+   * El viaje y la ruta salen del seguimiento compartido con el panel del camión
+   * (`seguimientoViaje`): un solo polling por camión, en pausa con la pestaña
+   * oculta. Acá sólo se dibuja: cuando cambia el viaje, y cuando el camión se
+   * mueve, recortando el trazo en su posición. Si se aleja de la ruta, se le
+   * pide al seguimiento que la vuelva a calcular.
    */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || selectedId === null) return;
 
     const id = selectedId;
+    const seguimiento = seguimientoDe(id);
     const capaParadas = L.layerGroup().addTo(map);
     const capaRuta = L.layerGroup().addTo(map);
 
-    let cancelado = false;
-    /** Firma del estado de las paradas: si cambia, la ruta apunta a otra. */
-    let firma = '';
-    /** Hay que pedir (o volver a pedir) la geometría del tramo. */
-    let hayQuePedir = true;
-    /** Siguiente intento permitido tras un fallo del proveedor de ruteo. */
-    let reintentarEn = 0;
-    /** Un solo pedido a la vez: el proveedor puede tardar más que el latido. */
-    let ocupado = false;
-    /** Geometría por calles hasta la próxima parada; vacía = sin proveedor. */
-    let tramo: [number, number][] = [];
+    /** Viaje ya pintado: el seguimiento conserva el objeto mientras no cambie. */
+    let viajePintado: Trip | null | undefined;
     let destino: [number, number] | null = null;
     let puntosParadas: [number, number][] = [];
     let encuadrado = false;
@@ -424,7 +392,7 @@ export default function MapView({
           : null;
     };
 
-    const dibujarRuta = (origen: [number, number] | null) => {
+    const dibujarRuta = (origen: [number, number] | null, tramo: [number, number][]) => {
       capaRuta.clearLayers();
       if (origen === null || destino === null) return;
 
@@ -468,94 +436,52 @@ export default function MapView({
       });
     };
 
-    async function latir() {
-      /* Sin solapamiento: el proveedor de ruteo puede tardar más que el
-       * intervalo y dos respuestas cruzadas dejarían el trazo de una parada que
-       * ya no es la que toca. */
-      if (ocupado) return;
-      ocupado = true;
-      try {
-        const viajes = await listTrips(id).catch(() => null);
-        if (cancelado || viajes === null) return;
+    const dibujar = () => {
+      const estado = seguimiento.getSnapshot();
+      if (!estado.cargado) return;
 
-        const activo = viajes.find(
-          (viaje) => viaje.status === 'planned' || viaje.status === 'in_progress',
-        );
-
-        /*
-         * Sin viaje abierto no hay ruta que mostrar: el viaje se cerró porque
-         * todas las paradas quedaron entregadas. Se limpia lo dibujado para no
-         * dejar pines de un viaje que ya terminó.
-         */
-        if (!activo) {
-          if (firma !== '') {
-            firma = '';
-            tramo = [];
-            destino = null;
-            hayQuePedir = false;
-            capaParadas.clearLayers();
-            capaRuta.clearLayers();
-          }
-          encuadrar(posicionDelCamion());
-          return;
+      if (estado.viaje !== viajePintado) {
+        viajePintado = estado.viaje;
+        if (estado.viaje) {
+          pintarParadas(estado.viaje.stops);
+        } else {
+          /* El viaje se cerró: no quedan pines de un viaje que ya terminó. */
+          capaParadas.clearLayers();
+          puntosParadas = [];
+          destino = null;
         }
-
-        const estado = activo.stops.map((stop) => stop.status).join('');
-        if (estado !== firma) {
-          firma = estado;
-          pintarParadas(activo.stops);
-          tramo = [];
-          hayQuePedir = destino !== null;
-        }
-
-        const origen = posicionDelCamion();
-        const desvio =
-          tramo.length > 1 && origen !== null
-            ? recortarRuta(tramo, origen[0], origen[1]).distancia
-            : Number.POSITIVE_INFINITY;
-
-        if (desvio > DESVIO_MAX_M) hayQuePedir = true;
-
-        if (hayQuePedir && destino !== null && Date.now() >= reintentarEn) {
-          const nueva = await getTripRoute(activo.id).catch(() => null);
-          if (cancelado) return;
-          /*
-           * El backend devuelve la geometría desde el camión pasando por **todas**
-           * las paradas pendientes en orden. Se corta en la próxima usando la
-           * coordenada que ya conocemos del viaje: dibujar el resto haría ver un
-           * recorrido que saltea la parada que toca.
-           */
-          if (nueva && nueva.geometry.length > 1) {
-            const corte = indiceMasCercano(nueva.geometry, destino[0], destino[1]);
-            tramo = nueva.geometry.slice(0, corte + 1);
-            hayQuePedir = false;
-          } else {
-            /* Sin proveedor, o con el proveedor caído: se conserva el último
-             * trazo bueno (si lo hay) y se reintenta más tarde en vez de
-             * golpear la API en cada latido. */
-            reintentarEn = Date.now() + REINTENTO_RUTA_MS;
-          }
-        }
-
-        dibujarRuta(origen);
-        encuadrar(origen);
-      } finally {
-        ocupado = false;
       }
-    }
 
-    void latir();
-    const interval = window.setInterval(() => {
-      void latir();
-    }, POLL_MS);
+      const origen = posicionDelCamion();
+      const tramo = estado.ruta?.geometry ?? [];
+      if (
+        estado.viaje &&
+        tramo.length > 1 &&
+        origen !== null &&
+        recortarRuta(tramo, origen[0], origen[1]).distancia > DESVIO_MAX_M
+      ) {
+        seguimiento.solicitarRuta();
+      }
+      dibujarRuta(origen, tramo);
+      encuadrar(origen);
+    };
+
+    redibujarViajeRef.current = dibujar;
+    const desuscribir = seguimiento.subscribe(dibujar);
+    dibujar();
 
     return () => {
-      cancelado = true;
-      window.clearInterval(interval);
+      desuscribir();
+      if (redibujarViajeRef.current === dibujar) redibujarViajeRef.current = null;
       capaParadas.remove();
       capaRuta.remove();
     };
   }, [selectedId, fitSelection]);
+
+  /* El camión se movió: el trazo se recorta en su nueva posición. */
+  useEffect(() => {
+    redibujarViajeRef.current?.();
+  }, [trucks]);
 
   /*
    * Encuadre al elegir un camión (escritorio). El mapa puede estar oculto (el

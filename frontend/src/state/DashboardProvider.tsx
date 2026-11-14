@@ -15,6 +15,7 @@ import {
   type TruckState,
 } from '../lib/trucks';
 import { DashboardContext, type DashboardState } from './DashboardContext';
+import { iniciarPolling, type Polling } from './polling';
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    let interval: number | undefined;
+    let polling: Polling | undefined;
 
     async function refresh() {
       try {
@@ -65,17 +66,17 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         return;
       }
       await refresh();
-      if (!cancelled) setReady(true);
-      interval = window.setInterval(() => {
-        void refresh();
-      }, POLL_MS);
+      if (cancelled) return;
+      setReady(true);
+      // Un solo poller de flota, que no consulta con la pestaña oculta.
+      polling = iniciarPolling(refresh, POLL_MS, { inmediato: false });
     }
 
     void boot();
 
     return () => {
       cancelled = true;
-      if (interval !== undefined) window.clearInterval(interval);
+      polling?.detener();
     };
   }, [navigate]);
 
