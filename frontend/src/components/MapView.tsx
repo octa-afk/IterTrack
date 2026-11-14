@@ -7,7 +7,7 @@ import '@maplibre/maplibre-gl-leaflet';
 import { getTripRoute, listTrips } from '../api/destinations';
 import type { TripStop } from '../api/types';
 import { useDashboard } from '../state/useDashboard';
-import { createTruckIcon } from '../lib/truckIcon';
+import { createTruckPin, updateTruckPin, type TruckPin } from '../lib/truckIcon';
 import { createMovementController, type ActiveMove } from '../lib/movement';
 import { POLL_MS, haversineM } from '../lib/trucks';
 import { recortarRuta } from '../lib/route';
@@ -109,6 +109,8 @@ export default function MapView({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef(new Map<number, L.Marker>());
+  /** Elementos del ícono de cada marcador: se actualizan en el lugar, sin setIcon. */
+  const pinsRef = useRef(new Map<number, TruckPin>());
   const lastPosRef = useRef(new Map<number, { lat: number; lng: number; updated: number }>());
   const movesRef = useRef(new Map<number, ActiveMove>());
   const movementRef = useRef<ReturnType<typeof createMovementController> | null>(null);
@@ -134,6 +136,7 @@ export default function MapView({
     registrarMapa(map);
     onReady?.(map);
     const markers = markersRef.current;
+    const pins = pinsRef.current;
     const lastPos = lastPosRef.current;
     const moves = movesRef.current;
     el.classList.add('map-style-loading');
@@ -248,6 +251,7 @@ export default function MapView({
       movementRef.current?.stop();
       movementRef.current = null;
       markers.clear();
+      pins.clear();
       lastPos.clear();
       moves.clear();
       registrarMapa(null);
@@ -285,13 +289,18 @@ export default function MapView({
       liveIds.add(truck.id);
 
       let marker = markersRef.current.get(truck.id);
-      if (!marker) {
+      const pin = pinsRef.current.get(truck.id);
+      if (!marker || !pin) {
+        const nuevo = createTruckPin(truck, truck.id === selectedId);
         marker = L.marker([truck.lat, truck.lng], {
-          icon: createTruckIcon(truck, false),
+          icon: nuevo.icon,
           title: truck.plate,
         });
         marker.on('click', () => selectRef.current(truck.id));
         markersRef.current.set(truck.id, marker);
+        pinsRef.current.set(truck.id, nuevo);
+      } else {
+        updateTruckPin(pin, truck, truck.id === selectedId);
       }
 
       const previous = lastPosRef.current.get(truck.id);
@@ -316,7 +325,6 @@ export default function MapView({
         updated: truck.updated,
       });
 
-      marker.setIcon(createTruckIcon(truck, truck.id === selectedId));
       if (visibleIds.has(truck.id)) {
         if (!map.hasLayer(marker)) marker.addTo(map);
       } else {
@@ -328,6 +336,7 @@ export default function MapView({
       if (liveIds.has(id)) continue;
       map.removeLayer(marker);
       markersRef.current.delete(id);
+      pinsRef.current.delete(id);
       lastPosRef.current.delete(id);
       movesRef.current.delete(id);
     }
