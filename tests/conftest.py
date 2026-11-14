@@ -20,6 +20,7 @@ from source.models.organization import Organization
 from source.models.truck import Truck
 from source.models.user import User
 from source.services.auth import get_current_user, hash_password
+from source.services.rate_limit import limiter
 
 engine = create_engine(
     "sqlite:///:memory:",
@@ -38,6 +39,12 @@ def _enable_foreign_keys(dbapi_connection, _connection_record):
 
 
 TestingSessionLocal = sessionmaker(bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Los contadores son globales: un test no debe heredar los fallos de otro."""
+    limiter.reset()
 
 
 @pytest.fixture()

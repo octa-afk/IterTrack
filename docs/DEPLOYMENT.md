@@ -64,7 +64,7 @@ Lo único atado a Azure es la VM que alquila. Cuando vencen los 12 meses, se lev
 
 1. Cuenta de **Azure for Students** activa (con email institucional).
 2. Un **dominio** apuntando a la VM (registro `A`). El `.me` gratuito de Namecheap del Student Pack alcanza.
-3. La imagen publicada en GHCR por el workflow `publish-image.yml`. Publica un tag por rama al pushear a `main` o `develop`: mientras la demo corra desde `develop`, el tag es `:develop`. **Verificar que el run esté en verde antes de desplegar**: `docker manifest inspect` devuelve `unauthorized` tanto si el paquete es privado como si el tag no existe.
+3. La imagen publicada en GHCR por el workflow `publish-image.yml`. Publica un tag por rama al pushear a `main` o `develop`: el despliegue sale de `main`, así que el tag es `:main` (`IMAGE=ghcr.io/octa-afk/itertrack:main` en el `.env` de la VM; el compose cae a `:latest`, que sólo se publica al pushear un tag `v*`). **Verificar que el run esté en verde antes de desplegar**: `docker manifest inspect` devuelve `unauthorized` tanto si el paquete es privado como si el tag no existe.
 4. Acceso SSH a la VM.
 5. Un **Personal Access Token** de GitHub con scope `read:packages`, si el paquete de GHCR es privado.
 
@@ -263,6 +263,10 @@ ssh -L 5433:localhost:5432 -i <clave_ssh> <usuario>@<IP_VM>
 > La VM actual es la `<vm>` de Azure (IP `<IP_VM>`, usuario `<usuario>`, clave `<clave_ssh>`). Ese `-i` es necesario: no hay entrada en `~/.ssh/config`.
 
 > Nunca corras migraciones desde tu máquina contra la base de la VM. Migra solo el contenedor `web`.
+
+### Límite de intentos
+
+Login y registro se limitan por IP (`LOGIN_MAX_FAILURES_PER_USER`, `LOGIN_MAX_FAILURES_PER_IP`, `REGISTER_MAX_PER_HOUR`). Los contadores viven en memoria y se pierden al reiniciar. Con más de un worker o réplica cada proceso contaría por separado, así que escalar exige moverlos a un almacén compartido. El servicio `web` no debe publicar puertos: uvicorn confía en `X-Forwarded-For`, y sólo Caddy puede alcanzarlo.
 
 ## 8. Rollback
 
