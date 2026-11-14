@@ -29,3 +29,5 @@ skills-lock.json
 *.local.json
 # Archivos locales compartidos (iconos, logos, etc.)
 extras/
+.opencode/
+opencode.json
