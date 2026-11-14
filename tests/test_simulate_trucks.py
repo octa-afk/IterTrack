@@ -5,6 +5,9 @@ from itertools import pairwise
 import pytest
 
 from scripts.simulate_trucks import (
+    Objetivo,
+    Ruta,
+    _pedir_como_admin,
     _reaprovisionar_dispositivo,
     build_truck_configs,
     calcular_distancia_metros,
@@ -12,12 +15,16 @@ from scripts.simulate_trucks import (
     cargar_ruta,
     ejecutar_simulaciones,
     espera_y_velocidad,
+    listar_viajes,
+    objetivo_del_camion,
+    pedir_ruta,
     reiniciar_viaje,
     renovar_viaje,
     rotate_route,
     route_offset,
+    sigue_el_tramo,
+    sigue_en_la_parada,
     simular_ruta,
-    tramo_del_viaje,
     truck_plates,
 )
 
@@ -27,7 +34,8 @@ def _no_toca_la_api_real(monkeypatch):
     """Sin esto, correr los tests con la demo levantada borra historial y viajes."""
     monkeypatch.setattr("scripts.simulate_trucks.limpiar_recorrido", lambda *a, **k: None)
     monkeypatch.setattr("scripts.simulate_trucks.reiniciar_viaje", lambda *a, **k: None)
-    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
+    monkeypatch.setattr("scripts.simulate_trucks.listar_viajes", lambda *a, **k: [])
+    monkeypatch.setattr("scripts.simulate_trucks.pedir_ruta", lambda *a, **k: Ruta(None))
     monkeypatch.setattr("scripts.simulate_trucks.renovar_viaje", lambda *a, **k: False)
 
 
@@ -314,35 +322,119 @@ def test_ejecutar_simulaciones_resets_trip_progress_once_per_truck(monkeypatch):
     assert reiniciados == [7, 8, 9]
 
 
-def test_tramo_del_viaje_pide_la_ruta_del_viaje_abierto(monkeypatch):
+def test_listar_viajes_y_pedir_ruta_consultan_la_api_del_viaje(monkeypatch):
     llamadas = []
-
-    class Respuesta:
-        def __init__(self, payload):
-            self.status_code = 200
-            self._payload = payload
-
-        def json(self):
-            return self._payload
 
     def get(url, **kwargs):
         llamadas.append((url, kwargs.get("params")))
         if url.endswith("/trips"):
-            return Respuesta(
-                [
-                    {"id": 4, "status": "done"},
-                    {"id": 5, "status": "in_progress"},
-                ]
-            )
-        return Respuesta({"geometry": [[-31.4, -64.2], [-31.41, -64.19]]})
+            return _RespuestaTrip(200, [{"id": 5, "status": "in_progress"}])
+        return _RespuestaTrip(200, {"geometry": [[-31.4, -64.2], [-31.41, -64.19]]})
 
     monkeypatch.setattr("scripts.simulate_trucks.requests.get", get)
 
-    puntos = tramo_del_viaje(2, {"Authorization": "Bearer admin"})
-
-    assert puntos == [[-31.4, -64.2], [-31.41, -64.19]]
-    assert llamadas[0] == (llamadas[0][0], {"truck_id": 2})
+    assert listar_viajes(2, {"Authorization": "Bearer admin"}) == [
+        {"id": 5, "status": "in_progress"}
+    ]
+    assert pedir_ruta(5, {"Authorization": "Bearer admin"}) == Ruta(
+        200, [[-31.4, -64.2], [-31.41, -64.19]]
+    )
+    assert llamadas[0][1] == {"truck_id": 2}
     assert llamadas[1][0].endswith("/trips/5/route")
+
+
+def test_listar_viajes_distingue_sin_viajes_de_sin_respuesta(monkeypatch):
+    """Que la API no conteste no es "no tiene viajes": el camión no debe irse."""
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.requests.get", lambda url, **k: _RespuestaTrip(500)
+    )
+    assert listar_viajes(2, {"Authorization": "Bearer admin"}) is None
+    assert pedir_ruta(5, {"Authorization": "Bearer admin"}) == Ruta(500)
+
+
+def test_las_consultas_de_admin_renuevan_el_jwt_vencido(monkeypatch):
+    """El JWT dura 60 min: sin renovarlo, el camión se quedaba sin viaje para siempre."""
+    vistos = []
+
+    def get(url, headers=None, **kwargs):
+        vistos.append(dict(headers))
+        if headers["Authorization"] == "Bearer viejo":
+            return _RespuestaTrip(401)
+        return _RespuestaTrip(200, [])
+
+    monkeypatch.setattr("scripts.simulate_trucks.requests.get", get)
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.autenticar_admin",
+        lambda: {"Authorization": "Bearer nuevo"},
+    )
+    compartidos = {"Authorization": "Bearer viejo"}
+
+    respuesta = _pedir_como_admin("get", "http://api/trips", compartidos, timeout=5)
+
+    assert respuesta.status_code == 200
+    assert vistos == [{"Authorization": "Bearer viejo"}, {"Authorization": "Bearer nuevo"}]
+    # Lo comparten los hilos de todos los camiones: se renueva en el lugar.
+    assert compartidos == {"Authorization": "Bearer nuevo"}
+
+
+def _viaje(*paradas, viaje_id=5, status="in_progress"):
+    """Un viaje como lo lista `GET /trips`; cada parada es (lat, lng, estado)."""
+    return {
+        "id": viaje_id,
+        "status": status,
+        "stops": [
+            {"id": viaje_id * 10 + seq, "seq": seq, "lat": lat, "lng": lng, "status": estado}
+            for seq, (lat, lng, estado) in enumerate(paradas, start=1)
+        ],
+    }
+
+
+def test_objetivo_del_camion_replica_las_reglas_del_progreso_y_de_la_ruta():
+    viaje = _viaje(
+        (-31.40, -64.20, "delivered"),
+        (-31.41, -64.21, "arrived"),
+        (None, None, "pending"),
+        (-31.43, -64.23, "pending"),
+    )
+
+    objetivo = objetivo_del_camion([_viaje(status="done", viaje_id=4), viaje])
+
+    assert objetivo.viaje_id == 5
+    # El progreso evalúa la parada alcanzada; la ruta apunta a la primera
+    # pendiente con coordenada.
+    assert objetivo.proxima is not None and objetivo.proxima["seq"] == 2
+    assert objetivo.destino is not None and objetivo.destino["seq"] == 4
+    assert objetivo_del_camion([_viaje(status="done")]) == Objetivo()
+
+
+def test_el_tramo_sigue_valiendo_al_llegar_pero_no_si_el_viaje_cambia():
+    p1, p2 = (-31.40, -64.20), (-31.41, -64.21)
+    yendo = objetivo_del_camion([_viaje((*p1, "delivered"), (*p2, "pending"))])
+
+    def ahora(*estados, viaje_id=5):
+        return objetivo_del_camion(
+            [_viaje((*p1, estados[0]), (*p2, estados[1]), viaje_id=viaje_id)]
+        )
+
+    assert sigue_el_tramo(yendo, ahora("delivered", "pending"))
+    # Llegó: termina de acercarse a la parada.
+    assert sigue_el_tramo(yendo, ahora("delivered", "arrived"))
+    # Pasó cerca y se alejó: el mapa ya dibuja otro tramo.
+    assert not sigue_el_tramo(yendo, ahora("delivered", "delivered"))
+    # Reiniciaron el viaje: toca la parada 1 otra vez.
+    assert not sigue_el_tramo(yendo, ahora("pending", "pending"))
+    # Lo reemplazó otro viaje.
+    assert not sigue_el_tramo(yendo, ahora("delivered", "pending", viaje_id=6))
+
+
+def test_salir_de_la_parada_termina_cuando_se_entrega():
+    en_la_parada = objetivo_del_camion([_viaje((-31.40, -64.20, "arrived"))])
+
+    assert sigue_en_la_parada(en_la_parada, en_la_parada)
+    assert not sigue_en_la_parada(en_la_parada, objetivo_del_camion([]))
+    assert not sigue_en_la_parada(
+        en_la_parada, objetivo_del_camion([_viaje((-31.40, -64.20, "pending"))])
+    )
 
 
 def _stop_after(cantidad):
@@ -370,25 +462,141 @@ def _sender_que_anota(enviados):
     return sender
 
 
-def test_simular_ruta_sigue_la_ruta_del_viaje(monkeypatch):
-    """El camión emite los puntos de la ruta OSRM, no los del circuito."""
-    circuito = [[-31.40, -64.20], [-31.41, -64.19], [-31.42, -64.18]]
-    tramo = [[-31.50, -64.30], [-31.51, -64.31], [-31.52, -64.32]]
-    enviados: list[tuple[float, float]] = []
+CIRCUITO_DE_PRUEBA = [[-31.40, -64.20], [-31.41, -64.19], [-31.42, -64.18]]
+ADMIN = {"Authorization": "Bearer admin"}
 
+
+def _simular(monkeypatch, esperas, sender, circuito=CIRCUITO_DE_PRUEBA):
     monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: circuito)
-    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: tramo)
-
     simular_ruta(
         truck_id=1,
         plate="ABC123",
         intervalo=0,
-        stop_event=_stop_after(2),
-        admin_headers={"Authorization": "Bearer admin"},
-        sender=_sender_que_anota(enviados),
+        stop_event=_stop_after(esperas),
+        admin_headers=dict(ADMIN),
+        sender=sender,
     )
 
+
+def test_simular_ruta_sigue_la_ruta_del_viaje(monkeypatch):
+    """El camión emite los puntos de la ruta OSRM, no los del circuito."""
+    tramo = [[-31.50, -64.30], [-31.51, -64.31], [-31.52, -64.32]]
+    enviados: list[tuple[float, float]] = []
+
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.listar_viajes",
+        lambda *a, **k: [_viaje((-31.52, -64.32, "pending"))],
+    )
+    monkeypatch.setattr("scripts.simulate_trucks.pedir_ruta", lambda *a, **k: Ruta(200, tramo))
+
+    _simular(monkeypatch, 2, _sender_que_anota(enviados))
+
     assert enviados == [tuple(punto) for punto in tramo[:2]]
+
+
+def test_simular_ruta_abandona_el_tramo_si_el_viaje_cambia(monkeypatch):
+    """Con el viaje reemplazado a mitad de tramo, va a la parada nueva sin terminar la vieja."""
+    viejo = [[-31.50, -64.30], [-31.51, -64.31], [-31.52, -64.32], [-31.53, -64.33]]
+    nuevo = [[-31.50, -64.30], [-31.49, -64.29], [-31.48, -64.28]]
+    listados = iter(
+        [[_viaje((-31.53, -64.33, "pending"), viaje_id=5)]]
+        + [[_viaje((-31.48, -64.28, "pending"), viaje_id=6)]] * 10
+    )
+    enviados: list[tuple[float, float]] = []
+
+    monkeypatch.setattr("scripts.simulate_trucks.listar_viajes", lambda *a, **k: next(listados))
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.pedir_ruta",
+        lambda viaje_id, *a, **k: Ruta(200, viejo if viaje_id == 5 else nuevo),
+    )
+
+    _simular(monkeypatch, 4, _sender_que_anota(enviados))
+
+    assert enviados == [tuple(viejo[0]), *[tuple(punto) for punto in nuevo]]
+
+
+def test_simular_ruta_sale_de_la_ultima_parada_sin_ir_al_circuito(monkeypatch):
+    """Al llegar a la última parada vuelve por donde vino hasta entregarla.
+
+    Antes la ruta respondía 409 (no quedan pendientes), el viaje seguía abierto
+    y el camión saltaba al principio del circuito fijo para dar una vuelta
+    entera que el mapa no muestra.
+    """
+    tramo = [[-31.50, -64.30], [-31.51, -64.31], [-31.52, -64.32]]
+    parada = tramo[-1]
+    enviados: list[tuple[float, float]] = []
+
+    def listar(*_a, **_k):
+        # El progreso real: llegó al pisar la parada y la entrega al irse.
+        if not enviados or parada not in [list(p) for p in enviados]:
+            return [_viaje((*parada, "pending"))]
+        if list(enviados[-1]) == parada:
+            return [_viaje((*parada, "arrived"))]
+        return [_viaje((*parada, "delivered"), status="done")]
+
+    monkeypatch.setattr("scripts.simulate_trucks.listar_viajes", listar)
+    monkeypatch.setattr("scripts.simulate_trucks.pedir_ruta", lambda *a, **k: Ruta(200, tramo))
+
+    _simular(monkeypatch, 5, _sender_que_anota(enviados))
+
+    assert enviados == [*(tuple(p) for p in tramo), tuple(parada), tuple(tramo[1])]
+    assert not set(enviados) & {tuple(p) for p in CIRCUITO_DE_PRUEBA}
+
+
+def test_simular_ruta_espera_en_el_lugar_si_falla_el_ruteo(monkeypatch):
+    """Un 502 de OSRM ya no manda al camión a dar una vuelta al circuito."""
+    hasta_la_1 = [[-31.50, -64.30], [-31.51, -64.31]]
+    hasta_la_2 = [[-31.51, -64.31], [-31.52, -64.32]]
+    rutas = iter([Ruta(200, hasta_la_1), Ruta(502), Ruta(200, hasta_la_2)])
+    enviados: list[tuple[float, float, float]] = []
+
+    def listar(*_a, **_k):
+        llego = enviados and list(enviados[-1][:2]) == hasta_la_1[-1]
+        return [
+            _viaje(
+                (*hasta_la_1[-1], "arrived" if llego else "pending"),
+                (*hasta_la_2[-1], "pending"),
+            )
+        ]
+
+    def sender(lat, lon, velocidad, rumbo, cuando):
+        enviados.append((lat, lon, velocidad))
+        return True
+
+    monkeypatch.setattr("scripts.simulate_trucks.listar_viajes", listar)
+    monkeypatch.setattr("scripts.simulate_trucks.pedir_ruta", lambda *a, **k: next(rutas))
+
+    _simular(monkeypatch, 5, sender)
+
+    lugares = [(lat, lon) for lat, lon, _ in enviados]
+    assert lugares == [
+        tuple(hasta_la_1[0]),
+        tuple(hasta_la_1[1]),
+        tuple(hasta_la_1[1]),  # esperó en la parada, quieto
+        tuple(hasta_la_2[0]),
+        tuple(hasta_la_2[1]),
+    ]
+    assert enviados[2][2] == 0.0
+
+
+def test_simular_ruta_sin_proveedor_de_ruteo_va_en_recta_hasta_la_parada(monkeypatch):
+    """Sin ruteo el mapa dibuja una recta punteada: el camión la sigue."""
+    parada = [-31.401, -64.20]
+    enviados: list[tuple[float, float]] = []
+
+    monkeypatch.setattr(
+        "scripts.simulate_trucks.listar_viajes",
+        lambda *a, **k: [_viaje((*parada, "pending"))],
+    )
+    monkeypatch.setattr("scripts.simulate_trucks.pedir_ruta", lambda *a, **k: Ruta(503))
+
+    _simular(monkeypatch, 5, _sender_que_anota(enviados))
+
+    assert enviados[0] == tuple(CIRCUITO_DE_PRUEBA[0])
+    assert enviados[-1] == pytest.approx(tuple(parada))
+    assert all(
+        calcular_distancia_metros(*a, *b) <= 30.0 for a, b in pairwise(enviados)
+    )
 
 
 def test_simular_ruta_usa_el_circuito_si_no_hay_viaje_abierto(monkeypatch):
@@ -396,7 +604,6 @@ def test_simular_ruta_usa_el_circuito_si_no_hay_viaje_abierto(monkeypatch):
     enviados: list[tuple[float, float]] = []
 
     monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: circuito)
-    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
     monkeypatch.setattr("scripts.simulate_trucks.renovar_viaje", lambda *a, **k: False)
 
     simular_ruta(
@@ -524,7 +731,7 @@ def test_simular_ruta_renueva_el_viaje_antes_de_ir_al_circuito(monkeypatch):
     renovados: list[int] = []
 
     monkeypatch.setattr("scripts.simulate_trucks.cargar_ruta", lambda *_: circuito)
-    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
+
     def renovar(truck_id: int, headers=None) -> bool:
         renovados.append(truck_id)
         return False

@@ -7,6 +7,7 @@ import requests
 
 from scripts.simulate_trucks import (
     SIMULATED_DEVICE_PREFIX,
+    Ruta,
     constructor_de_sender,
     ejecutar_simulaciones,
     enviar_ingesta,
@@ -19,7 +20,8 @@ def _no_toca_la_api_real(monkeypatch):
     """Sin esto, correr los tests con la demo levantada borra historial y viajes."""
     monkeypatch.setattr("scripts.simulate_trucks.limpiar_recorrido", lambda *a, **k: None)
     monkeypatch.setattr("scripts.simulate_trucks.reiniciar_viaje", lambda *a, **k: None)
-    monkeypatch.setattr("scripts.simulate_trucks.tramo_del_viaje", lambda *a, **k: None)
+    monkeypatch.setattr("scripts.simulate_trucks.listar_viajes", lambda *a, **k: [])
+    monkeypatch.setattr("scripts.simulate_trucks.pedir_ruta", lambda *a, **k: Ruta(None))
 
 
 class FakeResponse:
