@@ -8,7 +8,7 @@ import type { Trip, TripStop } from '../api/types';
 import { useDashboard } from '../state/useDashboard';
 import { createTruckPin, updateTruckPin, type TruckPin } from '../lib/truckIcon';
 import { createMovementController, type ActiveMove } from '../lib/movement';
-import { POLL_MS, haversineM } from '../lib/trucks';
+import { POLL_MS, haversineM, type TruckState } from '../lib/trucks';
 import { recortarRuta } from '../lib/route';
 import { registrarMapa } from '../lib/mapHandle';
 import { seguimientoDe } from '../state/seguimientoViaje';
@@ -85,6 +85,10 @@ export default function MapView({
   const markersRef = useRef(new Map<number, L.Marker>());
   /** Elementos del ícono de cada marcador: se actualizan en el lugar, sin setIcon. */
   const pinsRef = useRef(new Map<number, TruckPin>());
+  /** Lo último aplicado a cada marcador, para saltear los camiones sin cambios. */
+  const aplicadoRef = useRef(
+    new Map<number, { truck: TruckState; seleccionado: boolean; visible: boolean }>(),
+  );
   const lastPosRef = useRef(new Map<number, { lat: number; lng: number; updated: number }>());
   const movesRef = useRef(new Map<number, ActiveMove>());
   const movementRef = useRef<ReturnType<typeof createMovementController> | null>(null);
@@ -113,6 +117,7 @@ export default function MapView({
     onReady?.(map);
     const markers = markersRef.current;
     const pins = pinsRef.current;
+    const aplicado = aplicadoRef.current;
     const lastPos = lastPosRef.current;
     const moves = movesRef.current;
     el.classList.add('map-style-loading');
@@ -228,6 +233,7 @@ export default function MapView({
       movementRef.current = null;
       markers.clear();
       pins.clear();
+      aplicado.clear();
       lastPos.clear();
       moves.clear();
       registrarMapa(null);
@@ -252,7 +258,14 @@ export default function MapView({
     map.fitBounds(L.latLngBounds(puntos), { padding: [70, 70], maxZoom: OPEN_ZOOM });
   }, [trucks, selectedId]);
 
-  /* Reconcile markers with the current fleet state. */
+  /*
+   * Reconcilia los marcadores con la flota, tocando sólo lo que cambió.
+   *
+   * `aplicarEstado` devuelve el mismo objeto para un camión que no cambió, así
+   * que alcanza con comparar por identidad: si el camión, su selección y su
+   * visibilidad son los mismos que en la pasada anterior, no se hace nada.
+   * Antes cada latido recorría y reescribía todos los marcadores.
+   */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -264,10 +277,23 @@ export default function MapView({
       if (truck.lat === null || truck.lng === null) continue;
       liveIds.add(truck.id);
 
+      const seleccionado = truck.id === selectedId;
+      const visible = visibleIds.has(truck.id);
+      const aplicado = aplicadoRef.current.get(truck.id);
+      if (
+        aplicado &&
+        aplicado.truck === truck &&
+        aplicado.seleccionado === seleccionado &&
+        aplicado.visible === visible
+      ) {
+        continue;
+      }
+      aplicadoRef.current.set(truck.id, { truck, seleccionado, visible });
+
       let marker = markersRef.current.get(truck.id);
       const pin = pinsRef.current.get(truck.id);
       if (!marker || !pin) {
-        const nuevo = createTruckPin(truck, truck.id === selectedId);
+        const nuevo = createTruckPin(truck, seleccionado);
         marker = L.marker([truck.lat, truck.lng], {
           icon: nuevo.icon,
           title: truck.plate,
@@ -276,8 +302,10 @@ export default function MapView({
         markersRef.current.set(truck.id, marker);
         pinsRef.current.set(truck.id, nuevo);
       } else {
-        updateTruckPin(pin, truck, truck.id === selectedId);
+        updateTruckPin(pin, truck, seleccionado);
       }
+      /* El seleccionado queda arriba aunque otro camión pase por encima. */
+      marker.setZIndexOffset(seleccionado ? 1000 : 0);
 
       const previous = lastPosRef.current.get(truck.id);
       if (previous) {
@@ -301,7 +329,7 @@ export default function MapView({
         updated: truck.updated,
       });
 
-      if (visibleIds.has(truck.id)) {
+      if (visible) {
         if (!map.hasLayer(marker)) marker.addTo(map);
       } else {
         map.removeLayer(marker);
@@ -313,6 +341,7 @@ export default function MapView({
       map.removeLayer(marker);
       markersRef.current.delete(id);
       pinsRef.current.delete(id);
+      aplicadoRef.current.delete(id);
       lastPosRef.current.delete(id);
       movesRef.current.delete(id);
     }
