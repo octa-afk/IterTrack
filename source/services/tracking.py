@@ -1,10 +1,13 @@
 
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from source import models, schemas
 from source.database.database import get_db
-from source.schemas.truck import TruckActive, TruckReassign
+from source.schemas.truck import TruckActive, TruckLive, TruckReassign
 from source.services.auth import (
     get_current_user,
     require_org_admin,
@@ -19,6 +22,13 @@ org_router = APIRouter(prefix="/organizations", tags=["trucks"])
 
 # Lectura ordenada por hora de medición (recorded_at), más nuevo primero; id desempata mediciones iguales.
 MEASUREMENT_ORDER = (models.TrackingPoint.recorded_at.desc(), models.TrackingPoint.id.desc())
+
+# Reglas del estado de un camión en el mapa. Sin reporte en 10 minutos se lo da
+# por apagado; arriba de 90 km/h es una alerta; debajo de 3 km/h, el ruido del
+# GPS de un camión parado.
+STALE_AFTER = timedelta(minutes=10)
+SPEED_LIMIT_KMH = 90
+IDLE_BELOW_KMH = 3
 
 def _persist_truck(
     db: Session,
@@ -205,6 +215,71 @@ def delete_truck_iter(truck_id: int, db: Session = Depends(get_db), current_user
     ).delete()
     db.commit()
     return None
+
+
+def _as_utc(moment: datetime) -> datetime:
+    """SQLite no conserva la zona horaria aunque la columna la declare.
+
+    Sin esto la respuesta sale sin zona y el navegador la lee como hora local:
+    en Argentina el camión aparecería con tres horas de atraso.
+    """
+    return moment if moment.tzinfo is not None else moment.replace(tzinfo=UTC)
+
+
+def truck_status(point: models.TrackingPoint | None, now: datetime) -> str:
+    """`move`, `idle`, `stop` o `alert` según el último punto medido."""
+    if point is None:
+        return "stop"
+    if now - _as_utc(point.recorded_at) > STALE_AFTER:
+        return "stop"
+    if point.speed > SPEED_LIMIT_KMH:
+        return "alert"
+    if point.speed < IDLE_BELOW_KMH:
+        return "idle"
+    return "move"
+
+
+@router.get("/live", response_model=list[TruckLive])
+def get_trucks_live(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """La flota en un solo pedido: cada camión con su último punto medido.
+
+    Reemplaza el `GET /trucks/{id}/location` por camión que el mapa hacía en
+    cada latido (1 + N pedidos cada 3 s por usuario). El último punto sale de
+    una subconsulta correlacionada con `LIMIT 1`, que usa el índice
+    `(truck_id, recorded_at desc, id desc)`: el costo crece con la cantidad de
+    camiones, no con el historial acumulado.
+    """
+    point = models.TrackingPoint
+    latest_id = (
+        select(point.id)
+        .where(point.truck_id == models.Truck.id)
+        .order_by(*MEASUREMENT_ORDER)
+        .limit(1)
+        .correlate(models.Truck)
+        .scalar_subquery()
+    )
+    rows = db.execute(
+        select(models.Truck, point)
+        .outerjoin(point, point.id == latest_id)
+        .where(models.Truck.organization_id == current_user.organization_id)
+        .order_by(models.Truck.id)
+    ).all()
+
+    now = datetime.now(UTC)
+    return [
+        TruckLive(
+            id=truck.id,
+            plate=truck.plate,
+            active=truck.active,
+            lat=last.lat if last else None,
+            lng=last.long if last else None,
+            speed=last.speed if last else None,
+            heading=last.heading if last else None,
+            recorded_at=_as_utc(last.recorded_at) if last else None,
+            status=truck_status(last, now),
+        )
+        for truck, last in rows
+    ]
 
 
 #devuelve el listado de todos los camiones
