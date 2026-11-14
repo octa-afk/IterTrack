@@ -16,7 +16,7 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 ### Fase 1 — Tracking (actual) ✅
 - API REST con FastAPI, PostgreSQL, SQLAlchemy 2.0, Alembic.
 - Registro de camiones, actualización y consulta de ubicación, historial.
-- Mapa en vivo (`/map`) con Leaflet + OpenStreetMap.
+- Mapa en vivo (`/map`) con Leaflet + MapLibre (mosaicos de OpenFreeMap).
 - Simulador de ruta urbana (`scripts/simulate_trucks.py`).
 
 ### Fase 2 — Identidad y acceso
@@ -36,11 +36,9 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 - Estas decisiones definen el objetivo futuro y están implementadas en su mayoría: el modelo `Truck` tiene estado `active` y `POST /devices/ingest` rechaza los reportes de un camión inactivo. El alta, la activación y la reasignación de organización existen; la última es exclusiva de `platform_admin` porque transferir un activo entre empresas no es decisión del cliente.
 - **Invitaciones (implementado):** las organizaciones se crean únicamente con `POST /organizations` (admin) y cada una tiene un único código rotable en `organizations.invitation_code`. `GET /organizations` lista organizaciones; `GET /organizations/{id}/invitation` inspecciona el código; `POST /organizations/{id}/invitation/rotate` genera uno nuevo; `DELETE /organizations/{id}/invitation` lo revoca. `POST /auth/register` exige un código activo: uno revocado o vencido responde `400` `"Código de invitación inválido"`. Los códigos existentes sin fecha de expiración siguen vigentes.
 
-### Próximo frente backend — ciclo de vida y acceso
-- Agregar estado activo/inactivo al vehículo y operaciones administrativas para alta, asignación a una organización y cambio de estado.
-- Limitar el alta y la desactivación a cuentas individuales de administrador de la empresa; los usuarios cliente solo podrán consultar.
-- Registrar usuarios cliente mediante invitaciones emitidas para su organización.
-- Mantener el historial al desactivar un vehículo y rechazar nuevos reportes GPS para ese vehículo.
+### Ciclo de vida y acceso (backend) — completado, con dos pendientes
+Implementado: estado activo/inactivo del vehículo, alta y cambio de estado restringidos a `org_admin`, usuarios cliente por invitación, historial conservado al desactivar y rechazo de reportes de camiones inactivos. Quedan pendientes el almacenamiento sin conexión y que el dispositivo informe `recorded_at` desde su GPS (ver abajo).
+- **Límite de intentos (completado):** `POST /auth/login` bloquea tras 5 fallos por usuario por minuto y 20 por IP, y `POST /auth/register` admite 10 registros por hora (`LOGIN_MAX_FAILURES_PER_USER`, `LOGIN_MAX_FAILURES_PER_IP`, `REGISTER_MAX_PER_HOUR`). El contador vive en memoria (`source/services/rate_limit.py`): sirve con un solo proceso de uvicorn, que es como se despliega hoy; con varios workers o réplicas habría que moverlo a un almacén compartido.
 - **Autenticación GPS (completada):** credencial individual por equipo, independiente del login humano. Token aleatorio mostrado una sola vez y guardado solo como hash SHA-256; asignación a camiones en `device_assignments` con historial; una asignación abierta por equipo y por camión. El ciclo de vida completo ya está expuesto a administradores: `POST /devices` (alta + asignación), `GET /devices`, `POST /devices/{id}/reassign` (cierra y abre asignación), `POST /devices/{id}/token/rotate` y `POST /devices/{id}/revoke`. La ingesta por lotes sigue en `POST /devices/ingest`. `scripts/provision_device.py` continúa funcionando para uso local.
 - **Tiempo de medición:** cada punto guarda `recorded_at` (medición) y `received_at` (recepción). El simulador envía `recorded_at`; el backend lo acepta opcional y valida zona horaria y que no esté en el futuro. Las lecturas de `/trucks/{id}/location` e `/trucks/{id}/iter` ordenan por `recorded_at`. Pendiente: que el dispositivo lo informe desde su GPS.
 - **Contrato de telemetría v1:** la ingesta por dispositivos acepta `v` omitido o `v=1`, rechaza versiones desconocidas, normaliza timestamps a UTC y transforma `heading=360` a `0`. Se conserva la compatibilidad con el simulador y firmware actuales; versiones futuras requerirán una decisión explícita de compatibilidad.
@@ -52,9 +50,15 @@ IterTrack es una plataforma de rastreo y telemetría satelital GPS para camiones
 
 ### Fase 3 — Dashboard web (SPA entregada) ✅
 - Frontend web para seguir la flota en tiempo real.
-- **SPA React entregada:** React 19 + TypeScript + Vite (`frontend/`), compilada a `frontend/dist` y servida por FastAPI. Rutas `/` (login), `/register` (registro) y `/map` (panel con guard de token).
+- **SPA React entregada:** React 19 + TypeScript + Vite (`frontend/`), compilada a `frontend/dist` y servida por FastAPI. Rutas `/` (login), `/register` (registro), `/map` (panel con guard de token), `/fleet` (Camiones) y `/viajes` (Rutas), más vistas propias para móvil.
 - **Estrategia revisada:** el plan original era vanilla primero y SPA solo al cumplirse ciertos criterios. Se cumplieron (a) rutas propias con varias vistas y (b) estado compartido entre vistas, así que la migración se ejecutó completa y la UI vanilla se retiró. Detalle en `odd/tasks/react-frontend-migration.md`.
 - **Pendiente de esta fase:** completada. El listado y el detalle muestran el estado activo/inactivo del camión (`Inactivo`, punto gris y marcador atenuado) y el recorrido reciente: al seleccionar un camión se dibuja su traza sobre el mapa con km, duración y cantidad de puntos. Detalle en `odd/tasks/fase3-dashboard.md`.
+
+### Viajes y destinos tercerizados ✅
+- Dadores de carga, depósitos, viajes con chofer y paradas con coordenada; la sección Rutas (`/viajes`) lista los viajes y, para `org_admin`, permite crearlos.
+- La coordenada es la fuente de verdad: se geocodifica una vez y se guarda en caché; lo que no se encuentra queda `needs_review` para pin manual, sin inventar un centroide.
+- Ruta por calles hasta la próxima parada (`GET /trips/{id}/route`, OSRM) y progreso automático del viaje con la telemetría, siempre en orden estricto.
+- Pendiente: un geocoder y un servidor de rutas propios para producción (los públicos de Nominatim y OSRM no alcanzan). Detalle en `odd/tasks/destinations.md` y `odd/tasks/trip-progress.md`.
 
 ### Fase 4 — Estadísticas logísticas
 - Km recorridos por período, consumo estimado, tiempos de viaje, paradas.

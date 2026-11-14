@@ -193,7 +193,7 @@ Si el worker muestra `Ingesta rechazada (401): {"detail":"Invalid device credent
 docker compose exec web python -m scripts.seed_demo --reset
 ```
 
-Para automatizarlo, un cron del host cada 24 h con el mismo comando. Es necesario: el admin de la demo es público y puede borrar los datos.
+Para automatizarlo, un cron del host cada 24 h con el mismo comando. Es necesario para que la demo vuelva a un estado conocido: borra las cuentas y los datos que se hayan acumulado en el tenant.
 
 La VM tiene dos cron instalados, los dos con `/usr/bin/docker` absoluto (cron no
 hereda el PATH interactivo) y el log en el home, que sobrevive a un reinicio:
@@ -266,7 +266,7 @@ ssh -L 5433:localhost:5432 -i <clave_ssh> <usuario>@<IP_VM>
 
 ### Límite de intentos
 
-Login y registro se limitan por IP (`LOGIN_MAX_FAILURES_PER_USER`, `LOGIN_MAX_FAILURES_PER_IP`, `REGISTER_MAX_PER_HOUR`). Los contadores viven en memoria y se pierden al reiniciar. Con más de un worker o réplica cada proceso contaría por separado, así que escalar exige moverlos a un almacén compartido. El servicio `web` no debe publicar puertos: uvicorn confía en `X-Forwarded-For`, y sólo Caddy puede alcanzarlo.
+El login se limita por usuario y por IP (`LOGIN_MAX_FAILURES_PER_USER`: 5 fallos por minuto, `LOGIN_MAX_FAILURES_PER_IP`: 20) y el registro por cantidad (`REGISTER_MAX_PER_HOUR`: 10). Los contadores viven en memoria y se pierden al reiniciar. Con más de un worker o réplica cada proceso contaría por separado, así que escalar exige moverlos a un almacén compartido. El servicio `web` no debe publicar puertos: uvicorn confía en `X-Forwarded-For`, y sólo Caddy puede alcanzarlo.
 
 ## 8. Rollback
 
@@ -289,7 +289,7 @@ IMAGE=ghcr.io/octa-afk/itertrack:sha-<commit> docker compose up -d
 
 | Concepto | Costo |
 |---|---|
-| VM `B1s` (12 meses, 750 h/mes) | USD 0 |
+| VM `Standard_B2ats_v2` (12 meses, 750 h/mes) | USD 0 |
 | Dominio `.me` (Namecheap, 1 año) | USD 0 |
 | GHCR (imagen pública) | USD 0 |
 | **Total año 1** | **USD 0** |
@@ -303,8 +303,9 @@ Al vencer los 12 meses: renovar la suscripción de estudiante, o mover el mismo 
 | Variable | Pública |
 |---|---|
 | `DEMO_MODE` | ✅ Sí, es `true` en la demo y `false` en un cliente |
-| `DEMO_ADMIN_USERNAME`, `DEMO_ADMIN_PASSWORD` | ✅ Sí, el login los pide a `GET /config` |
-| `DEMO_MEMBER_PASSWORD` | ✅ Sí, está en el ejemplo |
+| `DEMO_USERNAME`, `DEMO_PASSWORD` | ✅ Sí, es la cuenta `member` de solo lectura que `GET /config` publica para el botón de la demo |
+| `DEMO_MEMBER_PASSWORD` | ✅ Sí, está en el ejemplo (`DEMO_PASSWORD` tiene el mismo valor) |
+| `DEMO_ADMIN_USERNAME`, `DEMO_ADMIN_PASSWORD` | ❌ Nunca. Son del seed y la operación; con el admin público cualquiera podía borrar el historial o desactivar camiones |
 | `PLATFORM_ADMIN_PASSWORD` | ❌ Nunca |
 | `SECRET_KEY` | ❌ Nunca |
 | `POSTGRES_PASSWORD` | ❌ Nunca |

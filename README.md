@@ -57,7 +57,10 @@ IterTrack/
 ├── alembic/           # Migraciones
 ├── scripts/           # Simulador, bootstrap, seed de demo y circuitos de Córdoba
 ├── tests/             # Suite pytest (SQLite en memoria)
-├── deploy/            # Dockerfile, docker-compose.yml, Caddyfile y .env.example
+├── deploy/            # .env.example del despliegue (cuentas de la demo)
+├── Dockerfile         # Multi-stage: Node compila la SPA, Python corre la app
+├── docker-compose.yml # caddy, web, worker y postgres
+├── Caddyfile          # TLS
 ├── docs/              # ARCHITECTURE, DEPLOYMENT y DESIGN
 ├── odd/tasks/         # Decisiones de diseño por feature
 ├── AGENTS.md          # Reglas para agentes de IA
@@ -170,6 +173,7 @@ La referencia completa e interactiva de endpoints es **Swagger** en `/docs`. Los
 | `member` | Una organización | Solo lectura: mapa e historial |
 
 **Seguridad:**
+* Login y registro tienen límite de intentos (5 fallos por usuario por minuto, 20 por IP y 10 registros por hora), en memoria y pensado para un solo proceso de uvicorn.
 * Nunca se versionan secretos. Las contraseñas se guardan con bcrypt y `UserResponse` nunca expone el hash.
 * Las coordenadas se validan en los esquemas Pydantic (`-90 ≤ lat ≤ 90`, `-180 ≤ long ≤ 180`).
 * El CI (`.github/workflows/ci.yml`) corre en cada push y PR sobre `main` y `develop`.
@@ -182,10 +186,10 @@ La demo corre en un host aislado con su propia base. El login tiene un botón **
 
 | Cuenta | Rol | Para qué |
 |---|---|---|
-| `demo-admin` | `org_admin` de `Demo Corp` | Experiencia completa |
-| `demo` | `member` | Solo lectura |
+| `demo` | `member` | Solo lectura; es la cuenta con la que entra el botón |
+| `demo-admin` | `org_admin` de `Demo Corp` | Seed y operación; **no es pública** |
 
-Sus contraseñas son públicas por diseño ([`deploy/.env.example`](./deploy/.env.example)); la de `platform_admin` no. Los datos se resetean cada 24 h y un cron cada 15 min reinicia los viajes terminados.
+La contraseña de `demo` es pública por diseño ([`deploy/.env.example`](./deploy/.env.example)). Las de `demo-admin` y `platform_admin` nunca salen del servidor: con el admin público, cualquiera podía borrar el historial o desactivar camiones. Los datos se resetean cada 24 h y un cron cada 15 min reinicia los viajes terminados.
 
 El despliegue usa la imagen publicada en **GHCR** con Docker Compose (Caddy para TLS, `web`, `worker` y Postgres sin puertos publicados). El runbook completo está en [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
