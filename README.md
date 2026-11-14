@@ -173,7 +173,7 @@ La referencia completa e interactiva de endpoints es **Swagger** en `/docs`. Los
 | `member` | Una organización | Solo lectura: mapa e historial |
 
 **Seguridad:**
-* Login y registro tienen límite de intentos (5 fallos por usuario por minuto, 20 por IP y 10 registros por hora), en memoria y pensado para un solo proceso de uvicorn.
+* Login y registro tienen límite de intentos (`429` tras 5 fallos por minuto por IP + usuario o 20 por IP, y 10 registros por hora por IP), en memoria y pensado para un solo proceso de uvicorn.
 * Nunca se versionan secretos. Las contraseñas se guardan con bcrypt y `UserResponse` nunca expone el hash.
 * Las coordenadas se validan en los esquemas Pydantic (`-90 ≤ lat ≤ 90`, `-180 ≤ long ≤ 180`).
 * El CI (`.github/workflows/ci.yml`) corre en cada push y PR sobre `main` y `develop`.

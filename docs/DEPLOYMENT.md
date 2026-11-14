@@ -266,7 +266,7 @@ ssh -L 5433:localhost:5432 -i <clave_ssh> <usuario>@<IP_VM>
 
 ### Límite de intentos
 
-El login se limita por usuario y por IP (`LOGIN_MAX_FAILURES_PER_USER`: 5 fallos por minuto, `LOGIN_MAX_FAILURES_PER_IP`: 20) y el registro por cantidad (`REGISTER_MAX_PER_HOUR`: 10). Los contadores viven en memoria y se pierden al reiniciar. Con más de un worker o réplica cada proceso contaría por separado, así que escalar exige moverlos a un almacén compartido. El servicio `web` no debe publicar puertos: uvicorn confía en `X-Forwarded-For`, y sólo Caddy puede alcanzarlo.
+El login se limita por IP + usuario y por IP (`LOGIN_MAX_FAILURES_PER_USER`: 5 fallos por minuto, `LOGIN_MAX_FAILURES_PER_IP`: 20) y el registro por IP (`REGISTER_MAX_PER_HOUR`: 10). Los contadores viven en memoria y se pierden al reiniciar. Con más de un worker o réplica cada proceso contaría por separado, así que escalar exige moverlos a un almacén compartido. El servicio `web` no debe publicar puertos: uvicorn confía en `X-Forwarded-For`, y sólo Caddy puede alcanzarlo.
 
 ## 8. Rollback
 
