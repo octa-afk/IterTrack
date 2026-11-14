@@ -219,9 +219,7 @@ cientos de viajes por día en la lista de Rutas:
 docker compose exec -T web python -m scripts.seed_demo --renew
 ```
 
-```cron
-*/15 * * * * cd /home/<usuario>/itertrack && /usr/bin/docker compose exec -T web python -m scripts.seed_demo --renew >> /home/<usuario>/renew.log 2>&1
-```
+La línea de cron es la segunda del bloque de arriba.
 
 Para comprobar que cron lo ejecuta de verdad —y no sólo que el comando funciona a
 mano— se puede dejar un minuto en `* * * * *`, esperar a que aparezca la línea en
