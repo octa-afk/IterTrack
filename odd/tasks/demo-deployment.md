@@ -207,7 +207,7 @@ Cambios:
 
 Antes de abrir el repositorio se auditó **todo el historial**, no el árbol actual: lo que se borró en un commit sigue siendo público en un repo publicado. Un script recorrió los 1.504 blobs de texto alcanzables desde las 12 refs, buscando claves privadas, tokens (GitHub, AWS, Slack, OpenAI), URLs con credenciales, JWTs, SAS de Azure, `secret_key`, passwords asignadas, emails y rutas absolutas.
 
-**Resultado: ningún secreto real.** Todos los hallazgos fueron placeholders (`postgres://usuario:tu_password@host`, `postgres:password@host/railway`), código (`password: string`, `password = os.getenv(...)`), fixtures de test (`password="insecure"`) o rutas `/home/<usuario>/` que coinciden con el handle público. Confirmado además: ningún `.env` real fue commiteado nunca; `.gitignore` cubre `.env`, `.env.*` y `alembic.ini`; sin volcados ni binarios; el firmware ESP32 no tiene WiFi hardcodeado; la captura `mapa-en-vivo.png` del historial (mapa de Córdoba, sin navegador ni datos) se inspeccionó a ojo.
+**Resultado: ningún secreto real.** Todos los hallazgos fueron placeholders (`postgres://usuario:tu_password@host`, `postgres:password@host/railway`), código (`password: string`, `password = os.getenv(...)`), fixtures de test (`password="insecure"`) o rutas absolutas de la máquina personal. Confirmado además: ningún `.env` real fue commiteado nunca; `.gitignore` cubre `.env`, `.env.*` y `alembic.ini`; sin volcados ni binarios; el firmware ESP32 no tiene WiFi hardcodeado; la captura `mapa-en-vivo.png` del historial (mapa de Córdoba, sin navegador ni datos) se inspeccionó a ojo.
 
 **Lo único que sí quedaba expuesto:** el email institucional en el campo author de 185 de 188 commits.
 
@@ -239,7 +239,7 @@ Estado:
 | VM | `<vm>`, `Standard_B2ats_v2`, Ubuntu 24.04, disco 30 GB |
 | IP pública | `<IP_VM>` (static, Standard SKU) |
 | Dominio provisional | `<IP_VM>.sslip.io` (resuelve desde la VM; el resolver local no lo resuelve) |
-| Acceso | SSH con `<clave_ssh>`, sin password; puertos 80/443 abiertos |
+| Acceso | SSH con clave, sin password; puertos 80/443 abiertos |
 | En la VM | Docker 29.1.3, Compose 2.40.3, 1 GB de swap, 25 GB libres |
 | Archivos | `docker-compose.yml`, `Caddyfile`, `.env` (600) en `~/itertrack` |
 

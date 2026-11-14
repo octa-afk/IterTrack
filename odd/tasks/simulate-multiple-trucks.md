@@ -11,7 +11,7 @@ The map needs multiple simultaneous vehicles to exercise stable truck identity c
 - OUT: backend/API changes, frontend changes, route geometry redesign, and remote execution.
 
 ## Constraints
-- Use `/home/<usuario>/IterTrack/env/bin/python` for verification.
+- Use `env/bin/python` for verification.
 - Keep the existing API endpoints and authentication contract.
 - Do not commit secrets or real credentials.
 - Preserve the current single-truck CLI behavior.

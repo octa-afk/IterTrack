@@ -68,7 +68,7 @@ Lo único atado a Azure es la VM que alquila. Cuando vencen los 12 meses, se lev
 4. Acceso SSH a la VM.
 5. Un **Personal Access Token** de GitHub con scope `read:packages`, si el paquete de GHCR es privado.
 
-> **El repositorio es privado** (verificado contra la API de GitHub: responde `404` sin autenticación). El paquete de GHCR hereda esa visibilidad, así que la VM debe autenticarse antes de hacer `pull`. Dos caminos:
+> **El repositorio es público**, pero el paquete de GHCR tiene su propia visibilidad. Si el paquete es privado, la VM debe autenticarse antes de hacer `pull`. Dos caminos:
 >
 > - **Recomendado:** PAT con `read:packages` y `docker login ghcr.io` en la VM.
 > - Alternativa: poner el paquete como público en *Package settings → Change visibility*. Si GitHub lo permite para un repo privado, evita el token; comprobalo en la UI antes de contar con eso.
@@ -155,8 +155,8 @@ ssh -i <clave_ssh> <usuario>@<IP_VM>
 ```bash
 docker compose logs -f web
 docker compose logs -f worker
-tail -f /home/<usuario>/renew.log    # reposición de viajes de la demo (cada 15 min)
-tail -f /home/<usuario>/reset.log    # reset diario del tenant de demo
+tail -f ~/renew.log    # reposición de viajes de la demo (cada 15 min)
+tail -f ~/reset.log    # reset diario del tenant de demo
 ```
 
 **¿Está viva la demo?** El worker puede parecer sano (`Up`) y no estar ingiriendo nada: el estado real es si entran puntos.
@@ -258,7 +258,7 @@ ssh -L 5433:localhost:5432 -i <clave_ssh> <usuario>@<IP_VM>
 # DATABASE_URL=postgresql+psycopg2://itertrack:<pass>@localhost:5433/itertrack_db
 ```
 
-> La VM actual es la `<vm>` de Azure (IP `<IP_VM>`, usuario `<usuario>`, clave `<clave_ssh>`). Ese `-i` es necesario: no hay entrada en `~/.ssh/config`.
+> `<IP_VM>`, `<usuario>` y `<clave_ssh>` son placeholders. Los valores reales de la VM viven en el runbook privado del responsable del deploy, **fuera del repo** (ver `AGENTS.md`, sección 5).
 
 > Nunca corras migraciones desde tu máquina contra la base de la VM. Migra solo el contenedor `web`.
 

@@ -1,6 +1,6 @@
 # Feature: Multitenancy con código de invitación
 
-Locator: odd/tasks/org-multitenancy.md (repo /home/<usuario>/IterTrack, branch experiment/http)
+Locator: odd/tasks/org-multitenancy.md (repo IterTrack, branch experiment/http)
 
 ## Objective
 

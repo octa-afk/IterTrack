@@ -24,7 +24,7 @@ Test runner: `make test && make check`
 
 # Tarea: portar a IterTrack las buenas ideas de Trazia (sin reescribir IterTrack)
 
-El repositorio `/home/<usuario>/proyectos/trazia` es solo referencia de lectura. No copiar ni modificarlo. Implementar los cambios solicitados conservando la arquitectura madura de IterTrack, la deduplicación existente y la compatibilidad con firmware y simulador.
+El repositorio local `trazia` es solo referencia de lectura. No copiar ni modificarlo. Implementar los cambios solicitados conservando la arquitectura madura de IterTrack, la deduplicación existente y la compatibilidad con firmware y simulador.
 
 ### L2
 

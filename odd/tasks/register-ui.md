@@ -72,7 +72,7 @@ lands on `/map`.
       Reversible via the returned `--withdraw=true` command. NO receipt, NO approval: delivery
       stays a human decision under ordinary repository policy.
 - [x] User decision: receipt-driven development disabled clone-local (`clone-local: off`,
-      `global: on`) via `gentle-ai review mode disable --scope clone --cwd /home/<usuario>/IterTrack`,
+      `global: on`) via `gentle-ai review mode disable --scope clone --cwd <repo>`,
       because every medium/high candidate dead-ends on this runtime. Re-enable with
       `gentle-ai review mode enable --scope clone` once the lens relay works.
 - [ ] User browser click-through (register → land on `/map`).

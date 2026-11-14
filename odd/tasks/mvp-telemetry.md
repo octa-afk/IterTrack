@@ -1,6 +1,6 @@
 # Feature: MVP telemetry fields
 
-Locator: odd/tasks/mvp-telemetry.md (repo /home/<usuario>/IterTrack, branch experiment/http)
+Locator: odd/tasks/mvp-telemetry.md (repo IterTrack, branch experiment/http)
 
 ## Objective
 
@@ -34,7 +34,7 @@ The MVP scope explicitly requires location, speed, and direction so the tracking
 - `speed` is non-negative and expressed in km/h.
 - `heading` is expressed in degrees in the inclusive range 0–360.
 - Preserve existing authentication and organization isolation.
-- Use `/home/<usuario>/IterTrack/env/bin/...` for Python/Alembic commands.
+- Use `env/bin/...` for Python/Alembic commands.
 - Do not add dependencies.
 
 ## Tasks
@@ -57,7 +57,7 @@ The MVP scope explicitly requires location, speed, and direction so the tracking
 ## Verification
 
 - `make check && make test`
-- `/home/<usuario>/IterTrack/env/bin/alembic check`
+- `env/bin/alembic check`
 - Structural readback of changed source and migration files.
 
 ## Route

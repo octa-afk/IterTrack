@@ -141,7 +141,8 @@ El backend en `source/` sigue una separación estricta de responsabilidades:
    * Nunca confíes en los datos recibidos de clientes o módulos GPS externos. Valida tipos, formatos, longitudes y rangos numéricos.
 3. **Prevención de Inyección:**
    * Utiliza siempre el ORM de SQLAlchemy o consultas parametrizadas. Nunca concatenes strings en consultas SQL.
-4. **Nunca desplegar en la VM:** ningún agente ejecuta despliegues ni cambios en la VM (`<vm>`, `<IP_VM>`). El deploy es decisión y acción del humano; el agente puede preparar push, documentar el runbook y leer diagnósticos si el humano lo pide explícitamente, pero `docker compose`/`ssh` contra la VM nunca de él.
+4. **Nunca desplegar en la VM:** ningún agente ejecuta despliegues ni cambios en la VM de la demo. El deploy es decisión y acción del humano; el agente puede preparar push, documentar el runbook y leer diagnósticos si el humano lo pide explícitamente, pero `docker compose`/`ssh` contra la VM nunca de él.
+5. **Datos de infraestructura fuera del repo (el repositorio es público):** ningún archivo versionado —código, docs, `odd/tasks/`, tests ni mensajes de commit— lleva IPs, hostnames que contengan una IP, usuarios SSH, rutas de claves, nombres de recursos cloud, rutas absolutas de una máquina personal (`/home/<usuario>/…`) ni hosts o dominios de instancias de clientes. Se usan placeholders (`<IP_VM>`, `<usuario>`, `<clave_ssh>`) y rutas relativas al repo. Los valores reales viven en un runbook privado del responsable del deploy, fuera del repo. Un agente que encuentre uno de estos datos no lo copia a ningún archivo versionado ni a su memoria del proyecto: lo reemplaza por un placeholder y avisa. El dominio público de la demo es la excepción, porque se comparte a propósito.
 
 ---
 
