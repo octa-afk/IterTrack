@@ -1,4 +1,4 @@
-import type { TrackingPoint, Truck } from '../api/types';
+import type { TrackingPoint, Truck, TruckLive } from '../api/types';
 
 /*
  * Pure helpers ported from the vanilla dashboard modules:
@@ -54,7 +54,6 @@ export const STATUS: Record<TruckStatus, { label: string; color: string }> = {
 };
 
 export const SPEED_LIMIT = 90;
-export const STALE_MS = 10 * 60e3;
 export const FRESH_MS = 5 * 60e3;
 export const HISTORY_MAX = 18;
 export const POLL_MS = 3000;
@@ -96,14 +95,6 @@ export function isFresh(updated: number, now: number = Date.now()): boolean {
   return updated > 0 && now - updated < FRESH_MS;
 }
 
-export function estadoDe(t: Pick<TruckState, 'updated' | 'speed'>): TruckStatus {
-  if (!t.updated) return 'stop';
-  if (Date.now() - t.updated > STALE_MS) return 'stop';
-  if (t.speed > SPEED_LIMIT) return 'alert';
-  if (t.speed < 3) return 'idle';
-  return 'move';
-}
-
 export function crearEstadoCamion(t: Truck): TruckState {
   return {
     id: t.id,
@@ -124,7 +115,6 @@ export function crearEstadoCamion(t: Truck): TruckState {
 }
 
 const toRad = (d: number) => (d * Math.PI) / 180;
-const toDeg = (r: number) => (r * 180) / Math.PI;
 
 export function haversineM(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371e3;
@@ -136,54 +126,61 @@ export function haversineM(aLat: number, aLng: number, bLat: number, bLng: numbe
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-export function bearing(aLat: number, aLng: number, bLat: number, bLng: number): number {
-  const y = Math.sin(toRad(bLng - aLng)) * Math.cos(toRad(bLat));
-  const x =
-    Math.cos(toRad(aLat)) * Math.sin(toRad(bLat)) -
-    Math.sin(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.cos(toRad(bLng - aLng));
-  return (toDeg(Math.atan2(y, x)) + 360) % 360;
-}
-
-/** Mutates `t` in place (same as the vanilla aplicarPunto). */
-export function aplicarPunto(t: TruckState, p: TrackingPoint): void {
-  const lat = p.lat;
-  const lng = p.long;
-  const ts = Date.parse(p.timestamp) || Date.now();
+/**
+ * Aplica la foto de `GET /trucks/live` al estado del camión.
+ *
+ * Velocidad, rumbo y estado vienen calculados del servidor: antes se
+ * reconstruían acá comparando dos posiciones, con la hora de llegada del punto
+ * en vez de la de medición, y un lote guardado sin señal daba velocidades
+ * absurdas.
+ *
+ * Devuelve **el mismo objeto** si no cambió nada visible. El mapa y React
+ * comparan por identidad: un camión quieto no se vuelve a procesar.
+ */
+export function aplicarEstado(t: TruckState, live: TruckLive): TruckState {
+  const updated = live.recorded_at ? Date.parse(live.recorded_at) || 0 : 0;
+  const lat = live.lat;
+  const lng = live.lng;
+  const speed = Math.round(live.speed ?? 0);
+  const heading = live.heading ?? t.heading;
+  if (
+    t.updated === updated &&
+    t.lat === lat &&
+    t.lng === lng &&
+    t.speed === speed &&
+    t.heading === heading &&
+    t.status === live.status &&
+    t.plate === live.plate &&
+    t.active === live.active
+  ) {
+    return t;
+  }
   /*
    * El polling repite la última posición mientras el equipo no reporta nada
-   * nuevo. Sin este corte, cada vuelta empujaba una muestra idéntica a la
-   * gráfica y en un minuto borraba el historial real.
+   * nuevo: sólo una medición nueva suma una muestra a la gráfica.
    */
-  const muestraNueva = ts > t.updated;
-  if (t.lat !== null && t.lng !== null) {
-    const dtMs = ts - t.updated;
-    const distance = haversineM(t.lat, t.lng, lat, lng);
-    if (dtMs > 0) {
-      t.speed = Math.max(0, Math.min(200, Math.round((distance / (dtMs / 1000)) * 3.6)));
-    }
-    if (distance > 5) t.heading = bearing(t.lat, t.lng, lat, lng);
-  }
-  t.lat = lat;
-  t.lng = lng;
-  t.updated = ts;
-  if (muestraNueva) {
-    t.history.push(t.speed);
-    if (t.history.length > HISTORY_MAX) t.history.shift();
-  }
-  t.status = estadoDe(t);
+  const history =
+    updated > t.updated ? [...t.history, speed].slice(-HISTORY_MAX) : t.history;
+  return {
+    ...t,
+    plate: live.plate,
+    active: live.active,
+    lat,
+    lng,
+    speed,
+    heading,
+    status: live.status,
+    updated,
+    history,
+  };
 }
 
+/** Velocidades informadas por el equipo, de la más vieja a la más nueva. */
 export function buildHistory(points: TrackingPoint[]): number[] {
-  const chronological = points.slice().reverse();
-  const history: number[] = [];
-  for (let i = 1; i < chronological.length; i++) {
-    const current = chronological[i];
-    const previous = chronological[i - 1];
-    const seconds = (Date.parse(current.recorded_at) - Date.parse(previous.recorded_at)) / 1000;
-    const distance = haversineM(previous.lat, previous.long, current.lat, current.long);
-    history.push(seconds > 0 ? Math.max(0, Math.min(200, Math.round((distance / seconds) * 3.6))) : 0);
-  }
-  return history.slice(-HISTORY_MAX);
+  return points
+    .slice(0, HISTORY_MAX)
+    .reverse()
+    .map((point) => Math.round(point.speed));
 }
 
 /*

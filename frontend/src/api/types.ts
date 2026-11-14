@@ -59,6 +59,24 @@ export interface TrackingPoint {
 }
 
 /**
+ * GET /trucks/live: cada camión con su último punto medido.
+ *
+ * Velocidad y rumbo son los que informó el equipo y `status` lo calcula el
+ * servidor con su reloj. Un camión que nunca reportó trae la posición en null.
+ */
+export interface TruckLive {
+  id: number;
+  plate: string;
+  active: boolean;
+  lat: number | null;
+  lng: number | null;
+  speed: number | null;
+  heading: number | null;
+  recorded_at: string | null;
+  status: 'move' | 'idle' | 'stop' | 'alert';
+}
+
+/**
  * Public configuration served by GET /config.
  *
  * `demo.enabled` is decided by the deployment, not by the build: the same image

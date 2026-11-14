@@ -2,12 +2,12 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, clearToken, getToken } from '../api/client';
 import { me } from '../api/auth';
-import { getHistory, getLocation, listTrucks } from '../api/trucks';
+import { getHistory, listLiveTrucks } from '../api/trucks';
 import {
   DEFAULT_FILTERS,
   POLL_MS,
   TRIP_LIMIT,
-  aplicarPunto,
+  aplicarEstado,
   buildHistory,
   crearEstadoCamion,
   filterAndSortTrucks,
@@ -31,24 +31,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
     async function refresh() {
       try {
-        const data = await listTrucks();
-        const locations = await Promise.all(
-          data.map((t) => getLocation(t.id).catch(() => null)),
-        );
+        // Un solo pedido para toda la flota (antes: 1 + uno por camión).
+        const data = await listLiveTrucks();
         if (cancelled) return;
         setTrucks((prev) => {
           const existing = new Map(prev.map((t) => [t.id, t]));
-          return data.map((truck) => {
-            const known = existing.get(truck.id);
-            const base = known
-              ? { ...known, plate: truck.plate, active: truck.active }
-              : crearEstadoCamion(truck);
-            const point = locations.find((p) => p && p.truck_id === truck.id);
-            if (!point) return base;
-            const clone = { ...base, history: [...base.history] };
-            aplicarPunto(clone, point);
-            return clone;
-          });
+          return data.map((live) =>
+            aplicarEstado(existing.get(live.id) ?? crearEstadoCamion(live), live),
+          );
         });
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
