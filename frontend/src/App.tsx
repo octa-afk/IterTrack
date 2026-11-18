@@ -17,12 +17,16 @@ import MobileTripsPage from './mobile/MobileTripsPage';
  * `/fleet` porque `GET /trucks` ya es el endpoint JSON, y Rutas en `/viajes`
  * porque `GET /trips` es la API de viajes.
  *
- * Debajo de 640 px monta el shell móvil con las pantallas del diseño de
- * `extras/mobile/itertrack`; por encima, el dashboard de escritorio intacto.
- * El corte es el mismo que fija `tests/test_static_css.py`.
+ * El shell móvil (pantallas del diseño de `extras/mobile/itertrack`) se monta
+ * sólo en un dispositivo móvil: puntero táctil y sin hover. El ancho no cuenta,
+ * así que achicar la ventana de una PC deja el dashboard de escritorio con sus
+ * paneles flotantes. `tests/test_static_css.py` verifica que no vuelva un
+ * corte por ancho.
  */
+const MOBILE_DEVICE = '(hover: none) and (pointer: coarse)';
+
 export default function App() {
-  const mobile = useMediaQuery('(max-width: 640px)');
+  const mobile = useMediaQuery(MOBILE_DEVICE);
 
   return (
     <Routes>

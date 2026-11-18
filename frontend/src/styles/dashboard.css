@@ -47,7 +47,6 @@
   .tag{background:var(--green);color:#fff;border-radius:6.9px;font-size:12px;padding:4.6px 12px}
 
   /* Mapa */
-  .mapcard{flex:1;padding:16px;display:flex;flex-direction:column}
   .mapbox{flex:1;border-radius:14px;overflow:hidden;min-height:299px;position:relative}
   #map{position:absolute;inset:0}
   .mapbox,#map,.leaflet-container,.maplibregl-canvas{background:var(--map-bg,#f4f6fb)}
@@ -60,7 +59,6 @@
   .pin.sel .lbl{display:block;background:var(--blue-deep);border-color:var(--blue-deep);color:#fff;font-weight:600}
 
   /* Resumen de la ruta del viaje abierto: ahora vive en el panel del camión. */
-
 
   /* Columna derecha */
   .listcard{flex:1;display:flex;flex-direction:column;padding:18px 0 0}
@@ -111,27 +109,12 @@
   .section-page .dc-body{grid-template-columns:minmax(0,1fr)}
   .section-page .dc-trip-h,.section-page .dc-trip-none,.section-page .dc-trip-st{text-align:left;justify-content:flex-start}
 
-
   /* Camión inactivo: conserva su historial pero ya no transmite. */
   .badge-off{display:inline-block;margin-left:6px;padding:1px 7px;border:1px solid var(--line);border-radius:1149px;background:var(--bg);color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle}
   .pin.off .truck-img{opacity:.55;filter:grayscale(1)}
 
   /* Resumen del recorrido reciente del camión seleccionado (histórico). */
   .detail .trip-none{font-size:12px;color:var(--muted);margin:0}
-
-  @media (max-width:1265px){
-    .grid{grid-template-columns:1fr}
-    .listcard{min-height:483px}
-  }
-  @media (max-width:640px){
-    body{padding:0;display:block}
-    .app{display:block;height:auto;border-radius:0;box-shadow:none}
-    .side{flex-direction:row;padding:14px 18px;align-items:center}
-    .logo{margin:0;padding:0} nav,.logout{display:none}
-    .content{padding:16px}
-    .top{flex-wrap:wrap} .search{flex:1 1 100%}
-    .mapcard{min-height:391px}
-  }
 
   /* ===== Chrome unido (lateral + superior) con glass, estilo DeepSeek ===== */
   :root{--blur:blur(25px) saturate(170%)}
@@ -173,16 +156,6 @@
   @media (prefers-reduced-transparency:reduce){
     .top{background:rgba(255,255,255,.94);-webkit-backdrop-filter:none;backdrop-filter:none}
   }
-  @media (max-width:1265px){
-    .grid{overflow:auto;grid-template-rows:none;align-content:start}
-  }
-  @media (max-width:640px){
-    body{padding:0;display:block}
-    .app{display:block;height:auto;border:0}
-    .side{border-right:0;border-bottom:1px solid rgba(255,255,255,.35)}
-    .top{padding:12px 16px}
-    .grid{padding:16px;overflow:visible}
-  }
 
   /* ===== Versión celeste suave (glass claro) ===== */
   .app{
@@ -212,17 +185,11 @@
   .pill{background:var(--green)}
   .avatar{color:var(--green-d)}
   .card{box-shadow:0 3.5px 16px rgba(60,90,150,.08)}
-  @media (max-width:640px){ .side{border-bottom:1px solid rgba(255,255,255,.9)} }
 
   /* ===== Pantalla completa ===== */
   html,body{height:100%}
-  @media (min-width:641px){
-    body{padding:0;display:block;overflow:auto}
-    .app{width:100%;max-width:none;height:100vh;height:100dvh;min-height:644px;border-radius:0;border:0;box-shadow:none}
-  }
-  @media (max-width:640px){
-    .app{border-radius:0}
-  }
+  body{padding:0;display:block;overflow:auto}
+  .app{width:100%;max-width:none;height:100vh;height:100dvh;min-height:644px;border-radius:0;border:0;box-shadow:none}
 
   /* ===== Logo IterTrack ===== */
   .logo{--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2}
@@ -274,14 +241,6 @@
   .search{background:#f1f4fb;box-shadow:none}
 
   @media (prefers-reduced-motion:reduce){.app,.side,.side-in{transition:none}}
-  @media (max-width:640px){
-    .side{padding:0}
-    .side-in{width:100%;flex-direction:row;padding:14px 18px;align-items:center}
-    .app.nav-off .side-in{opacity:1}
-    .navtoggle,.minibrand{display:none!important}
-    .tl{flex:1 1 100%}
-    .top{padding:12px 16px}
-  }
 
   /* ===== C3 v10 glass layer: full-screen map with floating panels =====
      This ports the visual shell only; live data, auth, and existing hooks stay
@@ -300,9 +259,9 @@
     --pb:26px;
   }
   .app{position:relative;background:var(--mint)}
-  .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
+  .content,.grid,.grid>.col:first-child{display:contents}
   .mapbox{position:absolute;inset:0;z-index:0;min-height:0;border-radius:0;box-shadow:none}
-  .side,.top,.card,.mapcard .card-h,.leaflet-bar,.leaflet-control-attribution{
+  .side,.top,.card,.leaflet-bar,.leaflet-control-attribution{
     background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
     border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)
   }
@@ -319,7 +278,6 @@
   .pill{background:none;padding:0;height:auto;color:var(--ink)}
   .pill .al{background:var(--g-fill2);color:var(--ink)} .pill .bell{fill:var(--ink)}
   .avatar{background:var(--ac);color:#fff}
-  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:16px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px;transition:left .3s ease}
   .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
   .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:16px;bottom:var(--pb,39px);width:var(--rp);gap:14px}
   .card{border-radius:28px}
@@ -334,71 +292,22 @@
   .leaflet-control-attribution a{color:var(--green-d)}
   .app.nav-off .side{width:0;opacity:0;pointer-events:none;border:0}
   .app.nav-off{--lx:16px}
-  .app.nav-off .mapcard .card-h{left:calc(var(--lx) + 56px)}
   .mobile-tabs{display:none}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
   @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
-  @media (max-width:1265px){
-    body{display:block;overflow:auto}.app{height:auto;min-height:100vh;display:block;padding:14px}
-    .content,.grid,.grid>.col:first-child,.mapcard{display:block}
-    .side,.top,.detailcard,.mapcard .card-h,.grid>.col:last-child{position:relative;inset:auto;width:auto;height:auto;margin:0 0 14px}
-    .grid>.col:last-child{display:flex}.side{flex-direction:row;padding:0}.side-in{height:auto;min-height:64px;flex-direction:row;padding:12px 16px;align-items:center}
-    .logo{margin:0}.mapbox{position:relative;inset:auto;height:64vh;margin-bottom:14px;border-radius:28px}
-    .mapcard .card-h{display:inline-flex}
-    .leaflet-top.leaflet-left{left:0;top:0}.leaflet-bottom.leaflet-right{left:auto;right:0}
-  }
-  @media (max-width:640px){
-    .app{padding:0}.side-in{width:100%}.top{padding:0 14px}.grid{padding:14px}.mapbox{height:56vh}
-  }
   /* Mobile surfaces follow the supplied glass treatment without changing desktop. */
-  @media (max-width:640px){
-    :root{--lx:12px;--rp:calc(100vw - 24px)}
-    body{background:#f4f6fb;min-height:100%;overflow:hidden}
-    .app{height:100dvh;min-height:0;overflow:hidden;background:transparent}
-    .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
-    .card:not(.mapcard),.side,.top{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)}
-    .mapcard .card-h{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)}
-    .side{display:contents}.side .logo,.side nav{display:none}
-    .side .logout{position:fixed;z-index:8;top:78px;right:12px;width:auto;margin:0;padding:8px 12px;background:var(--g-bg);border:1px solid var(--g-bd);box-shadow:var(--g-sh);color:var(--ink)}
-    .top{position:absolute;z-index:7;left:12px;right:12px;top:12px;height:58px;padding:0 12px;border-radius:22px;flex-wrap:nowrap}
-    .tl{gap:8px;flex:1 1 auto;min-width:0}.search{flex:1 1 0%;height:40px;min-width:0;padding:0 12px}.pill{flex:0 0 auto;gap:7px}.pill .bell,.avatar{display:none}
-    .mobile-tabs{position:fixed;z-index:20;left:12px;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:7px;border:1px solid var(--g-bd);border-radius:22px;background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:var(--g-hi),var(--g-sh)}
-    .mobile-tabs button{border:0;border-radius:15px;padding:10px 5px;background:transparent;color:var(--ink);font:500 13px Poppins;cursor:pointer}
-    .mobile-tabs button[aria-pressed="true"]{background:var(--g-on);box-shadow:0 2px 8px rgba(25,45,95,.12);font-weight:600}
-    .mapbox{position:absolute;inset:0 0 0;height:auto;margin:0;border-radius:0;z-index:0}
-    body[data-mobile-view="panel"] .mapbox,body[data-mobile-view="fleet"] .mapbox{display:none}
-    body[data-mobile-view="map"] .mapbox{display:block}
-    body[data-mobile-view="panel"] .mapcard .card-h,body[data-mobile-view="fleet"] .mapcard .card-h{display:none}
-    .mapcard .card-h{position:absolute;z-index:6;left:12px;right:12px;top:82px;width:max-content;max-width:calc(100% - 24px);margin:0;padding:8px 12px;border-radius:18px;gap:10px}
-    .leaflet-bar,.leaflet-control-attribution{background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
-    .leaflet-top.leaflet-left{left:auto;right:10px;top:10px}
-    .leaflet-bottom.leaflet-right{left:auto;right:0;bottom:0}
-    .detailcard,.grid>.col:last-child{display:none}
-    body[data-mobile-view="panel"] .detailcard{display:block;position:absolute;z-index:5;left:12px;right:12px;top:154px;bottom:auto;height:260px;overflow:auto;padding:14px;border-radius:22px}
-    body[data-mobile-view="panel"] .detailcard .dc-body{grid-template-columns:minmax(0,1fr);gap:12px}
-    body[data-mobile-view="panel"] .grid>.col:last-child{display:block;position:absolute;z-index:5;left:12px;right:12px;top:calc(154px + 272px);bottom:82px;width:auto;overflow:auto}
-    body[data-mobile-view="panel"] .grid>.col:last-child>.card{border-radius:22px}
-    body[data-mobile-view="fleet"] .grid>.col:last-child{display:block;position:absolute;z-index:5;left:12px;right:12px;top:82px;bottom:82px;width:auto;overflow:auto}
-    body[data-mobile-view="fleet"] .listcard{min-height:0;height:100%;border-radius:22px;overflow:hidden}
-    body[data-mobile-view="fleet"] .grid>.col:last-child>.card:not(.listcard){display:none}
-    body[data-mobile-view="fleet"] .detailcard{display:none}
-    body[data-mobile-view="map"] .mapcard .card-h{position:absolute;left:12px;top:82px}
-    body[data-mobile-view="map"] .detailcard,body[data-mobile-view="map"] .grid>.col:last-child{display:none}
+  @media (prefers-reduced-motion:reduce){.side,.top,.section-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
+  :root{
+    --g-bg:rgba(255,255,255,.90);--g-solid:rgba(248,250,254,.97);
+    --g-bd:rgba(255,255,255,.78);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);
+    --g-sh:0 12px 39px rgba(25,45,95,.16);--g-fill:rgba(31,42,61,.06);
+    --g-fill2:rgba(31,42,61,.11);--g-on:rgba(255,255,255,.95);
+    --ink:#1f2a3d;--muted:#6b778c;--line:#e6eaf2;
   }
-  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.section-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
-  @media (min-width:641px){
-    :root{
-      --g-bg:rgba(255,255,255,.90);--g-solid:rgba(248,250,254,.97);
-      --g-bd:rgba(255,255,255,.78);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);
-      --g-sh:0 12px 39px rgba(25,45,95,.16);--g-fill:rgba(31,42,61,.06);
-      --g-fill2:rgba(31,42,61,.11);--g-on:rgba(255,255,255,.95);
-      --ink:#1f2a3d;--muted:#6b778c;--line:#e6eaf2;
-    }
-    .side nav a{color:#3b4862}
-    .side nav a.on{color:var(--ink)}
-    .side nav a:hover{background:rgba(31,42,61,.05)}
-    .side .logout{background:rgba(255,255,255,.85);border:0;color:var(--ink)}
-  }
+  .side nav a{color:#3b4862}
+  .side nav a.on{color:var(--ink)}
+  .side nav a:hover{background:rgba(31,42,61,.05)}
+  .side .logout{background:rgba(255,255,255,.85);border:0;color:var(--ink)}
 
   /* ===== Sección Camiones: tabla de la flota ===== */
   nav a.soon{opacity:.5;cursor:not-allowed}
@@ -437,22 +346,13 @@
     display:grid;grid-template-columns:minmax(0,1fr) var(--rp);gap:14px;min-height:0;
     transition:left .3s ease;
   }
-  @media (max-width:1265px){
-    .section-page{position:relative;inset:auto;display:block;padding:14px}
-    .fleetcard{margin-bottom:14px}
-    .fleet-wrap{max-height:60vh}
-  }
 
   /* ===== Mapa persistente entre secciones =====
      El mapa vive en el layout y se monta una sola vez. Fuera del panel se
      oculta sin cambiar su tamaño, así Leaflet conserva la vista y el estilo
-     de MapLibre no se vuelve a pedir. Debajo de 1265 px el mapa está en flujo
-     normal, así que ahí sí tiene que dejar de ocupar alto. */
+     de MapLibre no se vuelve a pedir. El mapa ocupa siempre
+     toda la superficie, así que ocultarlo no cambia ninguna medida. */
   .mapbox-off{visibility:hidden;pointer-events:none}
-  @media (max-width:1265px){
-    .mapbox-off{display:none}
-  }
-
 
   /* ===== Fondo de las secciones sin mapa =====
      En el panel manda el mapa; en Camiones (y las secciones que vengan) no hay
@@ -461,15 +361,10 @@
      competir con el contenido: contrastes bajos y sin bordes duros. */
   .app.app-section{background:#dfe8f6}
   /* Vidrio más translúcido sólo acá: contra el mapa ese ajuste no aplica. */
-  @media (min-width:641px){
-    .app.app-section{
-      --g-bg:rgba(255,255,255,.70);
-      --g-bd:rgba(255,255,255,.66);
-      --g-hi:inset 0 1px 0 rgba(255,255,255,.85);
-    }
-  }
-  @media (max-width:1265px){
-    .app.app-section{background:#dfe8f6}
+  .app.app-section{
+    --g-bg:rgba(255,255,255,.70);
+    --g-bd:rgba(255,255,255,.66);
+    --g-hi:inset 0 1px 0 rgba(255,255,255,.85);
   }
 
   /* ===== Panel de flota: tarjeta única, filtros y unidades como tarjetas ===== */
@@ -615,15 +510,6 @@
   .side-reopen:hover{color:var(--ink);background:var(--g-solid)}
   .app:not(.nav-off) .side-reopen{display:none}
 
-  /* ===== Encabezado del mapa =====
-     Sin el cartel de "Actualizando" el encabezado queda en "Mapa en vivo", y el
-     logo aparece sólo cuando el lateral está oculto: en ese momento es la única
-     marca de IterTrack en pantalla. */
-  .mapcard .card-h .map-mark{display:none}
-  .app.nav-off .mapcard .card-h .map-mark{display:inline-flex;align-items:center}
-  .app.nav-off .mapcard .card-h .map-mark{--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2}
-  .app.nav-off .mapcard .card-h .map-mark svg{width:23px;height:23px;stroke:none;flex:none}
-
   /* ===== Buscador de flota =====
      Vive en el panel derecho del mapa y en la tabla de Camiones. No reusa
      `.search` (era la barra superior retirada): es su propia pieza, con el
@@ -672,18 +558,38 @@
   }
 
   /* ===== Tarjeta del camión flotante =====
-     Aparece sólo con un camión seleccionado, al lado del vehículo, y se arrastra
-     con el puntero. La posición la fija el componente (estilo en línea); acá va
-     lo que necesita para flotar sobre el mapa. */
-  @media (min-width:1266px){
-    .truck-float{
-      position:absolute;z-index:6;width:min(560px,calc(100% - 32px));
-      cursor:grab;touch-action:none;
-      border-radius:24px;
-      box-shadow:0 12px 34px rgba(25,45,95,.22);
-    }
-    .truck-float.is-dragging{cursor:grabbing;box-shadow:0 18px 44px rgba(25,45,95,.30)}
-    .truck-float .detailcard{width:100%;padding:15px 18px;border-radius:24px}
-    /* La tarjeta no se selecciona al arrastrar. */
-    .truck-float{user-select:none}
+     Aparece sólo con un camión seleccionado y queda fija arriba, entre el lateral
+     y el panel de flota. No se arrastra ni se mueve: la posición es puro CSS. */
+  .truck-float{
+    position:absolute;z-index:6;top:16px;
+    /* Ocupa todo el ancho libre: arranca después del botón de reabrir y de los
+       controles de zoom y termina antes del panel de flota. */
+    left:calc(var(--lx) + 56px);
+    right:calc(var(--rp) + 32px);
+    border-radius:24px;
+    box-shadow:0 12px 34px rgba(25,45,95,.22);
+    transition:left .3s ease;
+    container-type:inline-size;
   }
+  .truck-float .detailcard{width:100%;padding:8px 16px 9px;border-radius:24px}
+  /* Compacta: ~40 % menos alta que con el espaciado del panel de la sección. */
+  .truck-float .dc-h{margin-bottom:5px}
+  .truck-float .dc-tile{padding:4px 10px;border-radius:10px}
+  .truck-float .dc-tile b.big{font-size:17px}
+  .truck-float .dc-trip{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;padding-top:0}
+  .truck-float .dc-trip-h{text-align:left}
+  .truck-float .dc-trip-st,.truck-float .dc-trip-none{margin-top:0}
+  .truck-float .dc-trip .spark{grid-column:1/-1;height:30px;margin-top:4px}
+  /* Los cuatro datos van en una fila; el resumen del viaje, a la derecha. */
+  .truck-float .dc-body{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+  .truck-float .dc-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
+  /* Poco ancho: el resumen del viaje baja debajo de la fila de datos. */
+  @container (max-width:760px){
+    .truck-float .dc-body{grid-template-columns:minmax(0,1fr)}
+    .truck-float .dc-trip-h,.truck-float .dc-trip-none,.truck-float .dc-trip-st{text-align:left;justify-content:flex-start}
+  }
+  /* Muy angosta: los datos vuelven a dos por fila. */
+  @container (max-width:520px){
+    .truck-float .dc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+

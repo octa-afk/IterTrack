@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react';
 /**
  * Suscripción a un `matchMedia` con estado reactivo.
  *
- * El layout móvil se elige por ancho de teléfono, no por user agent: la misma
- * build sirve la UI táctil en un teléfono y el dashboard en una PC. El
- * breakpoint es el que ya fija `tests/test_static_css.py` (640 px).
+ * El layout móvil se elige por capacidades del dispositivo (puntero táctil sin
+ * hover), no por ancho ni por user agent: la misma build sirve la UI táctil en
+ * un teléfono y el dashboard en una PC, aunque la ventana de la PC sea angosta.
  */
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);

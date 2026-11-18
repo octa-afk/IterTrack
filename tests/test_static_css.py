@@ -81,10 +81,11 @@ def test_dashboard_glass_layer():
     text = built_css()
     assert "--g-bg:#173674b8" in text  # rgba(23,54,116,.72)
     assert "--g-bg:#ffffffe6" in text  # rgba(255,255,255,.90)
-    assert ".content,.grid,.grid>.col:first-child,.mapcard{display:contents}" in text
+    assert ".content,.grid,.grid>.col:first-child{display:contents}" in text
     assert re.search(r"\.mapbox\{[^}]*position:absolute[^}]*inset:0", text)
-    for view in ("panel", "fleet", "map"):
-        assert f"data-mobile-view={view}]" in text
+    # El estilo heredado de `data-mobile-view` ya no existe: el shell móvil
+    # tiene sus propias clases `m-*` y no se activa por ancho.
+    assert "data-mobile-view" not in text
 
 
 @requires_build
@@ -96,19 +97,17 @@ def test_auth_styles_stay_scoped_to_the_auth_page():
 
 
 @requires_build
-def test_logo_del_encabezado_solo_con_el_lateral_oculto():
-    """El logo del encabezado del mapa aparece sólo con el lateral plegado.
+def test_el_mapa_no_lleva_etiqueta_de_encabezado():
+    """El mapa no tiene la pastilla «Mapa en vivo»: el espacio es de la tarjeta.
 
-    Con el lateral abierto la marca ya está visible arriba a la izquierda; el
-    encabezado se queda con "Mapa en vivo" y nada más.
+    La tarjeta del camión arranca justo después del botón de reabrir el lateral
+    y muestra sus cuatro datos en una sola fila.
     """
     text = built_css()
-    oculto = re.search(r"\.mapcard \.card-h \.map-mark\{([^}]*)\}", text)
-    assert oculto and "display:none" in oculto.group(1)
-    visible = re.search(r"\.app\.nav-off \.mapcard \.card-h \.map-mark\{([^}]*)\}", text)
-    assert visible and "display:inline-flex" in visible.group(1)
-    # El mark pinta con sus tres tonos igual que en el lateral.
-    assert re.search(r"\.app\.nav-off \.mapcard \.card-h \.map-mark\{[^}]*--m1:#6a8cee", text)
+    assert ".mapcard" not in text and "map-mark" not in text
+    flotante = re.search(r"\.truck-float\{([^}]*)\}", text)
+    assert flotante and "left:calc(var(--lx) + 56px)" in flotante.group(1)
+    assert re.search(r"\.truck-float \.dc-tiles\{grid-template-columns:repeat\(4,", text)
 
 
 @requires_build
@@ -155,8 +154,6 @@ def test_lateral_concentra_busqueda_y_perfil_sin_barra_superior():
     assert re.search(r"\.fleetcard \.fleet-search\{", text)
 
     # Los paneles flotantes arrancan en el borde superior, no debajo de una barra.
-    chip = re.search(r"\.mapcard \.card-h\{([^}]*)\}", text)
-    assert chip and "top:16px" in chip.group(1)
     flota = re.search(r"\.grid>\.col:last-child\{([^}]*)\}", text)
     assert flota and "top:16px" in flota.group(1)
 
@@ -171,13 +168,12 @@ def test_fleet_panel_and_truck_panel_surfaces():
     assert ".dc-tiles{" in text
     assert ".dc-tile{" in text
     assert ".dc-trip{" in text
-    # Sobre el mapa la tarjeta del camión flota y se arrastra con el puntero.
+    # Sobre el mapa la tarjeta del camión queda fija arriba: sin arrastre.
     flotante = re.search(r"\.truck-float\{([^}]*)\}", text)
     assert flotante and "position:absolute" in flotante.group(1)
-    assert "cursor:grab" in flotante.group(1)
-    # `touch-action:none` deja que el arrastre no se lo coma el scroll táctil.
-    assert "touch-action:none" in flotante.group(1)
-    assert re.search(r"\.truck-float\.is-dragging\{[^}]*cursor:grabbing", text)
+    assert "top:16px" in flotante.group(1)
+    assert "cursor:grab" not in flotante.group(1) and "is-dragging" not in text
+    assert "touch-action:none" not in flotante.group(1)
 
 
 @requires_build
@@ -289,14 +285,17 @@ def test_mobile_pinch_only_zooms_the_map():
 
 
 @requires_build
-def test_mobile_layout_only_below_phone_widths():
-    """La UI móvil no está curada: no debe aparecer al angostar una ventana de PC.
+def test_mobile_layout_no_depende_del_ancho_de_la_ventana():
+    """La UI móvil se elige por dispositivo, no por ancho de ventana.
 
-    El breakpoint tiene que quedar por debajo de una pantalla dividida típica
-    (720-960 px); si sube, la demo en PC se convierte en la versión móvil.
+    Achicar una ventana de PC tiene que dejar el dashboard con sus paneles
+    flotantes sobre el mapa: ningún corte por ancho (640, 944 ni 1265 px) puede
+    volver a apilar el lateral o a esconder la tarjeta del camión. El shell móvil
+    se monta en `App.tsx` con `(hover: none) and (pointer: coarse)`.
     """
     text = built_css()
-    assert "(width<=640px)" in text
-    assert "(width>=641px)" in text
-    assert "943px" not in text
-    assert "944px" not in text
+    for corte in ("640px", "641px", "943px", "944px", "1265px", "1266px"):
+        assert corte not in text, f"quedó un corte de ancho en {corte}"
+    app = (DIST.parent / "src" / "App.tsx").read_text(encoding="utf-8")
+    assert "(hover: none) and (pointer: coarse)" in app
+    assert "max-width" not in app

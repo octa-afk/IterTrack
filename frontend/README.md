@@ -11,7 +11,7 @@ SPA en **React 19 + TypeScript + Vite**. FastAPI la sirve desde `frontend/dist`
   `source/services/`.
 - **Componentes:** `src/components/` — mapa, lista de flota, buscador, detalle,
   gráficos y layout con lateral.
-- **Móvil:** `src/mobile/` — layout, drawer y vistas propias hasta 640 px de ancho (`App.tsx`).
+- **Móvil:** `src/mobile/` — layout, drawer y vistas propias, que sólo se montan en un dispositivo móvil (`(hover: none) and (pointer: coarse)` en `App.tsx`). Achicar la ventana de una PC no lo activa: el escritorio mantiene sus paneles flotantes a cualquier ancho.
 - **Lógica pura:** `src/lib/` — `truckIcon`, `movement`, `route`, `mapHandle` y
   `trucks` (`POLL_MS`, `isFresh`, `buildHistory`).
 - **Estado:** `src/state/DashboardProvider.tsx` — guard de sesión contra `/auth/me`,
