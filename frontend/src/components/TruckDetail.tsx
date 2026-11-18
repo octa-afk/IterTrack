@@ -9,8 +9,12 @@ import { Sparkline } from './Sparkline';
  * hasta la próxima parada con el historial de velocidad debajo. Vive sobre el
  * mapa (`.detailcard` lo posiciona en el layout del panel) y también lo reusa la
  * sección Camiones dentro de una columna.
+ *
+ * Con `embedded` va dentro de la fila del camión elegido en el panel de flota:
+ * sin tarjeta propia y sin encabezado, porque la fila ya muestra la patente y
+ * el estado.
  */
-export function TruckDetail() {
+export function TruckDetail({ embedded = false }: { embedded?: boolean }) {
   const { selectedTruck: truck } = useDashboard();
   const nextStop = useNextStop(truck?.id ?? null, truck?.lat ?? null, truck?.lng ?? null);
   const estado = truck
@@ -19,8 +23,7 @@ export function TruckDetail() {
       : { label: 'Inactivo', color: 'var(--muted)' }
     : null;
 
-  return (
-    <div className="card detailcard">
+  const cuerpo = (
       <div className="detail" id="detail">
         {!truck || !estado ? (
           <div className="noSel">
@@ -28,12 +31,14 @@ export function TruckDetail() {
           </div>
         ) : (
           <>
-            <div className="dc-h">
-              <b>{truck.plate}</b>
-              <span style={{ color: estado.color }}>
-                {estado.label} · {truck.updated ? ago(truck.updated) : 'Sin señal'}
-              </span>
-            </div>
+            {!embedded && (
+              <div className="dc-h">
+                <b>{truck.plate}</b>
+                <span style={{ color: estado.color }}>
+                  {estado.label} · {truck.updated ? ago(truck.updated) : 'Sin señal'}
+                </span>
+              </div>
+            )}
 
             <div className="dc-body">
               <div className="dc-tiles">
@@ -102,6 +107,8 @@ export function TruckDetail() {
           </>
         )}
       </div>
-    </div>
   );
+
+  if (embedded) return <div className="dc-embedded">{cuerpo}</div>;
+  return <div className="card detailcard">{cuerpo}</div>;
 }

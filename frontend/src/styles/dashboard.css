@@ -47,6 +47,7 @@
   .tag{background:var(--green);color:#fff;border-radius:6.9px;font-size:12px;padding:4.6px 12px}
 
   /* Mapa */
+  .mapcard{flex:1;padding:16px;display:flex;flex-direction:column}
   .mapbox{flex:1;border-radius:14px;overflow:hidden;min-height:299px;position:relative}
   #map{position:absolute;inset:0}
   .mapbox,#map,.leaflet-container,.maplibregl-canvas{background:var(--map-bg,#f4f6fb)}
@@ -259,9 +260,9 @@
     --pb:26px;
   }
   .app{position:relative;background:var(--mint)}
-  .content,.grid,.grid>.col:first-child{display:contents}
+  .content,.grid,.grid>.col:first-child,.mapcard{display:contents}
   .mapbox{position:absolute;inset:0;z-index:0;min-height:0;border-radius:0;box-shadow:none}
-  .side,.top,.card,.leaflet-bar,.leaflet-control-attribution{
+  .side,.top,.card,.mapcard .card-h,.leaflet-bar,.leaflet-control-attribution{
     background:var(--g-bg);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
     border:1px solid var(--g-bd);box-shadow:var(--g-hi),var(--g-sh)
   }
@@ -278,6 +279,7 @@
   .pill{background:none;padding:0;height:auto;color:var(--ink)}
   .pill .al{background:var(--g-fill2);color:var(--ink)} .pill .bell{fill:var(--ink)}
   .avatar{background:var(--ac);color:#fff}
+  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:16px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px;transition:left .3s ease}
   .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
   .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:16px;bottom:var(--pb,39px);width:var(--rp);gap:14px}
   .card{border-radius:28px}
@@ -292,11 +294,12 @@
   .leaflet-control-attribution a{color:var(--green-d)}
   .app.nav-off .side{width:0;opacity:0;pointer-events:none;border:0}
   .app.nav-off{--lx:16px}
+  .app.nav-off .mapcard .card-h{left:calc(var(--lx) + 56px)}
   .mobile-tabs{display:none}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
   @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
   /* Mobile surfaces follow the supplied glass treatment without changing desktop. */
-  @media (prefers-reduced-motion:reduce){.side,.top,.section-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
+  @media (prefers-reduced-motion:reduce){.side,.top,.mapcard .card-h,.section-page,.leaflet-top.leaflet-left,.leaflet-bottom.leaflet-right{transition:none!important}}
   :root{
     --g-bg:rgba(255,255,255,.90);--g-solid:rgba(248,250,254,.97);
     --g-bd:rgba(255,255,255,.78);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);
@@ -369,10 +372,16 @@
 
   /* ===== Panel de flota: tarjeta única, filtros y unidades como tarjetas ===== */
   .listcard{padding:16px 14px 14px}
+  /* Panel de flota más translúcido (.90 → .65) para que resalte la fila elegida. */
+  .listcard{background:rgba(255,255,255,.65)}
+  /* Lateral con la misma translucidez que el panel de flota. */
+  .side{background:rgba(255,255,255,.65)}
+  /* Ítem activo del menú: blanco puro opaco, como la fila elegida del panel de flota. */
+  .side nav a.on{background:#fff;box-shadow:0 2px 6px rgba(25,45,95,.10)}
   .listcard > *:not(ul){margin-left:0;margin-right:0}
   .listcard .seg{margin-bottom:14px;padding:4px}
   .listcard .seg button{padding:9px 8px;font-size:13px}
-  .listcard .seg button[aria-pressed="true"]{background:var(--g-solid);color:var(--ink);font-weight:600;box-shadow:0 2px 6px rgba(25,45,95,.10)}
+  .listcard .seg button[aria-pressed="true"]{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 2px 6px rgba(25,45,95,.10)}
   .listcard .chips{gap:8px;margin-bottom:14px}
   .listcard .chip{padding:7px 13px;font-size:12.5px;background:var(--g-fill)}
   .listcard .chip[aria-pressed="true"]{background:var(--g-fill2);color:var(--ink);font-weight:600}
@@ -386,7 +395,19 @@
     padding:12px 14px;border-radius:14px;background:var(--g-fill);cursor:pointer;
   }
   .listcard li button:hover{background:var(--g-fill2)}
-  .listcard li.sel button{background:rgba(90,126,230,.16);box-shadow:none}
+  /* La fila elegida es un contenedor: botón de la fila + detalle del camión. */
+  /* Blanco puro opaco, igual que «Toda la flota» activo. */
+  .listcard li.sel{background:#fff;border-radius:14px;box-shadow:0 2px 6px rgba(25,45,95,.10)}
+  .listcard li.sel button,.listcard li.sel button:hover{background:none}
+  .dc-embedded{padding:0 14px 12px}
+  .dc-embedded .dc-body{grid-template-columns:minmax(0,1fr);gap:10px}
+  /* Datos en gris sólido: la pastilla elegida no deja pasar nada del fondo. */
+  .dc-embedded .dc-tile{padding:6px 10px;border-radius:10px;background:#f0f2f6}
+  .dc-embedded .dc-tile b.big{font-size:18px}
+  .dc-embedded .dc-trip{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;padding-top:0}
+  .dc-embedded .dc-trip-h{text-align:left}
+  .dc-embedded .dc-trip-st,.dc-embedded .dc-trip-none{margin-top:0}
+  .dc-embedded .dc-trip .spark{grid-column:1/-1;height:34px;margin-top:6px}
   .listcard li button:focus-visible{outline:2.3px solid var(--green);outline-offset:-2.3px}
   .listcard .dot{width:10px;height:10px;grid-row:1;box-shadow:0 0 0 2px rgba(255,255,255,.65)}
   .listcard .nm{grid-column:2;font-size:14px;font-weight:600}
@@ -510,6 +531,11 @@
   .side-reopen:hover{color:var(--ink);background:var(--g-solid)}
   .app:not(.nav-off) .side-reopen{display:none}
 
+  /* ===== Pastilla «Mapa en vivo» =====
+     Lleva siempre el logo de IterTrack, con el lateral abierto o plegado. */
+  .mapcard .card-h .map-mark{display:inline-flex;align-items:center;--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2}
+  .mapcard .card-h .map-mark svg{width:23px;height:23px;stroke:none;flex:none}
+
   /* ===== Buscador de flota =====
      Vive en el panel derecho del mapa y en la tabla de Camiones. No reusa
      `.search` (era la barra superior retirada): es su propia pieza, con el
@@ -556,40 +582,3 @@
   @media (prefers-reduced-motion:reduce){
     .fleet-collapse svg{transition:none}
   }
-
-  /* ===== Tarjeta del camión flotante =====
-     Aparece sólo con un camión seleccionado y queda fija arriba, entre el lateral
-     y el panel de flota. No se arrastra ni se mueve: la posición es puro CSS. */
-  .truck-float{
-    position:absolute;z-index:6;top:16px;
-    /* Ocupa todo el ancho libre: arranca después del botón de reabrir y de los
-       controles de zoom y termina antes del panel de flota. */
-    left:calc(var(--lx) + 56px);
-    right:calc(var(--rp) + 32px);
-    border-radius:24px;
-    box-shadow:0 12px 34px rgba(25,45,95,.22);
-    transition:left .3s ease;
-    container-type:inline-size;
-  }
-  .truck-float .detailcard{width:100%;padding:8px 16px 9px;border-radius:24px}
-  /* Compacta: ~40 % menos alta que con el espaciado del panel de la sección. */
-  .truck-float .dc-h{margin-bottom:5px}
-  .truck-float .dc-tile{padding:4px 10px;border-radius:10px}
-  .truck-float .dc-tile b.big{font-size:17px}
-  .truck-float .dc-trip{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;padding-top:0}
-  .truck-float .dc-trip-h{text-align:left}
-  .truck-float .dc-trip-st,.truck-float .dc-trip-none{margin-top:0}
-  .truck-float .dc-trip .spark{grid-column:1/-1;height:30px;margin-top:4px}
-  /* Los cuatro datos van en una fila; el resumen del viaje, a la derecha. */
-  .truck-float .dc-body{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
-  .truck-float .dc-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
-  /* Poco ancho: el resumen del viaje baja debajo de la fila de datos. */
-  @container (max-width:760px){
-    .truck-float .dc-body{grid-template-columns:minmax(0,1fr)}
-    .truck-float .dc-trip-h,.truck-float .dc-trip-none,.truck-float .dc-trip-st{text-align:left;justify-content:flex-start}
-  }
-  /* Muy angosta: los datos vuelven a dos por fila. */
-  @container (max-width:520px){
-    .truck-float .dc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
-  }
-

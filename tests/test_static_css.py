@@ -81,7 +81,7 @@ def test_dashboard_glass_layer():
     text = built_css()
     assert "--g-bg:#173674b8" in text  # rgba(23,54,116,.72)
     assert "--g-bg:#ffffffe6" in text  # rgba(255,255,255,.90)
-    assert ".content,.grid,.grid>.col:first-child{display:contents}" in text
+    assert ".content,.grid,.grid>.col:first-child,.mapcard{display:contents}" in text
     assert re.search(r"\.mapbox\{[^}]*position:absolute[^}]*inset:0", text)
     # El estilo heredado de `data-mobile-view` ya no existe: el shell móvil
     # tiene sus propias clases `m-*` y no se activa por ancho.
@@ -97,17 +97,20 @@ def test_auth_styles_stay_scoped_to_the_auth_page():
 
 
 @requires_build
-def test_el_mapa_no_lleva_etiqueta_de_encabezado():
-    """El mapa no tiene la pastilla «Mapa en vivo»: el espacio es de la tarjeta.
+def test_pastilla_del_mapa_con_logo_y_sin_tarjeta_flotante():
+    """Sobre el mapa flotan la pastilla «Mapa en vivo» y el panel de flota.
 
-    La tarjeta del camión arranca justo después del botón de reabrir el lateral
-    y muestra sus cuatro datos en una sola fila.
+    La pastilla lleva siempre el logo de IterTrack, con el lateral abierto o
+    plegado. La tarjeta del camión ya no existe: su detalle se despliega dentro
+    de la fila elegida (`.dc-embedded`).
     """
     text = built_css()
-    assert ".mapcard" not in text and "map-mark" not in text
-    flotante = re.search(r"\.truck-float\{([^}]*)\}", text)
-    assert flotante and "left:calc(var(--lx) + 56px)" in flotante.group(1)
-    assert re.search(r"\.truck-float \.dc-tiles\{grid-template-columns:repeat\(4,", text)
+    logo = re.search(r"\.mapcard \.card-h \.map-mark\{([^}]*)\}", text)
+    assert logo and "display:inline-flex" in logo.group(1)
+    assert "--m1:#6a8cee" in logo.group(1)
+    assert "truck-float" not in text
+    assert re.search(r"\.listcard li\.sel\{[^}]*background", text)
+    assert ".dc-embedded{" in text
 
 
 @requires_build
@@ -154,6 +157,8 @@ def test_lateral_concentra_busqueda_y_perfil_sin_barra_superior():
     assert re.search(r"\.fleetcard \.fleet-search\{", text)
 
     # Los paneles flotantes arrancan en el borde superior, no debajo de una barra.
+    chip = re.search(r"\.mapcard \.card-h\{([^}]*)\}", text)
+    assert chip and "top:16px" in chip.group(1)
     flota = re.search(r"\.grid>\.col:last-child\{([^}]*)\}", text)
     assert flota and "top:16px" in flota.group(1)
 
@@ -168,12 +173,6 @@ def test_fleet_panel_and_truck_panel_surfaces():
     assert ".dc-tiles{" in text
     assert ".dc-tile{" in text
     assert ".dc-trip{" in text
-    # Sobre el mapa la tarjeta del camión queda fija arriba: sin arrastre.
-    flotante = re.search(r"\.truck-float\{([^}]*)\}", text)
-    assert flotante and "position:absolute" in flotante.group(1)
-    assert "top:16px" in flotante.group(1)
-    assert "cursor:grab" not in flotante.group(1) and "is-dragging" not in text
-    assert "touch-action:none" not in flotante.group(1)
 
 
 @requires_build

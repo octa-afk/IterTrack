@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { STATUS, ago, type SortKey, type TruckStatus } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
 import { FleetSearch } from './FleetSearch';
+import { TruckDetail } from './TruckDetail';
 
 /*
  * El panel se recuerda comprimido entre visitas: quien mira el mapa con el
@@ -152,6 +153,7 @@ export function FleetList() {
                 ].join(' · ')}
               </span>
             </button>
+            {truck.id === selectedId && <TruckDetail embedded />}
           </li>
         ))}
       </ul>
