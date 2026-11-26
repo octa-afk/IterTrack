@@ -96,6 +96,13 @@
   position: relative;
 }
 .auth-page .logo svg { width: 39px; height: 39px; }
+/* El panel de marca es azul: el isotipo va en blanco. */
+.auth-page .brand .logo {
+  --mark-center: #ffffff;
+  --mark-inner: #ffffff;
+  --mark-outer: rgba(255, 255, 255, 0.72);
+  --mark-signal: #2fd6bd;
+}
 .auth-page .brand h2 {
   font-size: 29px;
   line-height: 1.25;
