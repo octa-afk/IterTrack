@@ -1,19 +1,31 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mark } from '../components/Mark';
+import { BrandLogo } from '../components/BrandLogo';
 import { ApiError, setToken } from '../api/client';
 import { login } from '../api/auth';
 import { getConfig } from '../api/config';
 
-const LIVE_ROWS = [
-  { dot: '#a6e3c4', plate: 'AF 412 KD', speed: '82 km/h', route: 'Córdoba → Rosario' },
-  { dot: '#f6cf7a', plate: 'AG 233 MP', speed: 'Detenido', route: 'Córdoba → Tucumán' },
-  { dot: '#ffa49a', plate: 'AF 678 NC', speed: '105 km/h', route: 'Río Cuarto → San Luis' },
-];
-
 function errorMessage(err: unknown): string {
   if (err instanceof ApiError) return err.message;
   return 'No pudimos iniciar sesión. Probá de nuevo.';
+}
+
+function DemoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20.5 3.5L13.8 20.5L11.2 12.8L3.5 10.2Z" />
+    </svg>
+  );
+}
+
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <path d="M4 4l16 16" />}
+    </svg>
+  );
 }
 
 export default function LoginPage() {
@@ -23,10 +35,7 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [passError, setPassError] = useState('');
-  const [status, setStatus] = useState<{ text: string; kind: '' | 'ok' | 'bad' }>({
-    text: '',
-    kind: '',
-  });
+  const [status, setStatus] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [demo, setDemo] = useState<{ username: string; password: string } | null>(null);
 
@@ -58,13 +67,13 @@ export default function LoginPage() {
   const handleDemo = async () => {
     if (!demo) return;
     setSubmitting(true);
-    setStatus({ text: '', kind: '' });
+    setStatus('');
     try {
       const { access_token } = await login(demo.username, demo.password);
       setToken(access_token);
       navigate('/map');
     } catch (err) {
-      setStatus({ text: errorMessage(err), kind: 'bad' });
+      setStatus(errorMessage(err));
       setSubmitting(false);
     }
   };
@@ -84,132 +93,117 @@ export default function LoginPage() {
       return;
     }
     setSubmitting(true);
-    setStatus({ text: '', kind: '' });
+    setStatus('');
     try {
       const { access_token } = await login(username.trim(), password);
       setToken(access_token);
       navigate('/map');
     } catch (err) {
-      setStatus({ text: errorMessage(err), kind: 'bad' });
+      setStatus(errorMessage(err));
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <main className="shell">
-        <section className="brand" aria-hidden={false}>
-          <div className="logo">
-            <Mark />
-            IterTrack
-          </div>
-          <h2>Toda tu flota, en un solo mapa.</h2>
-          <p>
-            Seguí cada camión en tiempo real, filtrá por estado y recibí alertas
-            antes de que se conviertan en problemas.
-          </p>
-          <div className="live" aria-hidden="true">
-            <div className="live-h">En ruta ahora</div>
-            <ul>
-              {LIVE_ROWS.map((row) => (
-                <li key={row.plate}>
-                  <i style={{ background: row.dot }} />
-                  <b>{row.plate}</b>
-                  <em>{row.speed}</em>
-                  <span>{row.route}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+    <div className="login-page">
+      <header className="lg-header">
+        <BrandLogo />
+      </header>
 
-        <section className="side">
-          <h1>Iniciar sesión</h1>
-          <p className="lead">Ingresá con tu cuenta para ver el panel de la flota.</p>
-          <form id="login-form" noValidate onSubmit={handleSubmit}>
-            <div className="f">
-              <label htmlFor="username">Usuario</label>
-              <div className="input">
-                <input
-                  id="username"
-                  ref={usernameRef}
-                  type="text"
-                  autoComplete="username"
-                  placeholder="Tu usuario"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  onBlur={() => setUsernameError(validateUsername(username))}
-                  aria-invalid={usernameError ? 'true' : 'false'}
-                />
-              </div>
-              <div className="err" aria-live="polite">
-                {usernameError}
-              </div>
-            </div>
+      <main className="lg-main">
+        <h1 className="lg-title">
+          Toda tu flota,
+          <br />
+          en un solo <strong>mapa</strong>
+        </h1>
 
-            <div className="f">
-              <label htmlFor="pass">Contraseña</label>
-              <div className="input pw">
-                <input
-                  id="pass"
-                  ref={passRef}
-                  type={showPass ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder="Tu contraseña"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onBlur={() => setPassError(validatePass(password))}
-                  aria-invalid={passError ? 'true' : 'false'}
-                />
-                <button
-                  className="show"
-                  type="button"
-                  aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  onClick={() => setShowPass((v) => !v)}
-                >
-                  {showPass ? 'Ocultar' : 'Mostrar'}
-                </button>
-              </div>
-              <div className="err" aria-live="polite">
-                {passError}
-              </div>
-            </div>
+        <form className="lg-card" noValidate onSubmit={handleSubmit}>
+          <p className="lg-intro">Ingresá para ver el panel de tu flota</p>
 
-            <div className="meta">
-              <label className="check">
-                <input type="checkbox" id="remember" /> Mantener sesión iniciada
-              </label>
-              <a href="#">¿Olvidaste tu contraseña?</a>
-            </div>
-
-            <button className="btn" id="submit" type="submit" disabled={submitting}>
-              {submitting ? 'Ingresando…' : 'Iniciar sesión'}
-            </button>
-            {demo && (
+          {demo && (
+            <>
               <button
-                className="btn demo"
-                id="demo"
+                className="lg-btn lg-btn-demo"
                 type="button"
                 onClick={handleDemo}
                 disabled={submitting}
               >
+                <DemoIcon />
                 Entrar a la demo
               </button>
-            )}
-            <div className={`status ${status.kind}`} role="status" aria-live="polite">
-              {status.text}
-            </div>
-          </form>
-          {demo ? (
-            <p className="hint centered">Sin registro: flota de ejemplo con datos simulados.</p>
-          ) : (
-            <p className="alt">
-              ¿Todavía no tenés cuenta? <Link to="/register">Crear cuenta</Link>
-            </p>
+              <p className="lg-or">o</p>
+            </>
           )}
-        </section>
+
+          <div>
+            <input
+              id="username"
+              className="lg-input"
+              ref={usernameRef}
+              type="text"
+              autoComplete="username"
+              aria-label="Usuario"
+              placeholder="Usuario"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onBlur={() => setUsernameError(validateUsername(username))}
+              aria-invalid={usernameError ? 'true' : 'false'}
+              aria-describedby="username-error"
+            />
+            <div id="username-error" className="lg-error" aria-live="polite">
+              {usernameError}
+            </div>
+          </div>
+
+          <div>
+            <div className="lg-password">
+              <input
+                id="pass"
+                className="lg-input"
+                ref={passRef}
+                type={showPass ? 'text' : 'password'}
+                autoComplete="current-password"
+                aria-label="Contraseña"
+                placeholder="Contraseña"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onBlur={() => setPassError(validatePass(password))}
+                aria-invalid={passError ? 'true' : 'false'}
+                aria-describedby="pass-error"
+              />
+              <button
+                className="lg-show"
+                type="button"
+                aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onClick={() => setShowPass((v) => !v)}
+              >
+                <EyeIcon off={showPass} />
+              </button>
+            </div>
+            <div id="pass-error" className="lg-error" aria-live="polite">
+              {passError}
+            </div>
+          </div>
+
+          <button className="lg-btn lg-btn-primary" type="submit" disabled={submitting}>
+            {submitting ? 'Ingresando…' : 'Iniciar sesión'}
+          </button>
+          <div className="lg-status" role="status" aria-live="polite">
+            {status}
+          </div>
+
+          <p className="lg-note">
+            {demo && (
+              <>
+                La demo usa una flota de ejemplo con datos simulados.
+                <br />
+              </>
+            )}
+            ¿Tenés una invitación? <Link to="/register">Registrarme</Link>
+          </p>
+        </form>
       </main>
     </div>
   );

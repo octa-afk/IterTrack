@@ -1,0 +1,269 @@
+/*
+ * Pantalla de acceso, acotada bajo `.login-page` con clases `lg-*` para no
+ * chocar con los estilos globales de dashboard.css. El registro sigue en
+ * auth.css. Los colores son los del sistema de diseño de IterTrack.
+ */
+
+.login-page {
+  --canvas: #eef3fa;
+  --surface: #ffffff;
+  --card: rgba(255, 255, 255, 0.62);
+  --ink: #0b1733;
+  --ink-muted: #3a4762;
+  --accent: #2a52c4;
+  --accent-hover: #21429f;
+  --on-accent: #ffffff;
+  --hairline: rgba(11, 23, 51, 0.1);
+  --control-border: #667391;
+  --focus: #2a52c4;
+  --error: #a81f1b;
+  --logo-center: #0b1b3f;
+  --logo-inner: #2a52c4;
+  --logo-outer: #6a8cee;
+  --logo-signal: #0f9c88;
+  --shadow-control: 0 1px 3px rgba(11, 27, 63, 0.12);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 32px rgba(11, 27, 63, 0.14),
+    0 2px 6px rgba(11, 27, 63, 0.06);
+
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas);
+  color: var(--ink);
+  color-scheme: light;
+  font-family: 'Google Sans Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui,
+    sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+@media (prefers-color-scheme: dark) {
+  .login-page {
+    --canvas: #070d1b;
+    --surface: #111a2e;
+    --card: rgba(17, 26, 46, 0.62);
+    --ink: #eef3ff;
+    --ink-muted: #bcc8e2;
+    --accent: #93afff;
+    --accent-hover: #b3c6ff;
+    --on-accent: #071233;
+    --hairline: rgba(205, 220, 255, 0.12);
+    --control-border: #7f90b8;
+    --focus: #b3c6ff;
+    --error: #ff9d95;
+    --logo-center: #ffffff;
+    --logo-inner: #6a8cee;
+    --logo-outer: rgba(106, 140, 238, 0.72);
+    --logo-signal: #2fd6bd;
+    --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --shadow-card: inset 0 1px 0 rgba(210, 225, 255, 0.22), 0 12px 36px rgba(0, 0, 0, 0.45),
+      0 2px 6px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+}
+
+/* dashboard.css le da al body relleno, grilla y fondo propios. */
+body:has(.login-page) {
+  display: block;
+  padding: 0;
+  overflow: auto;
+  background: #eef3fa;
+}
+@media (prefers-color-scheme: dark) {
+  body:has(.login-page) { background: #070d1b; }
+}
+
+.login-page p,
+.login-page input,
+.login-page button { margin: 0; padding: 0; }
+
+.login-page .lg-header {
+  padding: calc(28px + env(safe-area-inset-top)) 80px 0;
+}
+.login-page .lg-logo { height: 50px; width: auto; }
+.login-page .lg-logo-center { fill: var(--logo-center); }
+.login-page .lg-logo-inner { fill: none; stroke: var(--logo-inner); }
+.login-page .lg-logo-outer { fill: none; stroke: var(--logo-outer); }
+.login-page .lg-logo-signal { fill: var(--logo-signal); }
+.login-page .lg-logo-word { fill: var(--ink); }
+
+.login-page .lg-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 16px calc(32px + env(safe-area-inset-bottom));
+}
+
+.login-page .lg-title {
+  margin: 58px 0 32px;
+  text-align: center;
+  font-size: 60px;
+  line-height: 64px;
+  font-weight: 350;
+  letter-spacing: -0.03em;
+}
+.login-page .lg-title strong { font-weight: 700; color: var(--accent); }
+
+.login-page .lg-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 436px;
+  padding: 24px 46px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 32px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  -webkit-backdrop-filter: blur(25px) saturate(170%);
+  backdrop-filter: blur(25px) saturate(170%);
+}
+
+.login-page .lg-intro { margin-bottom: 4px; text-align: center; text-wrap: balance; }
+
+.login-page .lg-input {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--control-border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px; /* menos de 16px hace que iOS acerque la pantalla al enfocar */
+}
+.login-page .lg-input::placeholder { color: var(--ink-muted); opacity: 1; }
+.login-page .lg-input[aria-invalid='true'] {
+  border-color: var(--error);
+  box-shadow: 0 0 0 1px var(--error);
+}
+/* El autofill del navegador pinta el fondo con su propio color. */
+.login-page .lg-input:-webkit-autofill,
+.login-page .lg-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  -webkit-text-fill-color: var(--ink);
+}
+
+.login-page .lg-password { position: relative; }
+.login-page .lg-password .lg-input { padding-right: 52px; }
+.login-page .lg-show {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.login-page .lg-show svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.login-page .lg-error { margin-top: 6px; color: var(--error); font-size: 13px; }
+.login-page .lg-error:empty { margin: 0; }
+
+.login-page .lg-btn {
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.login-page .lg-btn:active { transform: scale(0.98); }
+.login-page .lg-btn[disabled] { opacity: 0.6; cursor: progress; }
+.login-page .lg-btn-primary { background: var(--accent); color: var(--on-accent); }
+.login-page .lg-btn-primary:hover { background: var(--accent-hover); }
+.login-page .lg-btn-demo {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-control);
+}
+.login-page .lg-btn-demo svg {
+  width: 22px;
+  height: 22px;
+  fill: var(--logo-signal);
+  stroke: var(--logo-signal);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.login-page .lg-or {
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.login-page .lg-status { text-align: center; color: var(--error); font-size: 14px; }
+/* Sigue en el árbol para que se anuncie, sin sumar un hueco cuando está vacío. */
+.login-page .lg-status:empty { margin-top: -12px; }
+
+.login-page .lg-note {
+  margin-top: 4px;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+.login-page .lg-note a { color: var(--accent); font-weight: 600; }
+
+.login-page .lg-input:focus-visible,
+.login-page .lg-show:focus-visible,
+.login-page .lg-btn:focus-visible,
+.login-page .lg-note a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Ventanas bajas: menos aire para que la tarjeta entre sin desplazar. */
+@media (min-width: 601px) and (max-height: 730px) {
+  .login-page .lg-header { padding-top: 18px; }
+  .login-page .lg-logo { height: 42px; }
+  .login-page .lg-title { margin: 20px 0 20px; font-size: 44px; line-height: 48px; }
+}
+
+@media (max-width: 600px) {
+  .login-page .lg-header { padding: calc(28px + env(safe-area-inset-top)) 20px 0; }
+  .login-page .lg-logo { height: 38px; }
+  .login-page .lg-title { margin: 48px 0 28px; font-size: 40px; line-height: 44px; }
+  .login-page .lg-card { padding: 22px 20px 18px; border-radius: 28px; }
+  .login-page .lg-note { font-size: 13px; line-height: 20px; }
+  /* Zona táctil de 44px sin separar las líneas. */
+  .login-page .lg-note a { display: inline-block; margin: -12px -6px; padding: 12px 6px; }
+}
+
+/* Teléfonos angostos: el titular sigue en dos líneas. */
+@media (max-width: 360px) {
+  .login-page .lg-title { font-size: 34px; line-height: 38px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page .lg-btn { transition: none; }
+}
