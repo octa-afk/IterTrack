@@ -252,6 +252,28 @@ def test_mobile_design_is_scoped_to_the_mobile_shell():
 
 
 @requires_build
+def test_mobile_glass_va_en_la_capa_flotante_con_respaldo_opaco():
+    """Móvil: se desenfoca lo que flota; el contenido sólo es translúcido.
+
+    Desenfocar cada tarjeta de una lista cuesta rendimiento y sobre el fondo
+    suave no se nota. Con transparencia reducida todo pasa a opaco.
+    """
+    text = built_css()
+    for selector in ("m-searchbar", "m-appbar", "m-sheet", "m-drawer", "m-btn-round"):
+        reglas = re.findall(r"\.%s\{([^}]*)\}" % selector, text)
+        assert any("backdrop-filter:var(--m-blur)" in r for r in reglas), selector
+    for selector in ("m-card", "m-stat", "m-chart", "m-chip"):
+        reglas = re.findall(r"\.%s\{([^}]*)\}" % selector, text)
+        assert not any("backdrop-filter" in r for r in reglas), selector
+    reducido = re.search(
+        r"prefers-reduced-transparency:\s*reduce\)[^{]*\{\s*\.m-app\{([^}]*)\}", text
+    )
+    assert reducido, "falta el respaldo opaco con transparencia reducida"
+    assert re.search(r"--m-glass:\s*var\(--m-glass-solid\)", reducido.group(1))
+    assert re.search(r"--m-blur:\s*none", reducido.group(1))
+
+
+@requires_build
 def test_mobile_selected_pin_and_fleet_preview():
     """El pin elegido y la vista previa de la flota en la hoja del mapa.
 
