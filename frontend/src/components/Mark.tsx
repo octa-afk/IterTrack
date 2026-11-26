@@ -1,22 +1,32 @@
-/* IterTrack logo mark — shared by the sidebar logo and the collapsed topbar. */
+/*
+ * Isotipo «Perímetro» de IterTrack, sin fondo, compartido por el lateral, la
+ * pastilla del mapa, el menú móvil y el registro. Los colores son los de fondos
+ * claros; sobre fondos oscuros se cambian con las variables `--mark-*`.
+ */
 export function Mark({ decorative = false }: { decorative?: boolean }) {
   return (
     <svg
       className="mark"
-      viewBox="380 355 1210 1200"
+      viewBox="12 12 176 176"
       {...(decorative
         ? { 'aria-hidden': true }
         : { role: 'img', 'aria-label': 'IterTrack' })}
     >
-      <path className="m3" d="M390 752C385 590 500 465 665 465H1200L900 752Z" />
-      <path
-        className="m2"
-        d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1550 640 1440 750 1300 752H1240C1170 760 1125 810 1120 880V1250C1120 1420 1000 1540 860 1540Z"
+      <circle cx="100" cy="100" r="19" style={{ fill: 'var(--mark-center, #0b1b3f)' }} />
+      <circle
+        cx="100"
+        cy="100"
+        r="43"
+        strokeWidth="13"
+        style={{ fill: 'none', stroke: 'var(--mark-inner, #2a52c4)' }}
       />
       <path
-        className="m1"
-        d="M572 1540V1420C572 1100 650 880 790 750C900 630 1010 540 1145 465C1280 405 1420 368 1572 365C1578 420 1578 460 1575 500C1300 500 1000 640 880 860C770 1050 712 1250 710 1540Z"
+        d="M115.39 172.38A74 74 0 1 1 172.38 115.39"
+        strokeWidth="13"
+        strokeLinecap="round"
+        style={{ fill: 'none', stroke: 'var(--mark-outer, #6a8cee)' }}
       />
+      <circle cx="152.33" cy="152.33" r="15" style={{ fill: 'var(--mark-signal, #0f9c88)' }} />
     </svg>
   );
 }
