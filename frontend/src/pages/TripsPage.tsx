@@ -9,6 +9,7 @@ import {
 } from '../api/destinations';
 import { listTrucks } from '../api/trucks';
 import type { Charger, Trip } from '../api/types';
+import { StateIcon, type StateKind } from '../components/StateIcon';
 import { useDashboard } from '../state/useDashboard';
 
 /*
@@ -31,11 +32,11 @@ const HORA_LOCAL = (iso: string) =>
     hour12: false,
   });
 
-const COLOR_ESTADO: Record<string, string> = {
-  planned: 'var(--idle)',
-  in_progress: 'var(--move)',
-  done: 'var(--stop)',
-  cancelled: 'var(--alert)',
+const ICONO_ESTADO: Record<string, StateKind> = {
+  planned: 'planned',
+  in_progress: 'move',
+  done: 'done',
+  cancelled: 'cancelled',
 };
 
 function valorLocalPorDefecto(): string {
@@ -180,8 +181,18 @@ export default function TripsPage() {
           <span className="tag">{trips.length}</span>
         </div>
 
-        {error && <p className="aviso error">{error}</p>}
-        {aviso && <p className="aviso ok">{aviso}</p>}
+        {error && (
+          <p className="aviso">
+            <StateIcon kind="alert" />
+            {error}
+          </p>
+        )}
+        {aviso && (
+          <p className="aviso">
+            <StateIcon kind="ok" />
+            {aviso}
+          </p>
+        )}
 
         <div className="trips-wrap">
           <table className="trips-table">
@@ -212,9 +223,8 @@ export default function TripsPage() {
                     <td>{HORA_LOCAL(trip.departure_at)}</td>
                     <td className="plate" title={nombreDador(trip.charger_id)}>
                       <span className="estado">
-                        <span
-                          className="dot"
-                          style={{ background: COLOR_ESTADO[trip.status] ?? 'var(--muted)' }}
+                        <StateIcon
+                          kind={ICONO_ESTADO[trip.status] ?? 'stop'}
                           title={ESTADOS[trip.status] ?? trip.status}
                         />
                         {nombreDador(trip.charger_id)}

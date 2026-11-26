@@ -186,13 +186,29 @@ def test_lateral_concentra_busqueda_y_perfil_sin_barra_superior():
 @requires_build
 def test_fleet_panel_and_truck_panel_surfaces():
     text = built_css()
-    # Panel de flota: cada unidad es una tarjeta con dot, patente y velocidad.
-    assert re.search(r"\.listcard li button\{[^}]*grid-template-columns:10px", text)
+    # Panel de flota: cada unidad es una tarjeta con ícono, patente y velocidad.
+    assert re.search(r"\.listcard li button\{[^}]*grid-template-columns:18px", text)
     assert re.search(r"\.listcard \.sp\{[^}]*grid-(column:3|area:1/3)", text)
     # Panel del camión: grilla 2x2 de métricas y el resumen de la próxima parada.
     assert ".dc-tiles{" in text
     assert ".dc-tile{" in text
     assert ".dc-trip{" in text
+
+
+@requires_build
+def test_el_estado_va_en_el_icono_y_no_en_el_fondo():
+    """Estados y avisos: ícono de color, texto en tinta y sin fondo teñido."""
+    text = built_css()
+    icono = re.search(r"\.st-ico\{([^}]*)\}", text)
+    assert icono and "fill:none" in icono.group(1)
+    assert "background" not in icono.group(1)
+    for estado in ("move", "idle", "alert", "ok"):
+        assert re.search(rf"\.st-ico\[data-s=\"?{estado}\"?\]", text), estado
+    # El color no cambia el fondo del aviso: no quedan variantes teñidas.
+    for variante in (".aviso.ok", ".aviso.error", ".m-aviso--error"):
+        assert variante not in text
+    for punto in (r"\.m-dot\b", r"\.dot\{"):
+        assert not re.search(punto, text), "quedó el punto de color anterior"
 
 
 @requires_build

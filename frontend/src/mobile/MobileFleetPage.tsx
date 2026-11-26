@@ -4,6 +4,7 @@ import { useDashboard } from '../state/useDashboard';
 import type { MobileOutletContext } from './context';
 import { Icon } from './icons';
 import MobileTruckDetail from './MobileTruckDetail';
+import { StateIcon } from '../components/StateIcon';
 
 const FILTROS = [
   { value: 'all', label: 'Todos' },
@@ -86,7 +87,7 @@ export default function MobileFleetPage() {
         {visibleTrucks.map((truck) => {
           const estado = truck.active
             ? STATUS[truck.status]
-            : { label: 'Inactivo', color: 'var(--m-muted)' };
+            : { label: 'Inactivo' };
           return (
             <button
               key={truck.id}
@@ -95,7 +96,7 @@ export default function MobileFleetPage() {
               onClick={() => navigate(`/fleet?truck=${truck.id}`)}
             >
               <div className="m-card__head">
-                <span className="m-dot" style={{ background: estado.color }} />
+                <StateIcon kind={truck.active ? truck.status : 'stop'} />
                 <span className="m-card__title">{truck.plate}</span>
                 <span className="m-card__meta">{estado.label}</span>
                 <Icon name="chevronRight" size={18} />

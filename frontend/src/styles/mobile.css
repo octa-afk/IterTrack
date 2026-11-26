@@ -231,6 +231,9 @@
 }
 
 .m-appbar__sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   color: var(--m-accent-ink);
 }
@@ -410,14 +413,6 @@
   margin-top: 14px;
 }
 
-.m-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: var(--m-r-pill);
-  background: var(--m-accent);
-  flex: none;
-}
-
 .m-empty {
   color: var(--m-muted);
   font-size: 13px;
@@ -426,15 +421,16 @@
 }
 
 .m-aviso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0 0 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--m-surface);
+  color: var(--m-ink);
   font-size: 13px;
-}
-
-.m-aviso--error {
-  background: #f7dcd9;
-  color: #8c2f28;
+  box-shadow: 0 6px 18px rgba(11, 27, 63, 0.12);
 }
 
 /* ===== Aviso (solo lectura) ===== */
@@ -448,10 +444,8 @@
 }
 
 .m-notice__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--m-r-pill);
-  background: #fff;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   flex: none;

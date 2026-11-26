@@ -3,6 +3,7 @@ import { STATUS, ago, type SortKey, type TruckStatus } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
 import { TruckDetail } from '../components/TruckDetail';
 import { FleetSearch } from '../components/FleetSearch';
+import { StateIcon } from '../components/StateIcon';
 
 /*
  * Camiones: la flota completa en tabla. Reusa el store y los filtros del
@@ -121,14 +122,7 @@ export default function FleetPage() {
                   </td>
                   <td>
                     <span className="estado">
-                      <span
-                        className="dot"
-                        style={{
-                          background: truck.active
-                            ? STATUS[truck.status].color
-                            : 'var(--muted)',
-                        }}
-                      />
+                      <StateIcon kind={truck.active ? truck.status : 'stop'} />
                       {truck.active ? STATUS[truck.status].label : 'Sin telemetría'}
                     </span>
                   </td>

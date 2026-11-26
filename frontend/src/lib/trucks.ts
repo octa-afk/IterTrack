@@ -46,11 +46,11 @@ export const DEFAULT_FILTERS: Filters = {
   dir: 'asc',
 };
 
-export const STATUS: Record<TruckStatus, { label: string; color: string }> = {
-  move: { label: 'En movimiento', color: '#5a7ee6' },
-  idle: { label: 'Detenido', color: '#eeb04a' },
-  stop: { label: 'Apagado', color: '#8a949c' },
-  alert: { label: 'Alerta', color: '#e0675c' },
+export const STATUS: Record<TruckStatus, { label: string }> = {
+  move: { label: 'En movimiento' },
+  idle: { label: 'Detenido' },
+  stop: { label: 'Apagado' },
+  alert: { label: 'Alerta' },
 };
 
 export const SPEED_LIMIT = 90;

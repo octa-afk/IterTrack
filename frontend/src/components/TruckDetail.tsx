@@ -2,6 +2,7 @@ import { STATUS, ago, formatDistance, formatMinutes, rumboCardinal } from '../li
 import { useDashboard } from '../state/useDashboard';
 import { useNextStop } from '../state/useNextStop';
 import { Sparkline } from './Sparkline';
+import { StateIcon } from './StateIcon';
 
 /*
  * Panel del camión actual. Misma distribución que la referencia: encabezado con
@@ -20,7 +21,7 @@ export function TruckDetail({ embedded = false }: { embedded?: boolean }) {
   const estado = truck
     ? truck.active
       ? STATUS[truck.status]
-      : { label: 'Inactivo', color: 'var(--muted)' }
+      : { label: 'Inactivo' }
     : null;
 
   const cuerpo = (
@@ -34,8 +35,11 @@ export function TruckDetail({ embedded = false }: { embedded?: boolean }) {
             {!embedded && (
               <div className="dc-h">
                 <b>{truck.plate}</b>
-                <span style={{ color: estado.color }}>
-                  {estado.label} · {truck.updated ? ago(truck.updated) : 'Sin señal'}
+                <span className="dc-estado">
+                  <StateIcon kind={truck.active ? truck.status : 'stop'} />
+                  <span>
+                    {estado.label} · {truck.updated ? ago(truck.updated) : 'Sin señal'}
+                  </span>
                 </span>
               </div>
             )}

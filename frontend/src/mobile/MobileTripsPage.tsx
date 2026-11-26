@@ -3,15 +3,16 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { listChargers, listTrips } from '../api/destinations';
 import type { Charger, Trip } from '../api/types';
+import { StateIcon, type StateKind } from '../components/StateIcon';
 import { useDashboard } from '../state/useDashboard';
 import type { MobileOutletContext } from './context';
 import { Icon } from './icons';
 
-const ESTADOS: Record<string, { label: string; color: string }> = {
-  planned: { label: 'Planificado', color: '#F0A93B' },
-  in_progress: { label: 'En curso', color: '#4F6BED' },
-  done: { label: 'Finalizado', color: '#7A8091' },
-  cancelled: { label: 'Cancelado', color: '#E0675C' },
+const ESTADOS: Record<string, { label: string; icono: StateKind }> = {
+  planned: { label: 'Planificado', icono: 'planned' },
+  in_progress: { label: 'En curso', icono: 'move' },
+  done: { label: 'Finalizado', icono: 'done' },
+  cancelled: { label: 'Cancelado', icono: 'cancelled' },
 };
 
 const salida = (iso: string) =>
@@ -87,7 +88,12 @@ export default function MobileTripsPage() {
         <span className="m-count">{trips.length}</span>
       </header>
 
-      {error && <p className="m-aviso m-aviso--error">{error}</p>}
+      {error && (
+        <p className="m-aviso">
+          <StateIcon kind="alert" />
+          {error}
+        </p>
+      )}
 
       <div className="m-list">
         {!cargando && !trips.length && !error && (
@@ -95,11 +101,11 @@ export default function MobileTripsPage() {
         )}
 
         {trips.map((trip) => {
-          const estado = ESTADOS[trip.status] ?? { label: trip.status, color: '#7A8091' };
+          const estado = ESTADOS[trip.status] ?? { label: trip.status, icono: 'stop' as const };
           return (
             <article className="m-card" key={trip.id}>
               <div className="m-card__head">
-                <span className="m-dot" style={{ background: estado.color }} title={estado.label} />
+                <StateIcon kind={estado.icono} title={estado.label} />
                 <span className="m-card__title">{nombreDador(trip.charger_id)}</span>
                 <span className="m-card__meta">{salida(trip.departure_at)}</span>
               </div>

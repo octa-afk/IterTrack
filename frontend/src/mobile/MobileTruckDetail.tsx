@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { StateIcon } from '../components/StateIcon';
 import { STATUS, ago, formatDistance, formatMinutes, rumboCardinal } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
 import { useNextStop } from '../state/useNextStop';
@@ -34,7 +35,7 @@ export default function MobileTruckDetail({ id }: { id: number }) {
   const estado = truck
     ? truck.active
       ? STATUS[truck.status]
-      : { label: 'Inactivo', color: 'var(--m-muted)' }
+      : { label: 'Inactivo' }
     : null;
 
   return (
@@ -52,6 +53,7 @@ export default function MobileTruckDetail({ id }: { id: number }) {
           <h1>{truck?.plate ?? (ready ? 'No encontrado' : 'Cargando…')}</h1>
           {truck && estado && (
             <div className="m-appbar__sub">
+              <StateIcon kind={truck.active ? truck.status : 'stop'} />
               {estado.label} · {truck.updated ? ago(truck.updated) : 'Sin señal'}
             </div>
           )}

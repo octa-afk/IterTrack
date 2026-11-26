@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { StateIcon } from '../components/StateIcon';
 import { STATUS, ago } from '../lib/trucks';
 import { useDashboard } from '../state/useDashboard';
 import type { MobileOutletContext } from './context';
@@ -22,7 +23,7 @@ export default function MobileMapPage() {
   const estado = camion
     ? camion.active
       ? STATUS[camion.status]
-      : { label: 'Inactivo', color: 'var(--m-muted)' }
+      : { label: 'Inactivo' }
     : null;
   const velocidad =
     camion && camion.active && camion.status !== 'stop' ? camion.speed : '—';
@@ -116,7 +117,7 @@ export default function MobileMapPage() {
                 type="button"
                 onClick={() => verDetalle(camion.id)}
               >
-                <span className="m-dot" style={{ background: estado.color }} />
+                <StateIcon kind={camion.active ? camion.status : 'stop'} />
                 <div>
                   <b>{camion.plate}</b>
                   <span className="m-sheet__sub">
@@ -146,7 +147,7 @@ export default function MobileMapPage() {
                     {visibleTrucks.map((t) => {
                       const estadoFila = t.active
                         ? STATUS[t.status]
-                        : { label: 'Inactivo', color: 'var(--m-muted)' };
+                        : { label: 'Inactivo' };
                       return (
                         <li key={t.id}>
                           <button
@@ -156,7 +157,7 @@ export default function MobileMapPage() {
                             type="button"
                             onClick={() => elegirCamion(t.id)}
                           >
-                            <span className="m-dot" style={{ background: estadoFila.color }} />
+                            <StateIcon kind={t.active ? t.status : 'stop'} />
                             <span className="m-flota-row__plate">{t.plate}</span>
                             <span className="m-flota-row__meta">{estadoFila.label}</span>
                             <span className="m-flota-row__speed">

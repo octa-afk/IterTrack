@@ -14,3 +14,37 @@ body,
 #root {
   width: 100%;
 }
+
+/*
+ * Ícono de estado (`StateIcon`): lo comparten escritorio y móvil. El color va
+ * sólo en el ícono; no se le pone fondo ni se tiñe el texto que lo acompaña.
+ */
+.st-ico {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: #616e8a;
+}
+
+.st-ico[data-s='move'] {
+  color: #2a52c4;
+}
+
+.st-ico[data-s='idle'],
+.st-ico[data-s='planned'] {
+  color: #9e5f00;
+}
+
+.st-ico[data-s='alert'],
+.st-ico[data-s='cancelled'] {
+  color: #c22b26;
+}
+
+.st-ico[data-s='ok'] {
+  color: #0c7b6c;
+}
