@@ -23,6 +23,13 @@ def test_routes_serve_the_spa_shell(client, route):
     assert re.search(r'href="/assets/index-[^"]+\.css"', response.text)
 
 
+@requires_build
+def test_the_shell_declares_the_svg_tab_icon(client):
+    html = client.get("/").text
+    assert re.search(r'<link rel="icon" type="image/svg\+xml" href="[^"]+"', html)
+    assert "/src/assets/" not in html.split('rel="icon"')[1].split(">")[0]
+
+
 def test_favicon_serves_image(client):
     response = client.get("/favicon.ico")
     assert response.status_code == 200
