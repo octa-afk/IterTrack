@@ -107,7 +107,6 @@ def test_pastilla_del_mapa_con_logo_y_sin_tarjeta_flotante():
     text = built_css()
     logo = re.search(r"\.mapcard \.card-h \.map-mark\{([^}]*)\}", text)
     assert logo and "display:inline-flex" in logo.group(1)
-    assert "--m1:#6a8cee" in logo.group(1)
     assert "truck-float" not in text
     assert re.search(r"\.listcard li\.sel\{[^}]*background", text)
     assert ".dc-embedded{" in text

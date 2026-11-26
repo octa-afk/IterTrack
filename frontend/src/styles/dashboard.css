@@ -193,10 +193,8 @@
   .app{width:100%;max-width:none;height:100vh;height:100dvh;min-height:644px;border-radius:0;border:0;box-shadow:none}
 
   /* ===== Logo IterTrack ===== */
-  .logo{--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2}
   .logo{gap:13px;font-size:21px;letter-spacing:.2px}
   .logo svg.mark{width:37px;height:37px;fill:none;stroke:none;flex:none}
-  .mark .m1{fill:var(--m1)}.mark .m2{fill:var(--m2)}.mark .m3{fill:var(--m3)}
 
   /* ===== Selección plana (sin bordes de color, sin halos) ===== */
   nav{padding:0 14px;gap:2.3px}
@@ -228,7 +226,7 @@
   .navtoggle:hover{color:var(--ink);background:rgba(31,42,61,.06)}
   .navtoggle:focus-visible{outline:2.3px solid var(--green);outline-offset:2.3px}
   .navtoggle svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-  .minibrand{display:none;align-items:center;gap:9.2px;font-weight:600;font-size:17px;white-space:nowrap;color:var(--ink);--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2;}
+  .minibrand{display:none;align-items:center;gap:9.2px;font-weight:600;font-size:17px;white-space:nowrap;color:var(--ink);}
   .minibrand svg{width:28px;height:28px;fill:none;stroke:none;flex:none}
   .app.nav-off .minibrand{display:flex}
 
@@ -533,7 +531,7 @@
 
   /* ===== Pastilla «Mapa en vivo» =====
      Lleva siempre el logo de IterTrack, con el lateral abierto o plegado. */
-  .mapcard .card-h .map-mark{display:inline-flex;align-items:center;--m1:#6a8cee;--m2:#3a58b4;--m3:#5472d2}
+  .mapcard .card-h .map-mark{display:inline-flex;align-items:center}
   .mapcard .card-h .map-mark svg{width:23px;height:23px;stroke:none;flex:none}
 
   /* ===== Buscador de flota =====
