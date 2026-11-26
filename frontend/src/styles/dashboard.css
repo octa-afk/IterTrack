@@ -513,7 +513,7 @@
   .side-head{display:flex;align-items:center;gap:6px;padding:0 8px 0 calc(var(--nav-x) - 17px);margin-bottom:30px}
   .side-head .logo{margin:0;padding:0;gap:9px;font-size:19px}
   .side-head .logo svg.mark{width:32px;height:32px}
-  .side-head .navtoggle{color:#6b778c;border-radius:999px}
+  .side-head .navtoggle{color:#6b778c;border-radius:14px}
   .side-head .navtoggle:hover{color:var(--ink);background:rgba(31,42,61,.07)}
   .side-foot{
     display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -531,7 +531,7 @@
     position:absolute;z-index:6;left:var(--nav-x);top:var(--nav-y);
     background:var(--g-bg);border:1px solid var(--g-bd);color:var(--ink);
     -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
-    box-shadow:var(--g-hi),var(--g-sh);border-radius:999px;
+    box-shadow:var(--g-hi),var(--g-sh);border-radius:14px;
   }
   .side-reopen:hover{color:var(--ink);background:var(--g-solid)}
   .app:not(.nav-off) .side-reopen{display:none}
