@@ -112,13 +112,17 @@ def test_el_acceso_usa_sus_propios_estilos_acotados():
 def test_pastilla_del_mapa_con_logo_y_sin_tarjeta_flotante():
     """Sobre el mapa flotan la pastilla «Mapa en vivo» y el panel de flota.
 
-    La pastilla lleva siempre el logo de IterTrack, con el lateral abierto o
-    plegado. La tarjeta del camión ya no existe: su detalle se despliega dentro
-    de la fila elegida (`.dc-embedded`).
+    La pastilla lleva el logo de IterTrack sólo con el lateral plegado: abierto,
+    la marca ya está en el lateral. La tarjeta del camión ya no existe: su
+    detalle se despliega dentro de la fila elegida (`.dc-embedded`).
     """
     text = built_css()
     logo = re.search(r"\.mapcard \.card-h \.map-mark\{([^}]*)\}", text)
     assert logo and "display:inline-flex" in logo.group(1)
+    assert re.search(
+        r"\.app:not\(\.nav-off\) \.mapcard \.card-h \.map-mark[^{}]*\{[^}]*display:none",
+        text,
+    ), "con el lateral abierto el logo no debe repetirse en la pastilla"
     assert "truck-float" not in text
     assert re.search(r"\.listcard li\.sel\{[^}]*background", text)
     assert ".dc-embedded{" in text
@@ -148,8 +152,9 @@ def test_panel_de_flota_se_comprime_hacia_arriba():
 def test_lateral_concentra_busqueda_y_perfil_sin_barra_superior():
     """La búsqueda y el perfil viven en el lateral, y los paneles arrancan arriba.
 
-    Sin barra superior el mapa recupera esa franja: el encabezado del panel y la
-    columna de flota empiezan a 16 px del borde, no a 97.
+    Sin barra superior el mapa recupera esa franja: la columna de flota empieza
+    a 16 px del borde, no a 97, y la pastilla del mapa se alinea con el botón
+    del lateral, que ocupa el mismo punto abierto o plegado (`--nav-y`).
     """
     text = built_css()
 
@@ -169,7 +174,11 @@ def test_lateral_concentra_busqueda_y_perfil_sin_barra_superior():
 
     # Los paneles flotantes arrancan en el borde superior, no debajo de una barra.
     chip = re.search(r"\.mapcard \.card-h\{([^}]*)\}", text)
-    assert chip and "top:16px" in chip.group(1)
+    assert chip and "top:var(--nav-y)" in chip.group(1)
+    assert "--nav-y:36px" in text
+    reabrir = re.search(r"\.side-reopen\{([^}]*)\}", text)
+    assert reabrir and "top:var(--nav-y)" in reabrir.group(1)
+    assert "left:var(--nav-x)" in reabrir.group(1)
     flota = re.search(r"\.grid>\.col:last-child\{([^}]*)\}", text)
     assert flota and "top:16px" in flota.group(1)
 

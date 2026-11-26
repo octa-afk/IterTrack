@@ -252,6 +252,9 @@
     --g-fill2:rgba(255,255,255,.2);--g-on:rgba(255,255,255,.18);
     --ink:#f8fbff;--muted:#d4e1f5;--line:rgba(255,255,255,.23);
     --ac:#5a7ee6;--blur:blur(28px) saturate(180%);--rp:352px;--lx:271px;
+    /* Esquina del botón que oculta y muestra el lateral: es la misma abierto o
+     * plegado, así no salta. La pastilla del mapa se alinea con --nav-y. */
+    --nav-x:32px;--nav-y:36px;
     /* Aire entre los paneles flotantes y el borde de la app. Deja ver el
      * cartel de atribución del mapa (Leaflet a la izquierda, OpenFreeMap y
      * OpenStreetMap a la derecha), que vive pegado al borde inferior. */
@@ -269,7 +272,7 @@
   .side nav a.on{color:#fff}
   .side nav a:hover{background:rgba(255,255,255,.12)}
   .side .logout{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff}
-  .side-in{width:100%;height:100%;padding:40px 0 23px}
+  .side-in{width:233px;height:100%;padding:calc(var(--nav-y) - 17px) 0 23px}
   .logo{margin-bottom:39px}
   .top{position:absolute;z-index:5;left:var(--lx);right:16px;top:16px;height:64px;padding:0 10px 0 9px;border-radius:32px;transition:left .3s ease}
   .search{background:var(--g-fill);box-shadow:none;height:44px}
@@ -277,13 +280,13 @@
   .pill{background:none;padding:0;height:auto;color:var(--ink)}
   .pill .al{background:var(--g-fill2);color:var(--ink)} .pill .bell{fill:var(--ink)}
   .avatar{background:var(--ac);color:#fff}
-  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:16px;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px;transition:left .3s ease}
+  .mapcard .card-h{position:absolute;z-index:5;left:var(--lx);top:var(--nav-y);height:44px;box-sizing:border-box;margin:0;padding:6px 7px 6px 16px;border-radius:1149px;gap:12px;transition:left .3s ease}
   .tag{background:var(--g-fill2);color:var(--ink);border-radius:1149px;padding:5px 13px}
   .grid>.col:last-child{position:absolute;z-index:5;right:16px;top:16px;bottom:var(--pb,39px);width:var(--rp);gap:14px}
   .card{border-radius:28px}
   .chip,select{background:var(--g-fill);border-color:transparent;color:var(--ink)}
   .seg{background:var(--g-fill)}.seg button[aria-pressed="true"]{background:var(--g-on);color:var(--ink)}
-  .leaflet-top.leaflet-left{left:var(--lx);top:66px;transition:left .3s ease}.leaflet-left .leaflet-control{margin-left:0}
+  .leaflet-top.leaflet-left{left:var(--lx);top:86px;transition:left .3s ease}.leaflet-left .leaflet-control{margin-left:0}
   .leaflet-bar,.leaflet-touch .leaflet-bar{border:1px solid var(--g-bd)!important;border-radius:18px;overflow:hidden}
   .leaflet-bar a{background:transparent;color:var(--ink);border-bottom:1px solid var(--g-bd);width:39px;height:39px;line-height:39px}
   .leaflet-bar a:hover{background:var(--g-fill)}
@@ -292,7 +295,10 @@
   .leaflet-control-attribution a{color:var(--green-d)}
   .app.nav-off .side{width:0;opacity:0;pointer-events:none;border:0}
   .app.nav-off{--lx:16px}
-  .app.nav-off .mapcard .card-h{left:calc(var(--lx) + 56px)}
+  .app.nav-off .mapcard .card-h{left:calc(var(--nav-x) + 54px)}
+  .app.nav-off .leaflet-top.leaflet-left{left:calc(var(--nav-x) + 1px)}
+  /* Camiones y Rutas dejan libre la columna del botón flotante. */
+  .app.nav-off .section-page{left:calc(var(--nav-x) + 58px)}
   .mobile-tabs{display:none}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root{--g-bg:var(--g-solid)}}
   @media (prefers-reduced-transparency:reduce){:root{--g-bg:var(--g-solid);--blur:none}}
@@ -504,9 +510,10 @@
      mapa, la lista de flota y la hoja móvil—, el contador de alertas y el
      perfil. Colores del lateral claro de esta variante: tinta oscura sobre
      vidrio blanco. */
-  .side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 0 32px;margin-bottom:22px}
-  .side-head .logo{margin:0;padding:0}
-  .side-head .navtoggle{color:#6b778c}
+  .side-head{display:flex;align-items:center;gap:6px;padding:0 8px 0 calc(var(--nav-x) - 17px);margin-bottom:30px}
+  .side-head .logo{margin:0;padding:0;gap:9px;font-size:19px}
+  .side-head .logo svg.mark{width:32px;height:32px}
+  .side-head .navtoggle{color:#6b778c;border-radius:999px}
   .side-head .navtoggle:hover{color:var(--ink);background:rgba(31,42,61,.07)}
   .side-foot{
     display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -521,18 +528,19 @@
   .side-foot .avatar{width:32px;height:32px;font-size:12.5px;background:#4f6bed;color:#fff}
   .side .logout{margin:0 16px 0}
   .side-reopen{
-    position:absolute;z-index:6;left:16px;top:16px;
+    position:absolute;z-index:6;left:var(--nav-x);top:var(--nav-y);
     background:var(--g-bg);border:1px solid var(--g-bd);color:var(--ink);
     -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
-    box-shadow:var(--g-hi),var(--g-sh);border-radius:14px;
+    box-shadow:var(--g-hi),var(--g-sh);border-radius:999px;
   }
   .side-reopen:hover{color:var(--ink);background:var(--g-solid)}
   .app:not(.nav-off) .side-reopen{display:none}
 
   /* ===== Pastilla «Mapa en vivo» =====
-     Lleva siempre el logo de IterTrack, con el lateral abierto o plegado. */
+     Lleva el logo sólo con el lateral plegado: abierto, la marca ya está ahí. */
   .mapcard .card-h .map-mark{display:inline-flex;align-items:center}
   .mapcard .card-h .map-mark svg{width:23px;height:23px;stroke:none;flex:none}
+  .app:not(.nav-off) .mapcard .card-h .map-mark{display:none}
 
   /* ===== Buscador de flota =====
      Vive en el panel derecho del mapa y en la tabla de Camiones. No reusa

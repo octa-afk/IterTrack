@@ -73,10 +73,6 @@ export function Sidebar({ navOpen, onToggleNav, onLogout }: SidebarProps) {
     <aside className="side" id="sidebar">
       <div className="side-in">
         <div className="side-head">
-          <div className="logo">
-            <Mark />
-            IterTrack
-          </div>
           <button
             className="navtoggle"
             id="navToggle"
@@ -92,6 +88,10 @@ export function Sidebar({ navOpen, onToggleNav, onLogout }: SidebarProps) {
               <path d="M9 4v16" />
             </svg>
           </button>
+          <div className="logo">
+            <Mark />
+            IterTrack
+          </div>
         </div>
 
         <nav aria-label="Principal">

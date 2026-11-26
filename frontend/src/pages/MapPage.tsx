@@ -8,8 +8,9 @@ import { Mark } from '../components/Mark';
  * dispositivo móvil el panel lo resuelve `MobileLayout`, así que esta página
  * nunca se monta ahí.
  *
- * La pastilla lleva siempre el logo de IterTrack. El detalle del camión elegido
- * no es una tarjeta aparte: se despliega dentro de su fila en la lista
+ * La pastilla lleva el logo de IterTrack sólo con el lateral plegado (lo decide
+ * el CSS), para que la marca no aparezca dos veces. El detalle del camión
+ * elegido no es una tarjeta aparte: se despliega dentro de su fila en la lista
  * (`FleetList`).
  */
 export default function MapPage() {
