@@ -260,10 +260,10 @@ def test_mobile_glass_va_en_la_capa_flotante_con_respaldo_opaco():
     """
     text = built_css()
     for selector in ("m-searchbar", "m-appbar", "m-sheet", "m-drawer", "m-btn-round"):
-        reglas = re.findall(r"\.%s\{([^}]*)\}" % selector, text)
+        reglas = re.findall(rf"\.{selector}\{{([^}}]*)\}}", text)
         assert any("backdrop-filter:var(--m-blur)" in r for r in reglas), selector
     for selector in ("m-card", "m-stat", "m-chart", "m-chip"):
-        reglas = re.findall(r"\.%s\{([^}]*)\}" % selector, text)
+        reglas = re.findall(rf"\.{selector}\{{([^}}]*)\}}", text)
         assert not any("backdrop-filter" in r for r in reglas), selector
     reducido = re.search(
         r"prefers-reduced-transparency:\s*reduce\)[^{]*\{\s*\.m-app\{([^}]*)\}", text
