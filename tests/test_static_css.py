@@ -97,6 +97,18 @@ def test_auth_styles_stay_scoped_to_the_auth_page():
 
 
 @requires_build
+def test_el_acceso_usa_sus_propios_estilos_acotados():
+    """El login tiene hoja propia: no hereda de auth.css ni del dashboard.
+
+    Anula el relleno que dashboard.css le pone al `body` y trae sus dos temas.
+    """
+    text = built_css()
+    assert re.search(r"body:has\(\.login-page\)\{[^}]*padding:0", text)
+    assert ".login-page .lg-card{" in text
+    assert "prefers-color-scheme:dark" in text
+
+
+@requires_build
 def test_pastilla_del_mapa_con_logo_y_sin_tarjeta_flotante():
     """Sobre el mapa flotan la pastilla «Mapa en vivo» y el panel de flota.
 

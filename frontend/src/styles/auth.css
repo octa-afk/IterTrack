@@ -1,5 +1,5 @@
 /*
- * Auth pages (login + register), scoped under `.auth-page` so their `.side`,
+ * Register page, scoped under `.auth-page` so its `.side`,
  * `.logo`, tokens and body-like layout don't collide with the dashboard's
  * (dashboard.css) rules. Ported from:
  *   source/static/css/{auth-tokens,auth,login,register}.css
@@ -215,16 +215,6 @@
 .auth-page .meter i { height: 4.6px; border-radius: 4.6px; background: var(--line); transition: background 0.2s; }
 .auth-page .hint { font-size: 13px; color: var(--muted); margin-top: 5.8px; }
 
-/* Login-only */
-.auth-page .meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-}
-.auth-page .status.ok { color: #f5f7f6; }
-
 /* Register-only */
 .auth-page .mode {
   display: grid;
@@ -311,25 +301,3 @@
   fill: none;
   stroke: none;
 }
-
-
-/* El boton de demo solo existe cuando el servidor lo habilita (GET /config). */
-.auth-page .btn.demo {
-  margin-top: 10px;
-  background: transparent;
-  color: var(--acc-d);
-  border: 1px solid var(--line);
-  animation: demo-attn 2.2s ease-in-out infinite;
-}
-.auth-page .btn.demo:hover { background: rgba(90, 126, 230, 0.08); }
-
-/* Un pulso de borde, sin sombras ni halos, para que el CTA de la demo se note. */
-@keyframes demo-attn {
-  0%, 100% { border-color: var(--line); }
-  50% { border-color: var(--acc-d); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .auth-page .btn.demo { animation: none; }
-}
-.auth-page .hint.centered { text-align: center; }
